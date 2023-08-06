@@ -1,0 +1,21 @@
+LKDriftElectronTask/numTPCs 1
+LKDriftElectronTask/tpcNames mytpc
+
+mytpc/G4DetectorName          myg4tpc
+mytpc/padPlaneName            LKMyDetectorPlane
+mytpc/outputBranchName        MyTPCPads
+mytpc/driftVelocity           3.14
+mytpc/driftCoefLongDiff       0.03
+mytpc/driftCoefTranDiff       0.04
+mytpc/ionizationEnergy        1.23
+mytpc/numElectronsInCluster   100 
+
+mytpc/gasDiffusion value 0.1 0.2
+#mytpc/gasDiffusion hist /home/user/data/fileContaining_long_tran_diffusion_hist.root
+#mytpc/gasDiffusion function /home/user/data/fileContaining_long_tran_diffusion_func.root
+
+mytpc/CARDiffusion,0
+mytpc/CARDiffusion,1
+
+mytpc/CARGain,0
+mytpc/CARGain,1
