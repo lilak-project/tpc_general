@@ -1,4 +1,5 @@
 #include "LKDriftElectronSim.h"
+#include "TRandom.h"
 
 ClassImp(LKDriftElectronSim);
 
@@ -12,6 +13,7 @@ bool LKDriftElectronSim::Init()
     // Put intialization todos here which are not iterative job though event
     e_info << "Initializing LKDriftElectronSim" << std::endl;
 
+    fTbTime = 0;
     fDriftVelocity = 0;
     fCoefLongDiff = 0;
     fCoefTranDiff = 0;
@@ -19,7 +21,6 @@ bool LKDriftElectronSim::Init()
     fNumElectronsInCluster = 0;
     fNumElectronsFromEdep = 0;
     fGasDiffusionType = 0; ///< 0: value, 2: function
-    fGasDiffusion = 0;
     fGasLongDiffFunc = nullptr;
     fGasTranDiffFunc = nullptr;
     fCARDiffusionType = 0; ///< 0: value, 1: hist, 2: function
@@ -41,6 +42,7 @@ void LKDriftElectronSim::Print(Option_t *option) const
     e_info << "fTpcName : " << fTpcName << std::endl;
     e_info << "fG4DetName : " << fG4DetName << std::endl;
     e_info << "fPadPlaneName : " << fPadPlaneName << std::endl;
+    e_info << "fTbTime : " << fTbTime << std::endl;
     e_info << "fDriftVelocity : " << fDriftVelocity << std::endl;
     e_info << "fCoefLongDiff : " << fCoefLongDiff << std::endl;
     e_info << "fCoefTranDiff : " << fCoefTranDiff << std::endl;
@@ -63,6 +65,13 @@ int LKDriftElectronSim::GetNextElectronBunch()
     return fNumElectronsFromEdep - fNumElectronsInCluster;
 
     fNumElectronsFromEdep = fNumElectronsFromEdep - fNumElectronsInCluster;
+}
+
+int LKDriftElectronSim::GetTimeBucket(double driftLength)
+{
+    double driftTime = driftLength/fDriftVelocity;
+    int tb = int(driftTime/fTimeBucketTime);
+    return tb;
 }
 
 TVector3 LKDriftElectronSim::CalculateGasDiffusion(double driftLength)
@@ -94,7 +103,7 @@ TVector3 LKDriftElectronSim::CalculateGasDiffusion(double driftLength)
 }
 
 /// Drift Charge amplification region
-TVector3 LKDriftElectronSim::CalculateCARDiffusion(double x, double y, double initialCharge);
+TVector3 LKDriftElectronSim::CalculateCARDiffusion(double x, double y, double initialCharge)
 {
     double dx, dy, amplifiedCharge;
     if (fCARDiffusionType==0) {
@@ -104,10 +113,10 @@ TVector3 LKDriftElectronSim::CalculateCARDiffusion(double x, double y, double in
         dy = dr*TMath::Sin(angle);
     }
     else if (fCARDiffusionType==1) {
-        fDiffusionHist -> GetRandom2(dx, dy);
+        fCARDiffusionHist -> GetRandom2(dx, dy);
     }
     else if (fCARDiffusionType==2) {
-        fDiffusionFunc -> GetRandom2(dx, dy);
+        fCARDiffusionFunc -> GetRandom2(dx, dy);
     }
 
 
@@ -116,11 +125,11 @@ TVector3 LKDriftElectronSim::CalculateCARDiffusion(double x, double y, double in
     }
     else if (fCARGainType==1) {
         double gain = fCARGainHist -> GetRandom();
-        amplifiedCharge = initialCharge * fCARGain;
+        amplifiedCharge = initialCharge * gain;
     }
     else if (fCARGainType==2) {
         double gain = fCARGainFunc -> GetRandom();
-        amplifiedCharge = initialCharge
+        amplifiedCharge = initialCharge * gain;
     }
 
     TVector3 xyc(dx, dy, amplifiedCharge);

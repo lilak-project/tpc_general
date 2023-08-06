@@ -6,6 +6,14 @@
 #include "LKParameterContainer.h"
 #include "LKRun.h"
 #include "LKTask.h"
+#include "LKDriftElectronSim.h"
+#include "LKPadPlane.h"
+#include "TH1D.h"
+#include "TH2D.h"
+#include "TF1.h"
+#include "TF2.h"
+#include "TVector3.h"
+
 
 /*
  * Remove this comment block after reading it through
@@ -28,12 +36,10 @@ class LKDriftElectronTask : public LKTask
         bool EndOfRun();
 
         int fNumTPCs;
-        int fMCStepArray;
-
         TClonesArray* fMCStepArray[4];
-        TClonesArray* fPadArray[4]
+        TClonesArray* fPadArray[4];
         LKPadPlane* fPadPlane[4];
-        LKElectronDriftTool* fElectronDriftTool[4];
+        LKDriftElectronSim* fDriftElectronSim[4];
         
 
     ClassDef(LKDriftElectronTask,1);

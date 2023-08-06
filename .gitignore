@@ -2,6 +2,7 @@
 *.gdml
 
 #build
+CMakeLists.txt
 build
 *.swp
 *.o

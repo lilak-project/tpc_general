@@ -1,4 +1,6 @@
 #include "LKDriftElectronTask.h"
+#include "LKMCStep.h"
+#include "TString.h"
 
 ClassImp(LKDriftElectronTask);
 
@@ -12,12 +14,12 @@ bool LKDriftElectronTask::Init()
     lk_info << "Initializing LKDriftElectronTask" << std::endl;
 
     fNumTPCs = fPar -> GetParInt("LKDriftElectronTask/numTPCs");
-    for (auto iTPC=0; iTPC<numTPCs; ++iTPC)
+    for (auto iTPC=0; iTPC<fNumTPCs; ++iTPC)
     {
         fMCStepArray[iTPC] = nullptr;
         fPadArray[iTPC] = nullptr;
         fPadPlane[iTPC] = nullptr;
-        fElectronDriftSim[iTPC] = nullptr;
+        fDriftElectronSim[iTPC] = nullptr;
 
         TString tpcName = fPar -> GetParString("LKDriftElectronTask/tpcNames",iTPC);
         TString g4DetName = fPar -> GetParString(tpcName+"/G4DetectorName");
@@ -27,20 +29,23 @@ bool LKDriftElectronTask::Init()
         lk_info << "Initializing LKDriftElectronTask >> " << tpcName << " : " << g4DetName << " " << padPlaneName << " " << outputBranchName << std::endl;
 
         double driftVelocity = fPar -> GetParDouble(tpcName+"/driftVelocity");
-        double coefLongDiff = fPar -> GetParDouble(tpcName+"/driftCoefLongDiff");
-        double coefTranDiff = fPar -> GetParDouble(tpcName+"/driftCoefTranDiff");
         double ionizationEnergy = fPar -> GetParDouble(tpcName+"/ionizationEnergy");
         int numElectronsInCluster = fPar -> GetParInt(tpcName+"/numElectronsInCluster");
 
-        fMCStepArray[iTPC] = (TClonesArray *) run -> GetBranch(Form("MCStep_%s",g4DetName.Data()));
-        fPadPlane[iTPC] = (LKTpc *) run -> GetPadPlane();
-        fElectronDriftSim[iTPC] = new LKElectronDriftSim();
-        auto sim = fElectronDriftSim[iTPC];
+        int offTimeBucket = fPar -> GetParInt(tpcName+"/offTimeBucket");
+        int numTimeBuckets = fPar -> GetParInt(tpcName+"/numTimeBuckets");
+        double timeBucketTime = fPar -> GetParInt(tpcName+"/timeBucketTime");
+
+        fMCStepArray[iTPC] = (TClonesArray *) fRun -> GetBranch(Form("MCStep_%s",g4DetName.Data()));
+        fPadPlane[iTPC] = (LKPadPlane*) fRun -> FindDetectorPlane(padPlaneName);
+        fDriftElectronSim[iTPC] = new LKDriftElectronSim();
+        auto sim = fDriftElectronSim[iTPC];
         sim -> SetDriftVelocity(driftVelocity);
-        sim -> SetCoefLongDiff(coefLongDiff);
-        sim -> SetCoefTranDiff(coefTranDiff);
         sim -> SetIonizationEnergy(ionizationEnergy);
         sim -> SetNumElectronsInCluster(numElectronsInCluster);
+        sim -> SetOffTimeBucket(offTimeBucket);
+        sim -> SetNumTimeBuckets(numTimeBuckets);
+        sim -> SetTimeBucketTime(timeBucketTime);
 
         TString gasDiffusion = fPar -> GetParString(tpcName+"/gasDiffusion",0);
         if (gasDiffusion=="value") {
@@ -49,7 +54,7 @@ bool LKDriftElectronTask::Init()
             sim -> SetGasDiffusion(valueLD,valueTD);
         }
         if (gasDiffusion.Index("hist")==0) {
-            fPar -> GetParDouble(tpcName+"/gasDiffusion",1)
+            fPar -> GetParDouble(tpcName+"/gasDiffusion",1);
             TString diffValueFile = fPar -> GetParString(tpcName+"/gasDiffusion",1);
             TFile* file = new TFile(diffValueFile,"read");
             auto funcLD = (TF1*) file -> Get("longDiff");
@@ -57,7 +62,7 @@ bool LKDriftElectronTask::Init()
             sim -> SetGasDiffusionFunc(funcLD, funcTD);
         }
         if (gasDiffusion.Index("func")==0) {
-            fPar -> GetParDouble(tpcName+"/gasDiffusion",1)
+            fPar -> GetParDouble(tpcName+"/gasDiffusion",1);
             TString diffValueFile = fPar -> GetParString(tpcName+"/gasDiffusion",1);
             TFile* file = new TFile(diffValueFile,"read");
             auto funcLD = (TF1*) file -> Get("longDiff");
@@ -67,20 +72,20 @@ bool LKDriftElectronTask::Init()
 
         TString carDiffusion = fPar -> GetParString(tpcName+"/CARDiffusion",0);
         if (carDiffusion=="value") {
-            double gainValue = fPar -> GetParDouble(tpcName+"/CARDiffusion",1);
-            sim -> SetCARDiffusion(gainValue);
+            double diffValue = fPar -> GetParDouble(tpcName+"/CARDiffusion",1);
+            sim -> SetCARDiffusion(diffValue);
         }
         if (carDiffusion.Index("hist")==0) {
             TString gainValueFile = fPar -> GetParString(tpcName+"/CARDiffusion",1);
             TFile* file = new TFile(gainValueFile,"read");
-            auto gainFunc = (TH1D*) file -> Get("diffusion");
-            sim -> SetCARDiffusionFunc(gainFunc);
+            auto diffHist = (TH2D*) file -> Get("diffusion");
+            sim -> SetCARDiffusionHist(diffHist);
         }
         if (carDiffusion.Index("func")==0) {
             TString gainValueFile = fPar -> GetParString(tpcName+"/CARDiffusion",1);
             TFile* file = new TFile(gainValueFile,"read");
-            auto gainFunction = (TF1*) file -> Get("diffusion");
-            sim -> SetCARDiffusionFunc(gainFunction);
+            auto diffFunc = (TF2*) file -> Get("diffusion");
+            sim -> SetCARDiffusionFunc(diffFunc);
         }
 
         TString carGain = fPar -> GetParString(tpcName+"/CARGain",0);
@@ -98,11 +103,11 @@ bool LKDriftElectronTask::Init()
             TString gainValueFile = fPar -> GetParString(tpcName+"/CARGain",1);
             TFile* file = new TFile(gainValueFile,"read");
             auto gainFunction = (TF1*) file -> Get("gain");
-            sim -> SetCARGainFunction(gainFunction);
+            sim -> SetCARGainFunc(gainFunction);
         }
 
         fPadArray[iTPC] = new TClonesArray("LKPad");
-        run -> RegisterBranch(outputBranchName, fPadArray[iTPC]);
+        fRun -> RegisterBranch(outputBranchName, fPadArray[iTPC]);
     }
 
     return true;
@@ -110,12 +115,12 @@ bool LKDriftElectronTask::Init()
 
 void LKDriftElectronTask::Exec(Option_t *option)
 {
-    for (auto iTPC=0; iTPC<numTPCs; ++iTPC)
+    for (auto iTPC=0; iTPC<fNumTPCs; ++iTPC)
     {
         auto mcArray = fMCStepArray[iTPC];
         auto padArray = fPadArray[iTPC];
         auto padPlane = fPadPlane[iTPC];
-        auto sim = fElectronDriftSim[iTPC];
+        auto sim = fDriftElectronSim[iTPC];
 
         padArray -> Clear("C");
         padPlane -> Clear();
@@ -136,7 +141,7 @@ void LKDriftElectronTask::Exec(Option_t *option)
             auto xylGas = xyl + xylDiff;
 
             sim -> SetNumElectrons(edep);
-            while((int numElectrons = sim -> GetNextElectronBunch()))
+            while(int numElectrons = sim -> GetNextElectronBunch())
             {
                 if (numElectrons==0)
                     break;
@@ -172,7 +177,7 @@ void LKDriftElectronTask::Exec(Option_t *option)
         }
         /////////////////////////////////////////////////////////////////
 
-        lk_info << "Number of fired pads in plane-" << iPlane << ": " << padArray -> GetEntries() << endl;
+        lk_info << "Number of fired pads in plane-" << iTPC << ": " << padArray -> GetEntries() << endl;
     }
 }
 
