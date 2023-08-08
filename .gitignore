@@ -21,6 +21,7 @@ test*/
 #log files created from build/run
 log/*
 *.log
+log
 
 #cmake configuration log files
 !log/*.in

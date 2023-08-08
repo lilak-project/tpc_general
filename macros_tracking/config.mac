@@ -1,0 +1,30 @@
+*LKRun/RunName texat 824 conv
+*LKRun/DataPath /home/ejungwoo/lilak/texat_reco/macros_tracking/data/
+
+RawData/persistency true
+
+hostname e{lilak_hostuser}
+
+@CENS-ALPHA-00.cens-alpha-00/TTRootConversionTask/inputFileName  /mnt/CRIBdisk/o14apf17/ganacq_manip/o14apf17/acquisition/run/run_0824.dat.19-03-23_23h42m36s.1.root
+@CENS-ALPHA-00.cens-alpha-00/TexAT2/mapmmFileName     /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/mapchantomm.txt
+@CENS-ALPHA-00.cens-alpha-00/TexAT2/mapsiFileName     /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/mapchantosi_CRIB.txt
+@CENS-ALPHA-00.cens-alpha-00/TexAT2/mapX6FileName     /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/mapchantoX6_CRIB.txt
+@CENS-ALPHA-00.cens-alpha-00/TexAT2/mapX6dimFileName  /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/mapdimtoX6_CRIB.txt
+@CENS-ALPHA-00.cens-alpha-00/TexAT2/mapCsIFileName    /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/mapchantoCsI_CRIB.txt
+
+@CENS-ALPHA-00.cens-alpha-00/CalibrationParameter/fFSiJ_CalPar    /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/fSiJ_calpar_after.txt
+@CENS-ALPHA-00.cens-alpha-00/CalibrationParameter/fFCsI_CalPar    /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/fCsI_calpar_after.txt
+@CENS-ALPHA-00.cens-alpha-00/CalibrationParameter/fX6J_CalPar     /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/X6J_calpar.txt
+@CENS-ALPHA-00.cens-alpha-00/CalibrationParameter/fX6O_CalPar     /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/X6O_calpar.txt
+
+@bell.ejungwoo/TTRootConversionTask/inputFileName  /home/ejungwoo/data/texat/run_0824.dat.19-03-23_23h42m36s.38.root
+@bell.ejungwoo/TexAT2/mapmmFileName  /home/ejungwoo/data/texat/txtfiles/mapchantomm.txt
+@bell.ejungwoo/TexAT2/mapsiFileName  /home/ejungwoo/data/texat/txtfiles/mapchantosi_CRIB.txt
+@bell.ejungwoo/TexAT2/mapX6FileName  /home/ejungwoo/data/texat/txtfiles/mapchantoX6_CRIB.txt
+@bell.ejungwoo/TexAT2/mapCsIFileName /home/ejungwoo/data/texat/txtfiles/mapchantoCsI_CRIB.txt
+@bell.ejungwoo/TexAT2/mapX6dimFileName /home/ejungwoo/data/texat/txtfiles/mapdimtoX6_CRIB.txt
+@bell.ejungwoo/CalibrationParameter/fFSiJ_CalPar  /home/ejungwoo/data/texat/txtfiles/fSiJ_calpar_after.txt
+@bell.ejungwoo/CalibrationParameter/fFCsI_CalPar  /home/ejungwoo/data/texat/txtfiles/fCsI_calpar_after.txt
+@bell.ejungwoo/CalibrationParameter/fX6J_CalPar   /home/ejungwoo/data/texat/txtfiles/X6J_calpar.txt
+@bell.ejungwoo/CalibrationParameter/fX6O_CalPar   /home/ejungwoo/data/texat/txtfiles/X6O_calpar.txt
+
