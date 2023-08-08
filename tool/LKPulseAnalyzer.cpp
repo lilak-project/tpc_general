@@ -1,4 +1,8 @@
 #include "LKPulseAnalyzer.h"
+#include "TFile.h"
+#include "TLine.h"
+#include "TText.h"
+#include "TMath.h"
 
 ClassImp(LKPulseAnalyzer);
 
@@ -131,8 +135,6 @@ void LKPulseAnalyzer::AddChannel(int channelID, int *data)
             fHistAccumulate -> Fill(tb_aligned2+1, value);
         }
     }
-
-    return fCountPulse;
 }
 
 
@@ -219,7 +221,7 @@ TCanvas* LKPulseAnalyzer::DrawAverage(TVirtualPad *pad)
 
     for (auto tb=0; tb<fTbMax; ++tb)
         fHistAverage -> SetBinContent(tb+1,fAverageData[tb]/fCountGoodChannels);
-    fHistAverage -> SetTitle(Form("[%s]  %d channels",fName,fCountGoodChannels));
+    fHistAverage -> SetTitle(Form("[%s] %d channels",fName,fCountGoodChannels));
     fHistAverage -> SetStats(0);
 
     fCvsAverage -> cd();
@@ -272,7 +274,7 @@ TCanvas* LKPulseAnalyzer::DrawAccumulate(TVirtualPad *pad)
 
     fCvsAccumulate -> cd();
     fHistAccumulate -> Draw("colz");
-    fHistAccumulate -> SetTitle(Form("[%s]  %d channels",fName,fCountGoodChannels));
+    fHistAccumulate -> SetTitle(Form("[%s] %d channels",fName,fCountGoodChannels));
     if (fHistAverage!=nullptr) {
         auto histClone = (TH1D *) fHistAverage -> Clone(Form("histAverageClone_%s",fName));
         histClone -> SetLineColor(kRed);
@@ -327,6 +329,7 @@ TCanvas* LKPulseAnalyzer::DrawReference(TVirtualPad *pad)
 
     if (fHistReference==nullptr)
         fHistReference = new TH2D(Form("histReference_%s",fName),";tb;y",100,0,50,150,-20,120);
+    fHistReference -> SetTitle(Form("[%s] %d channels",fName,fCountGoodChannels));
     fHistReference -> Reset("ICES");
     fHistReference -> SetStats(0);
 

@@ -1,12 +1,9 @@
-#include "LKPulseAnalyzer.cpp"
-#include "LKPulseAnalyzer.h"
-
 #ifndef USING_EJUNGWOO
 void e_add(TObject *,const char* opt="") {}
 void e_save(TObject *,const char* opt="") {}
 #endif
 
-int fNumCvsGroup = 1;
+int fNumCvsGroup = 4;
 int fPulseHeightMin = 800;
 int fPulseHeightMax = 4000;
 int fPulseTbMin = 10;
@@ -111,8 +108,8 @@ void anaExtractPulse()
                 continue;
 
             ana[type] -> AddChannel(iall,data);
-            //if (ana[type]->GetNumHistChannel()<64)
-            if (ana[type]->IsGoodChannel() && ana[type]->GetNumGoodChannels()<20*fNumCvsGroup)
+            if (ana[type]->GetNumHistChannel()<20*fNumCvsGroup)
+            //if (ana[type]->IsGoodChannel() && ana[type]->GetNumGoodChannels()<20*fNumCvsGroup)
             {
                 bool cvsIsNew = ana[type] -> DrawChannel();
                 auto cvs = ana[type] -> GetGroupCanvas();
