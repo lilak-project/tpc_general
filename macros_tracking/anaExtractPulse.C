@@ -3,7 +3,11 @@ void e_add(TObject *,const char* opt="") {}
 void e_save(TObject *,const char* opt="") {}
 #endif
 
-int fNumCvsGroup = 4;
+TObjArray *fCvsList;
+void e_cvs(TCanvas *cvs, const char* opt="");
+void e_cvs_end();
+
+int fNumCvsGroup = 10;
 int fPulseHeightMin = 800;
 int fPulseHeightMax = 4000;
 int fPulseTbMin = 10;
@@ -61,9 +65,29 @@ int GetType(int cobo, int asad, int aget, int chan);
 void anaExtractPulse()
 {
     auto run = new LKRun();
+    run -> AddPar("config.mac");
     auto detector = new TexAT2();
     run -> AddDetector(detector);
-    run -> AddInputFile("/home/ejungwoo/lilak/texat_reco/macros_tracking/data/texat_0824.conv.root");
+    //run -> AddInputFile("/home/ejungwoo/lilak/texat_reco/macros_tracking/data/texat_0824.conv.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_801.27.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_801.28.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_801.36.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_806.28.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_806.29.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_806.3.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_806.30.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.25.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.3.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.30.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.31.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.32.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.4.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.7.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_822.3.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_822.4.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_823.10.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_823.17.root");
+    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_823.2.root");
     run -> SetTag("read");
     run -> Init();
     auto channelArray = run -> GetBranchA("RawData");
@@ -76,9 +100,11 @@ void anaExtractPulse()
         ana[iType] -> SetTbMax(350);
         ana[iType] -> SetThreshold(fThresholds[iType]);
         ana[iType] -> SetPulseHeightCuts(fPulseHeightMin,fPulseHeightMax);
-        ana[iType] -> SetPulseTbCuts(fPulseTbMin,fPulseTbMax);//10,200);
+        ana[iType] -> SetPulseTbCuts(fPulseTbMin,fPulseTbMax);
         ana[iType] -> SetPulseWidthCuts(fPulseWidthCuts[iType][0],fPulseWidthCuts[iType][1]);
-        ana[iType] -> SetCvsGroup(1000,800,4,5);
+        //ana[iType] -> SetCvsGroup(1000,800,4,5);
+        ana[iType] -> SetCvsGroup(2800,2000,4,5);
+        //ana[iType] -> SetCvsAverage(2800,2000,4,5);
         ana[iType] -> SetInvertChannel(fInvertChannel[iType]);
     }
 
@@ -109,12 +135,12 @@ void anaExtractPulse()
 
             ana[type] -> AddChannel(iall,data);
             if (ana[type]->GetNumHistChannel()<20*fNumCvsGroup)
-            //if (ana[type]->IsGoodChannel() && ana[type]->GetNumGoodChannels()<20*fNumCvsGroup)
+            //if (ana[type]->IsGoodChannel() && ana[type]->GetNumGoodChannels()<=20*fNumCvsGroup)
             {
                 bool cvsIsNew = ana[type] -> DrawChannel();
                 auto cvs = ana[type] -> GetGroupCanvas();
                 if (cvsIsNew) {
-                    e_add(cvs,fTypeNames[type]);
+                    e_cvs(cvs,fTypeNames[type]);
                 }
             }
         }
@@ -124,9 +150,13 @@ void anaExtractPulse()
     int divY = 3;
     if (fNumTypes>9) divX = 4;
 
-    auto cvsAverageAll = new TCanvas("cvsAverageAll","cvsAverageAll",1000,800);
+    int dxCvs = 2800;
+    int dyCvs = 2000;
+
+
+    auto cvsAverageAll = new TCanvas("cvsAverageAll","cvsAverageAll",dxCvs,dyCvs);
     cvsAverageAll -> Divide(divX,divY);
-    e_add(cvsAverageAll,"Summary");
+    e_cvs(cvsAverageAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawAverage(cvsAverageAll->cd(iType+1));
 
@@ -163,50 +193,52 @@ void anaExtractPulse()
     }
     legend -> Draw();
 
-    auto cvsAccumulateAll = new TCanvas("cvsAccumulateAll","cvsAccumulateAll",1000,800);
+    auto cvsAccumulateAll = new TCanvas("cvsAccumulateAll","cvsAccumulateAll",dxCvs,dyCvs);
     cvsAccumulateAll -> Divide(divX,divY);
-    e_add(cvsAccumulateAll,"Summary");
+    e_cvs(cvsAccumulateAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawAccumulate(cvsAccumulateAll->cd(iType+1));
 
-    auto cvsWidthAll = new TCanvas("cvsWidthAll","cvsWidthAll",1000,800);
+    auto cvsWidthAll = new TCanvas("cvsWidthAll","cvsWidthAll",dxCvs,dyCvs);
     cvsWidthAll -> Divide(divX,divY);
-    e_add(cvsWidthAll,"Summary");
+    e_cvs(cvsWidthAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawWidth(cvsWidthAll->cd(iType+1));
 
-    auto cvsHeightAll = new TCanvas("cvsHeightAll","cvsHeightAll",1000,800);
+    auto cvsHeightAll = new TCanvas("cvsHeightAll","cvsHeightAll",dxCvs,dyCvs);
     cvsHeightAll -> Divide(divX,divY);
-    e_add(cvsHeightAll,"Summary");
+    e_cvs(cvsHeightAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawHeight(cvsHeightAll->cd(iType+1));
 
-    auto cvsPulseTbAll = new TCanvas("cvsPulseTbAll","cvsPulseTbAll",1000,800);
+    auto cvsPulseTbAll = new TCanvas("cvsPulseTbAll","cvsPulseTbAll",dxCvs,dyCvs);
     cvsPulseTbAll -> Divide(divX,divY);
-    e_add(cvsPulseTbAll,"Summary");
+    e_cvs(cvsPulseTbAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawPulseTb(cvsPulseTbAll->cd(iType+1));
 
-    auto cvsPedestalAll = new TCanvas("cvsPedestalAll","cvsPedestalAll",1000,800);
+    auto cvsPedestalAll = new TCanvas("cvsPedestalAll","cvsPedestalAll",dxCvs,dyCvs);
     cvsPedestalAll -> Divide(divX,divY);
-    e_add(cvsPedestalAll,"Summary");
+    e_cvs(cvsPedestalAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawPedestal(cvsPedestalAll->cd(iType+1));
 
-    auto cvsResidualAll = new TCanvas("cvsResidualAll","cvsResidualAll",1000,800);
+    auto cvsResidualAll = new TCanvas("cvsResidualAll","cvsResidualAll",dxCvs,dyCvs);
     cvsResidualAll -> Divide(divX,divY);
-    e_add(cvsResidualAll,"Summary");
+    e_cvs(cvsResidualAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawResidual(cvsResidualAll->cd(iType+1));
 
     for (auto iType : fSelTypes)
         ana[iType] -> WriteReferecePulse(0,20,"data");
 
-    auto cvsReferenceAll = new TCanvas("cvsReferenceAll","cvsReferenceAll",1000,800);
+    auto cvsReferenceAll = new TCanvas("cvsReferenceAll","cvsReferenceAll",dxCvs,dyCvs);
     cvsReferenceAll -> Divide(divX,divY);
-    e_add(cvsReferenceAll,"Summary");
+    e_cvs(cvsReferenceAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawReference(cvsReferenceAll->cd(iType+1));
+
+    e_cvs_end();
 }
 
 int GetType(int cobo, int asad, int aget, int chan) 
@@ -224,4 +256,24 @@ int GetType(int cobo, int asad, int aget, int chan)
     if (cobo==2 && aget==3) return eCsICT;
 
     return -1;
+}
+
+void e_cvs(TCanvas *cvs, const char* opt="")
+{
+    //e_add(cvs,opt);
+    if (fCvsList==nullptr)
+        fCvsList = new TObjArray();
+    fCvsList -> Add(cvs);
+}
+
+void e_cvs_end()
+{
+    if (fCvsList!=nullptr)  {
+        TIter next(fCvsList);
+        while (auto cvs = (TCanvas *) next()) {
+            cvs -> Update();
+            cvs -> Modified();
+            cvs -> SaveAs(Form("figures2/%s.png",cvs->GetName()));
+        }
+    }
 }
