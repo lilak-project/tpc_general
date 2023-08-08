@@ -1,34 +1,40 @@
-#include "LKChannelAnalyzer.h"
+#include "LKPulseAnalyzer.h"
 
-ClassImp(LKChannelAnalyzer);
+ClassImp(LKPulseAnalyzer);
 
-LKChannelAnalyzer::LKChannelAnalyzer(const char* name)
+LKPulseAnalyzer::LKPulseAnalyzer(const char* name)
 {
     fName = name;
     Init();
 }
 
-bool LKChannelAnalyzer::Init()
+bool LKPulseAnalyzer::Init()
 {
-    Clear();
     fHistWidth = new TH1D(Form("histWidth_%s",fName),Form("[%s]  Width;width (tb);count",fName),200,0,200);
     fHistHeight = new TH1D(Form("histHeight_%s",fName),Form("[%s]  Height;height;count",fName),205,0,4100);
     fHistPulseTb = new TH1D(Form("histPulseTb_%s",fName),Form("[%s]  PulseTb;tb_{pulse};count",fName),128,0,512);
     fHistPedestal = new TH1D(Form("histPedestal_%s",fName),Form("[%s]  Pedestal;pedestal;count",fName),200,0,1000);
+    fHistAccumulate = new TH2D(Form("histAccumulate_%s",fName),";tb;y",fTbMax,-100,fTbMax-100,150,-25,125);
+    fHistAccumulate -> SetStats(0);
+    Clear();
     return true;
 }
 
-void LKChannelAnalyzer::Clear(Option_t *option)
+void LKPulseAnalyzer::Clear(Option_t *option)
 {
-    for (auto i=0; i<512; ++i) fAverageData[i] = 0;
-    for (auto i=0; i<512; ++i) fChannelData[i] = 0;
+    for (auto tb=0; tb<512; ++tb) fAverageData[tb] = 0;
+    for (auto tb=0; tb<512; ++tb) fChannelData[tb] = 0;
+
+    if (fHistAverage!=nullptr)
+        fHistAverage -> Reset("ICES");
+    fHistAccumulate -> Reset("ICES");
 }
 
-void LKChannelAnalyzer::Print(Option_t *option) const
+void LKPulseAnalyzer::Print(Option_t *option) const
 {
 }
 
-void LKChannelAnalyzer::AddChannel(int channelID, int *data)
+void LKPulseAnalyzer::AddChannel(int channelID, int *data)
 {
     fPreValue = 0;
     fCurValue = 0;
@@ -43,13 +49,13 @@ void LKChannelAnalyzer::AddChannel(int channelID, int *data)
 
     fChannelID = channelID;
     if (fInvertChannel)
-        for (auto i=0; i<fTbMax; ++i)
-            fChannelData[i] = fChannelMax - data[i];
+        for (auto tb=fTbStart; tb<fTbMax; ++tb)
+            fChannelData[tb] = fChannelMax - data[tb];
     else
-        for (auto i=0; i<fTbMax; ++i)
-            fChannelData[i] = data[i];
+        for (auto tb=fTbStart; tb<fTbMax; ++tb)
+            fChannelData[tb] = data[tb];
 
-    for (auto tb = 0; tb<fTbMax; ++tb)
+    for (auto tb=fTbStart; tb<fTbMax; ++tb)
     {
         fCurValue = fChannelData[tb];
         if (fCurValue>fMaxValue) {
@@ -93,7 +99,7 @@ void LKChannelAnalyzer::AddChannel(int channelID, int *data)
         fCountGoodChannels++;
         fIsGoodChannel = true;
 
-        auto tb1 = 0;
+        auto tb1 = fTbStart;
         auto tb2 = fTbAtMaxValue-40;
         auto tb3 = fTbAtMaxValue+40;
         auto tb4 = fTbMax;
@@ -112,15 +118,17 @@ void LKChannelAnalyzer::AddChannel(int channelID, int *data)
         fHistPedestal -> Fill(fPedestal);
 
         double scale = 1./(fMaxValue-fPedestal)*100;
-        for (auto tb = 0; tb<fTbMax; ++tb)
+        for (auto tb=fTbStart; tb<fTbMax; ++tb)
         {
             int tb_aligned = tb - fTbAtMaxValue + 100;
             if (tb_aligned<0 || tb_aligned>fTbMax)
                 continue;
 
-            double value = fChannelData[tb] - fPedestal;
+            double value = (fChannelData[tb] - fPedestal) * scale;
+            fAverageData[tb_aligned] += value;
 
-            fAverageData[tb_aligned] += value*scale;
+            int tb_aligned2 = tb - fTbAtMaxValue;
+            fHistAccumulate -> Fill(tb_aligned2+1, value);
         }
     }
 
@@ -128,10 +136,10 @@ void LKChannelAnalyzer::AddChannel(int channelID, int *data)
 }
 
 
-bool LKChannelAnalyzer::DrawChannel()
+bool LKPulseAnalyzer::DrawChannel()
 {
     auto hist = new TH1D(Form("channel_%s_%d",fName,fCountHistChannel),Form("%s %d;tb;y",fName,fChannelID),fTbMax,0,fTbMax);
-    for (auto tb = 0; tb<fTbMax; ++tb)
+    for (auto tb=0; tb<fTbMax; ++tb)
         hist -> SetBinContent(tb+1,fChannelData[tb]);
 
     bool cvsIsNew = false;
@@ -195,7 +203,7 @@ bool LKChannelAnalyzer::DrawChannel()
     return cvsIsNew;
 }
 
-TCanvas* LKChannelAnalyzer::DrawAverage(TVirtualPad *pad)
+TCanvas* LKPulseAnalyzer::DrawAverage(TVirtualPad *pad)
 {
     if (pad!=nullptr)
         fCvsAverage = (TCanvas*) pad;
@@ -206,9 +214,12 @@ TCanvas* LKChannelAnalyzer::DrawAverage(TVirtualPad *pad)
         fHistAverage = new TH1D(Form("histAverage_%s",fName),";tb;y",fTbMax,-100,fTbMax-100);
     fHistAverage -> Reset("ICES");
 
-    for (auto tb = 0; tb<fTbMax; ++tb)
+    SetCvs(fCvsAverage);
+    SetHist(fHistAverage);
+
+    for (auto tb=0; tb<fTbMax; ++tb)
         fHistAverage -> SetBinContent(tb+1,fAverageData[tb]/fCountGoodChannels);
-    fHistAverage -> SetTitle(Form("[%s]  %d channels, cut(%d,%d,%d)",fName,fCountGoodChannels,fThreshold,fPulseHeightMin,fPulseHeightMax));
+    fHistAverage -> SetTitle(Form("[%s]  %d channels",fName,fCountGoodChannels));
     fHistAverage -> SetStats(0);
 
     fCvsAverage -> cd();
@@ -223,32 +234,161 @@ TCanvas* LKChannelAnalyzer::DrawAverage(TVirtualPad *pad)
         line -> Draw();
     }
 
-    for (auto ratio : {0.10, 0.25, 0.50, 0.75})
+    //for (auto ratio : {0.10, 0.25, 0.50, 0.75})
+    for (auto ratio : {0.05, 0.25, 0.50, 0.75})
     {
-        double x0,x1,error;
-        auto width = FullWidthRatioMaximum(fHistAverage,ratio,10,x0,x1,error);
+        double tb1,tb2,error;
+        auto width = FullWidthRatioMaximum(fHistAverage,ratio,10,tb1,tb2,error);
         auto ratio100 = ratio*100;
         auto tt = new TText(60,ratio100,Form("%.2f (at y=%d)",width,int(ratio100)));
         tt -> SetTextFont(132);
         tt -> SetTextSize(0.07);
         tt -> SetTextAlign(12);
         tt -> Draw();
-        auto line = new TLine(x0,ratio100,x1,ratio100);
+        auto line = new TLine(tb1,ratio100,tb2,ratio100);
         line -> SetLineColor(kBlue);
         line -> SetLineWidth(4);
         line -> Draw();
+
+        if (ratio==0.05) {
+            fTbAtRefFloor1 = tb1;
+            fTbAtRefFloor2 = tb2;
+            fRefWidth = tb2 - tb1;
+        }
     }
 
     return fCvsAverage;
 }
 
-TCanvas* LKChannelAnalyzer::DrawWidth(TVirtualPad *pad)
+TCanvas* LKPulseAnalyzer::DrawAccumulate(TVirtualPad *pad)
+{
+    if (pad!=nullptr)
+        fCvsAccumulate = (TCanvas*) pad;
+    else if (fCvsAccumulate==nullptr)
+        fCvsAccumulate = new TCanvas(Form("cvsAccumulate_%s",fName),"",fWAverage,fHAverage);
+
+    SetCvs(fCvsAccumulate);
+    SetHist(fHistAccumulate);
+
+    fCvsAccumulate -> cd();
+    fHistAccumulate -> Draw("colz");
+    fHistAccumulate -> SetTitle(Form("[%s]  %d channels",fName,fCountGoodChannels));
+    if (fHistAverage!=nullptr) {
+        auto histClone = (TH1D *) fHistAverage -> Clone(Form("histAverageClone_%s",fName));
+        histClone -> SetLineColor(kRed);
+        histClone -> Draw("samel");
+    }
+
+    return fCvsAccumulate;
+}
+
+TCanvas* LKPulseAnalyzer::DrawResidual(TVirtualPad *pad)
+{
+    if (pad!=nullptr)
+        fCvsResidual = (TCanvas*) pad;
+    else if (fCvsResidual==nullptr)
+        fCvsResidual = new TCanvas(Form("cvsResidual_%s",fName),"",fWAverage,fHAverage);
+
+    if (fHistAverage!=nullptr && fHistAccumulate!=nullptr)
+    {
+        int rMax = 20;
+        fHistResidual = new TH1D(Form("histResidual_%s",fName),Form("[%s];y residual;count",fName),50,-rMax,rMax);
+
+        int tb2 = int(fTbAtRefFloor2 + fRefWidth*2);
+
+        for (auto tb=tb2+1; tb<fTbMax; ++tb) {
+            auto yAverage = fHistAverage -> GetBinContent(tb+1);
+            int mid = int(yAverage);
+            int y1 = int(yAverage)-rMax;
+            int y2 = int(yAverage)+rMax;
+            for (auto y=y1; y<=y2; ++y) {
+                auto ybin = fHistAccumulate -> GetYaxis() -> FindBin(y);
+                auto yValue = fHistAccumulate -> GetBinContent(tb+1,ybin);
+                double residual = yAverage - yValue;
+                fHistResidual -> Fill(residual);
+            }
+        }
+
+        SetCvs(fCvsResidual);
+        SetHist(fHistResidual);
+
+        fHistResidual -> Draw();
+    }
+
+    return fCvsResidual;
+}
+
+TCanvas* LKPulseAnalyzer::DrawReference(TVirtualPad *pad)
+{
+    if (pad!=nullptr)
+        fCvsReference = (TCanvas*) pad;
+    else if (fCvsReference==nullptr)
+        fCvsReference = new TCanvas(Form("cvsReference_%s",fName),"",fWAverage,fHAverage);
+
+    if (fHistReference==nullptr)
+        fHistReference = new TH2D(Form("histReference_%s",fName),";tb;y",100,0,50,150,-20,120);
+    fHistReference -> Reset("ICES");
+    fHistReference -> SetStats(0);
+
+    SetCvs(fCvsReference);
+    SetHist(fHistReference);
+
+    if (fGraphReference==nullptr)
+        fGraphReference = new TGraph();
+    fGraphReference -> Clear();
+    fGraphReference -> Set(0);
+    fGraphReference -> SetMarkerStyle(20);
+    fGraphReference -> SetMarkerSize(0.4);
+
+    auto bin1 = fHistAverage -> FindBin(fTbAtRefFloor1);
+    auto bin2 = fHistAverage -> FindBin(fTbAtRefFloor2);// + 20;
+    for (auto bin=bin1; bin<=bin2; ++bin) {
+        auto value = fHistAverage -> GetBinContent(bin);
+        fGraphReference -> SetPoint(fGraphReference->GetN(),fGraphReference->GetN(),value);
+    }
+
+    fHistReference -> Draw();
+    fGraphReference -> Draw("samepl");
+
+    auto line0 = new TLine(0,0,50,0);
+    line0 -> SetLineColor(kRed);
+    line0 -> SetLineStyle(2);
+    line0 -> Draw();
+
+    return fCvsReference;
+}
+
+void LKPulseAnalyzer::WriteReferecePulse(int tbOffsetFromHead, int tbOffsetFromtail, const char *path)
+{
+    if (fHistAverage==nullptr)
+        return;
+
+    if (fGraphReference==nullptr)
+        fGraphReference = new TGraph();
+    fGraphReference -> Clear();
+    fGraphReference -> Set(0);
+
+    auto bin1 = fHistAverage -> FindBin(fTbAtRefFloor1)-tbOffsetFromHead;
+    auto bin2 = fHistAverage -> FindBin(fTbAtRefFloor2)+tbOffsetFromtail;
+    for (auto bin=bin1; bin<=bin2; ++bin) {
+        auto value = fHistAverage -> GetBinContent(bin);
+        fGraphReference -> SetPoint(fGraphReference->GetN(),fGraphReference->GetN(),value);
+    }
+
+    auto file = new TFile(Form("%s/pulseReference_%s.root",path,fName),"recreate");
+    fGraphReference -> Write("pulse");
+}
+
+TCanvas* LKPulseAnalyzer::DrawWidth(TVirtualPad *pad)
 {
     if (pad!=nullptr)
         fCvsWidth = (TCanvas*) pad;
     else if (fCvsWidth==nullptr)
         fCvsWidth = new TCanvas(Form("cvsWidth_%s",fName),"",fWAverage,fHAverage);
     fHistWidth -> Draw();
+
+    SetCvs(fCvsWidth);
+    SetHist(fHistWidth);
 
     auto yMin = fHistWidth -> GetMinimum();
     auto yMax = fHistWidth -> GetMaximum();
@@ -263,13 +403,16 @@ TCanvas* LKChannelAnalyzer::DrawWidth(TVirtualPad *pad)
     return fCvsWidth;
 }
 
-TCanvas* LKChannelAnalyzer::DrawHeight(TVirtualPad *pad)
+TCanvas* LKPulseAnalyzer::DrawHeight(TVirtualPad *pad)
 {
     if (pad!=nullptr)
         fCvsHeight = (TCanvas*) pad;
     else if (fCvsHeight==nullptr)
         fCvsHeight = new TCanvas(Form("cvsHeight_%s",fName),"",fWAverage,fHAverage);
     fHistHeight -> Draw();
+
+    SetCvs(fCvsHeight);
+    SetHist(fHistHeight);
 
     auto yMin = fHistHeight -> GetMinimum();
     auto yMax = fHistHeight -> GetMaximum();
@@ -284,7 +427,7 @@ TCanvas* LKChannelAnalyzer::DrawHeight(TVirtualPad *pad)
     return fCvsHeight;
 }
 
-TCanvas* LKChannelAnalyzer::DrawPulseTb(TVirtualPad *pad)
+TCanvas* LKPulseAnalyzer::DrawPulseTb(TVirtualPad *pad)
 {
     if (pad!=nullptr)
         fCvsPulseTb = (TCanvas*) pad;
@@ -305,13 +448,16 @@ TCanvas* LKChannelAnalyzer::DrawPulseTb(TVirtualPad *pad)
     return fCvsPulseTb;
 }
 
-TCanvas* LKChannelAnalyzer::DrawPedestal(TVirtualPad *pad)
+TCanvas* LKPulseAnalyzer::DrawPedestal(TVirtualPad *pad)
 {
     if (pad!=nullptr)
         fCvsPedestal = (TCanvas*) pad;
     else if (fCvsPedestal==nullptr)
         fCvsPedestal = new TCanvas(Form("cvsPedestal_%s",fName),"",fWAverage,fHAverage);
     fHistPedestal -> Draw();
+
+    SetCvs(fCvsPedestal);
+    SetHist(fHistPedestal);
 
     auto yMin = fHistPedestal -> GetMinimum();
     auto yMax = fHistPedestal -> GetMaximum();
@@ -326,7 +472,7 @@ TCanvas* LKChannelAnalyzer::DrawPedestal(TVirtualPad *pad)
     return fCvsPedestal;
 }
 
-double LKChannelAnalyzer::FullWidthRatioMaximum(TH1D *hist, double ratioFromMax, double numSplitBin, double &x0, double &x1, double &error)
+double LKPulseAnalyzer::FullWidthRatioMaximum(TH1D *hist, double ratioFromMax, double numSplitBin, double &tb1, double &tb2, double &error)
 {
     int numBins = hist -> GetNbinsX();
     int binMax = hist -> GetMaximumBin();
@@ -365,10 +511,21 @@ double LKChannelAnalyzer::FullWidthRatioMaximum(TH1D *hist, double ratioFromMax,
     if (x==xMax)
         return -1;
 
-    x0 = xLow;
-    x1 = xHigh;
+    tb1 = xLow;
+    tb2 = xHigh;
     error = TMath::Sqrt(yError0*yError0 + yError1*yError1);
     double width = xHigh - xLow;
 
     return width;
+}
+void LKPulseAnalyzer::SetCvs(TCanvas *cvs)
+{ 
+    cvs -> SetLeftMargin(0.1);
+    cvs -> SetRightMargin(0.15);
+}
+
+void LKPulseAnalyzer::SetHist(TH1 *hist)
+{
+    hist -> GetXaxis() -> SetTitleOffset(1.25);
+    hist -> GetYaxis() -> SetTitleOffset(1.50);
 }

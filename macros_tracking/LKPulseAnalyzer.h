@@ -4,15 +4,17 @@
 #include "TObject.h"
 #include "LKLogger.h"
 #include "TH1D.h"
+#include "TH2D.h"
 #include "TCanvas.h"
 #include "TVirtualPad.h"
+#include "TGraph.h"
 
-class LKChannelAnalyzer : public TObject
+class LKPulseAnalyzer : public TObject
 {
     public:
-        LKChannelAnalyzer(const char* name);
-        LKChannelAnalyzer() : LKChannelAnalyzer(0) { ; }
-        virtual ~LKChannelAnalyzer() { ; }
+        LKPulseAnalyzer(const char* name);
+        LKPulseAnalyzer() : LKPulseAnalyzer(0) { ; }
+        virtual ~LKPulseAnalyzer() { ; }
 
         bool Init();
         void Clear(Option_t *option="");
@@ -22,19 +24,11 @@ class LKChannelAnalyzer : public TObject
         double* GetChannelData() { return fChannelData; }
         TCanvas* GetCvsAverage() const  { return fCvsAverage; }
         TH1D* GetHistAverage() const  { return fHistAverage; }
-
-        int GetTbMax() const  { return fTbMax; }
-        int GetChannelMax() const  { return fChannelMax; }
-        int GetThreshold() const  { return fThreshold; }
-        int GetPulseHeightMin() const  { return fPulseHeightMin; }
-        int GetPulseHeightMax() const  { return fPulseHeightMax; }
-        int GetPulseTbMin() const  { return fPulseTbMin; }
-        int GetPulseTbMax() const  { return fPulseTbMax; }
-        int GetPulseWidthAtThresholdMin() const  { return fPulseWidthAtThresholdMin; }
-        int GetPulseWidthAtThresholdMax() const  { return fPulseWidthAtThresholdMax; }
+        TH2D* GetHistAccumulate() const  { return fHistAccumulate; }
 
         void SetInvertChannel(bool value) { fInvertChannel = value; }
         void SetTbMax(int value) { fTbMax = value; }
+        void SetTbStart(int value) { fTbStart = value; }
         void SetChannelMax(int value) { fChannelMax = value; }
         void SetThreshold(int value) { fThreshold = value; }
         void SetPulseHeightCuts(int min, int max) {
@@ -71,10 +65,13 @@ class LKChannelAnalyzer : public TObject
         void AddChannel(int channelID, int *data);
         bool DrawChannel();
         TCanvas* DrawAverage(TVirtualPad* pad=(TVirtualPad*)nullptr);
+        TCanvas* DrawAccumulate(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawWidth(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawHeight(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawPulseTb(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawPedestal(TVirtualPad* pad=(TVirtualPad*)nullptr);
+        TCanvas* DrawResidual(TVirtualPad* pad=(TVirtualPad*)nullptr);
+        TCanvas* DrawReference(TVirtualPad *pad=(TVirtualPad*)nullptr);
 
         double FullWidthRatioMaximum(TH1D *hist, double ratioFromMax, double numSplitBin, double &x0, double &x1, double &error);
         double FullWidthRatioMaximum(TH1D *hist, double ratioFromMax) {
@@ -82,10 +79,16 @@ class LKChannelAnalyzer : public TObject
             return FullWidthRatioMaximum(hist, ratioFromMax, 4, dummy, dummy, dummy);
         }
 
+        void WriteReferecePulse(int tbOffsetFromHead=0, int tbOffsetFromtail=0, const char *path=".");
+
+        void SetCvs(TCanvas *cvs);
+        void SetHist(TH1 *hist);
+
     private:
         const char*  fName = 0;
 
         // single channel cuts
+        int          fTbStart = 0;
         int          fTbMax = 350;
         int          fChannelMax = 4096;
         int          fThreshold = 1000;
@@ -122,13 +125,21 @@ class LKChannelAnalyzer : public TObject
         int          fXGroup = 3;
         int          fYGroup = 2;
 
-        // all channel
+        // average
         int          fCountGoodChannels = 0;
         double       fAverageData[512];
+        double       fTbAtRefFloor1 = 0;
+        double       fTbAtRefFloor2 = 0;
+        double       fRefWidth = 0;
 
-        // all channel draw
+        // average draw
         TCanvas*     fCvsAverage = nullptr;
         TH1D*        fHistAverage = nullptr;
+        TCanvas*     fCvsReference = nullptr;
+        TH2D*        fHistReference = nullptr;
+        TGraph*      fGraphReference = nullptr;
+        TCanvas*     fCvsAccumulate = nullptr;
+        TH2D*        fHistAccumulate = nullptr;
         int          fWAverage = 600;
         int          fHAverage = 500;
 
@@ -141,8 +152,10 @@ class LKChannelAnalyzer : public TObject
         TH1D*        fHistPulseTb = nullptr;
         TCanvas*     fCvsPedestal = nullptr;
         TH1D*        fHistPedestal = nullptr;
+        TCanvas*     fCvsResidual = nullptr;
+        TH1D*        fHistResidual = nullptr;
 
-    ClassDef(LKChannelAnalyzer,1);
+    ClassDef(LKPulseAnalyzer,1);
 };
 
 #endif

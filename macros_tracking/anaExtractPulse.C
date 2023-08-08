@@ -1,5 +1,5 @@
-#include "LKChannelAnalyzer.cpp"
-#include "LKChannelAnalyzer.h"
+#include "LKPulseAnalyzer.cpp"
+#include "LKPulseAnalyzer.h"
 
 #ifndef USING_EJUNGWOO
 void e_add(TObject *,const char* opt="") {}
@@ -26,6 +26,7 @@ int eX6Junction    = 9;
 int eCsICT         = 10;
 const char *fTypeNames[fNumTypes] = {"MMCenter", "MMLeftSide", "MMLeftCenter", "MMRightSide", "MMRightCenter", "fSiJunction", "fSiOhmic", "fCsI", "X6Ohmic", "X6Junction", "CsICT"};
 bool fInvertChannel[fNumTypes] = {0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1};
+int fTbStart[] = {0,0,0,0,0,2,2,2,0,0,0};
 int fThresholds[] = {700,700,700,700,700,450,600,400,650,500,500};
 int fPulseHeightCuts[fNumTypes][2] = {{800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}};
 int fPulseWidthCuts[fNumTypes][2] = {{20,40}, {20,40}, {20,40}, {20,40}, {20,40}, {20,40}, {20,40}, {2,10}, {20,40}, {10,25}, {10,30}};
@@ -49,6 +50,7 @@ int eX6Junction    = 5;
 int eCsICT         = 6;
 const char *fTypeNames[fNumTypes] = {"MicroMegas", "fSiJunction", "fSiOhmic", "fCsI", "X6Ohmic", "X6Junction", "CsICT"};
 bool fInvertChannel[fNumTypes] = {0, 1, 0, 1, 0, 1, 1};
+int fTbStart[] = {0,2,2,2,0,0,0};
 int fThresholds[] = {700,450,600,400,650,500,500};
 int fPulseHeightCuts[fNumTypes][2] = {{800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}, {800,4000}};
 int fPulseWidthCuts[fNumTypes][2] = {{20,40}, {20,40}, {20,40}, {2,10}, {20,40}, {10,25}, {10,30}};
@@ -61,8 +63,6 @@ int GetType(int cobo, int asad, int aget, int chan);
 
 void anaExtractPulse()
 {
-    lk_logger("log");
-
     auto run = new LKRun();
     auto detector = new TexAT2();
     run -> AddDetector(detector);
@@ -71,10 +71,11 @@ void anaExtractPulse()
     run -> Init();
     auto channelArray = run -> GetBranchA("RawData");
 
-    LKChannelAnalyzer *ana[fNumTypes];
+    LKPulseAnalyzer *ana[fNumTypes];
     for (auto iType : fSelTypes)
     {
-        ana[iType] = new LKChannelAnalyzer(fTypeNames[iType]);
+        ana[iType] = new LKPulseAnalyzer(fTypeNames[iType]);
+        ana[iType] -> SetTbStart(fTbStart[iType]);
         ana[iType] -> SetTbMax(350);
         ana[iType] -> SetThreshold(fThresholds[iType]);
         ana[iType] -> SetPulseHeightCuts(fPulseHeightMin,fPulseHeightMax);
@@ -129,7 +130,6 @@ void anaExtractPulse()
     auto cvsAverageAll = new TCanvas("cvsAverageAll","cvsAverageAll",1000,800);
     cvsAverageAll -> Divide(divX,divY);
     e_add(cvsAverageAll,"Summary");
-    //e_save(cvsAverageAll);
     for (auto iType : fSelTypes)
         ana[iType] -> DrawAverage(cvsAverageAll->cd(iType+1));
 
@@ -155,7 +155,7 @@ void anaExtractPulse()
             graph -> SetLineColor  (iType+1-8);
             graph -> SetLineStyle(2);
         }
-        for (auto ratio : {0.05, 0.10, 0.25, 0.50, 0.75})
+        for (auto ratio : {0.05, 0.25, 0.50, 0.75})
         {
             double x0,x1,error;
             auto width = ana[iType]->FullWidthRatioMaximum(ana[iType]->GetHistAverage(),ratio,4,x0,x1,error);
@@ -165,6 +165,12 @@ void anaExtractPulse()
         legend -> AddEntry(graph,fTypeNames[iType],"lp");
     }
     legend -> Draw();
+
+    auto cvsAccumulateAll = new TCanvas("cvsAccumulateAll","cvsAccumulateAll",1000,800);
+    cvsAccumulateAll -> Divide(divX,divY);
+    e_add(cvsAccumulateAll,"Summary");
+    for (auto iType : fSelTypes)
+        ana[iType] -> DrawAccumulate(cvsAccumulateAll->cd(iType+1));
 
     auto cvsWidthAll = new TCanvas("cvsWidthAll","cvsWidthAll",1000,800);
     cvsWidthAll -> Divide(divX,divY);
@@ -189,6 +195,21 @@ void anaExtractPulse()
     e_add(cvsPedestalAll,"Summary");
     for (auto iType : fSelTypes)
         ana[iType] -> DrawPedestal(cvsPedestalAll->cd(iType+1));
+
+    auto cvsResidualAll = new TCanvas("cvsResidualAll","cvsResidualAll",1000,800);
+    cvsResidualAll -> Divide(divX,divY);
+    e_add(cvsResidualAll,"Summary");
+    for (auto iType : fSelTypes)
+        ana[iType] -> DrawResidual(cvsResidualAll->cd(iType+1));
+
+    for (auto iType : fSelTypes)
+        ana[iType] -> WriteReferecePulse(0,20,"data");
+
+    auto cvsReferenceAll = new TCanvas("cvsReferenceAll","cvsReferenceAll",1000,800);
+    cvsReferenceAll -> Divide(divX,divY);
+    e_add(cvsReferenceAll,"Summary");
+    for (auto iType : fSelTypes)
+        ana[iType] -> DrawReference(cvsReferenceAll->cd(iType+1));
 }
 
 int GetType(int cobo, int asad, int aget, int chan) 
