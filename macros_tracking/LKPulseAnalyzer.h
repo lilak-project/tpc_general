@@ -8,6 +8,9 @@
 #include "TCanvas.h"
 #include "TVirtualPad.h"
 #include "TGraph.h"
+#include "TObjArray.h"
+#include "TFile.h"
+#include "TTree.h"
 
 class LKPulseAnalyzer : public TObject
 {
@@ -24,7 +27,10 @@ class LKPulseAnalyzer : public TObject
         double* GetChannelData() { return fChannelData; }
         TCanvas* GetCvsAverage() const  { return fCvsAverage; }
         TH1D* GetHistAverage() const  { return fHistAverage; }
+        TH1D* GetHistMean() const  { return fHistMean; }
         TH2D* GetHistAccumulate() const  { return fHistAccumulate; }
+
+        double GetPedestalPry() const { return fPedestalPry; }
 
         void SetInvertChannel(bool value) { fInvertChannel = value; }
         void SetTbMax(int value) { fTbMax = value; }
@@ -64,6 +70,7 @@ class LKPulseAnalyzer : public TObject
         void AddChannel(int *data) { AddChannel(-1,data); }
         void AddChannel(int channelID, int *data);
         bool DrawChannel();
+        TCanvas* DrawMean(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawAverage(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawAccumulate(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawWidth(TVirtualPad* pad=(TVirtualPad*)nullptr);
@@ -72,11 +79,14 @@ class LKPulseAnalyzer : public TObject
         TCanvas* DrawPedestal(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawResidual(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawReference(TVirtualPad *pad=(TVirtualPad*)nullptr);
+        TCanvas* DrawHeightWidth(TVirtualPad* pad=(TVirtualPad*)nullptr);
+
+        TObjArray *GetHistArray() { return fHistArray; }
 
         double FullWidthRatioMaximum(TH1D *hist, double ratioFromMax, double numSplitBin, double &x0, double &x1, double &error);
-        double FullWidthRatioMaximum(TH1D *hist, double ratioFromMax) {
+        double FullWidthRatioMaximum(TH1D *hist, double ratioFromMax, double numSplitBin=4) {
             double dummy;
-            return FullWidthRatioMaximum(hist, ratioFromMax, 4, dummy, dummy, dummy);
+            return FullWidthRatioMaximum(hist, ratioFromMax, numSplitBin, dummy, dummy, dummy);
         }
 
         void WriteReferecePulse(int tbOffsetFromHead=0, int tbOffsetFromtail=0, const char *path=".");
@@ -112,6 +122,8 @@ class LKPulseAnalyzer : public TObject
         bool         fInvertChannel = false;
         bool         fIsGoodChannel = false;
         bool         fValueIsAboveThreshold = false;
+        int          fCountPedestalPry = 0;
+        double       fPedestalPry = 0;
         double       fPedestal = 0;
         double       fChannelData[512];
 
@@ -133,6 +145,9 @@ class LKPulseAnalyzer : public TObject
         double       fRefWidth = 0;
 
         // average draw
+        TObjArray*   fHistArray = nullptr;
+        TCanvas*     fCvsMean = nullptr;
+        TH1D*        fHistMean = nullptr;
         TCanvas*     fCvsAverage = nullptr;
         TH1D*        fHistAverage = nullptr;
         TCanvas*     fCvsReference = nullptr;
@@ -150,10 +165,18 @@ class LKPulseAnalyzer : public TObject
         TH1D*        fHistHeight = nullptr;
         TCanvas*     fCvsPulseTb = nullptr;
         TH1D*        fHistPulseTb = nullptr;
+        TCanvas*     fCvsResidual = nullptr;
+        TH2D*        fHistResidual = nullptr;
         TCanvas*     fCvsPedestal = nullptr;
         TH1D*        fHistPedestal = nullptr;
-        TCanvas*     fCvsResidual = nullptr;
-        TH1D*        fHistResidual = nullptr;
+        TH1D*        fHistReusedData = nullptr;
+        TH1D*        fHistPedestalPry = nullptr;
+        TCanvas*     fCvsHeightWidth = nullptr;
+        TH2D*        fHistHeightWidth = nullptr;
+
+        // data
+        TFile*       fFile = nullptr;
+        TTree*       fTree = nullptr;
 
     ClassDef(LKPulseAnalyzer,1);
 };
