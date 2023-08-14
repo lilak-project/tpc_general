@@ -13,7 +13,7 @@ int eX6Junction    = 10;
 int eCsICT         = 11;
 
 vector<int> fSelTypes = {eMMCenter1, eMMCenter2, eMMLeftSide, eMMLeftCenter, eMMRightSide, eMMRightCenter, efSiJunction, efSiOhmic, efCsI, eX6Ohmic, eX6Junction, eCsICT};
-const char *fTypeNames[fNumTypes] = {"MMCenter", "MMCenter2", "MMLeftSide", "MMLeftCenter", "MMRightSide", "MMRightCenter", "fSiJunction", "fSiOhmic", "fCsI", "X6Ohmic", "X6Junction", "CsICT"};
+const char *fTypeNames[fNumTypes] = {"MMCenter1", "MMCenter2", "MMLeftSide", "MMLeftCenter", "MMRightSide", "MMRightCenter", "fSiJunction", "fSiOhmic", "fCsI", "X6Ohmic", "X6Junction", "CsICT"};
 int fPulseCuts[fNumTypes][10] = {
  // threshold, h1,h2,    width1,width2, tb1,tb2, tbStart, invert?, fixpd?
     {700,      700,4000, 20,  40,       100,300, 0,       0,       -999},  // eMMCenter1

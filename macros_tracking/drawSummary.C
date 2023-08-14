@@ -11,12 +11,13 @@ void drawSummary()
     int fnw = 40;
     double fw1 = 20;
     double fw2 = 60;
-    //e_batch();
+    e_batch();
 
     //TCut cut0 = "isCollected&&tbAtMax>200&&tbAtMax<210";
     TCut cut0 = "isCollected";
 
-    for (auto iType : fAllTypes)
+    SetTypeAll();
+    for (auto iType : fSelTypes)
     {
         int nw = fnw;
         double w1 = fw1;
@@ -25,7 +26,8 @@ void drawSummary()
         auto file = new TFile(Form("data100/summary_%s.root",fTypeNames[iType]));
         auto tree = (TTree *) file -> Get("pulse");
 
-        auto cvsSummary = e_cvs(Form("cvsSummary_%s",fTypeNames[iType]),"",1200,720,3,2);
+        //auto cvsSummary = e_cvs(Form("cvsSummary_%s",fTypeNames[iType]),"",1200,720,3,2);
+        auto cvsSummary = e_cvs(Form("cvsSummary_%s",fTypeNames[iType]),"",3000,2000,3,2);
         int iPad = 1;
 
         if (1) {

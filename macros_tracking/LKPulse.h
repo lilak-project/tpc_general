@@ -3,6 +3,7 @@
 
 #include "TObject.h"
 #include "LKLogger.h"
+#include "TGraphErrors.h"
 #include "TGraph.h"
 
 class LKPulse : public TObject
@@ -16,15 +17,20 @@ class LKPulse : public TObject
         void Clear(Option_t *option="");
         void Print(Option_t *option="") const;
 
-        void SetPulse(TGraph* graph);
+        void SetPulse(TGraphErrors* graph);
+        void SetError(TGraph* graph);
         double Eval(double tb);
+        double Error(double tb);
 
-        TGraph *GetPulseGraph(double tb, double amplitude);
+        TGraphErrors *GetPulseGraph(double tb, double amplitude);
+
+        int GetNDF() const { return fNumPoints; }
 
     private:
 
-        int          fNumPoints = 0;
-        TGraph*      fGraph = nullptr;
+        int fNumPoints = 0;
+        TGraphErrors* fGraphPulse = nullptr;
+        TGraph*       fGraphError = nullptr;
 
     ClassDef(LKPulse,1);
 };

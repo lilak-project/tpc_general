@@ -192,7 +192,11 @@ void LKPulseAnalyzer::AddChannel(int *data, int channelID)
                 fHistReusedData -> SetBinContent(tb_aligned,value);
             }
 
-            fWidth = FullWidthRatioMaximum(fHistReusedData,0.05,10);
+            double tb1,tb2,error;
+            fWidth = FullWidthRatioMaximum(fHistReusedData,fFloorRatio,10,tb1,tb2,error);
+            fTbAtRefFloor1 = tb1;
+            fTbAtRefFloor2 = tb2;
+            fRefWidth = tb2 - tb1;
             fHistHeightWidth -> Fill(fMaxValue-fPedestal,fWidth);
         }
     }
@@ -290,24 +294,29 @@ bool LKPulseAnalyzer::DrawChannel()
     return cvsIsNew;
 }
 
-TCanvas* LKPulseAnalyzer::DrawAverage(TVirtualPad *pad)
+void LKPulseAnalyzer::MakeHistAverage()
 {
-    if (pad!=nullptr)
-        fCvsAverage = (TCanvas*) pad;
-    else if (fCvsAverage==nullptr)
-        fCvsAverage = new TCanvas(Form("cvsAverage_%s",fName),"",fWAverage,fHAverage);
-
     if (fHistAverage==nullptr)
         fHistAverage = new TH1D(Form("histAverage_%s",fName),";tb;y",fTbMax,-100,fTbMax-100);
     fHistAverage -> Reset("ICES");
 
-    SetCvs(fCvsAverage);
     SetHist(fHistAverage);
 
     for (auto tb=0; tb<fTbMax; ++tb)
         fHistAverage -> SetBinContent(tb+1,fAverageData[tb]/fCountGoodChannels);
     fHistAverage -> SetTitle(Form("[%s] %d channels",fName,fCountGoodChannels));
     fHistAverage -> SetStats(0);
+}
+
+TCanvas* LKPulseAnalyzer::DrawAverage(TVirtualPad *pad)
+{
+    if (pad!=nullptr)
+        fCvsAverage = (TCanvas*) pad;
+    else if (fCvsAverage==nullptr)
+        fCvsAverage = new TCanvas(Form("cvsAverage_%s",fName),"",fWAverage,fHAverage);
+    SetCvs(fCvsAverage);
+
+    MakeHistAverage();
 
     fCvsAverage -> cd();
     fHistAverage -> Draw();
@@ -321,8 +330,7 @@ TCanvas* LKPulseAnalyzer::DrawAverage(TVirtualPad *pad)
         line -> Draw();
     }
 
-    //for (auto ratio : {0.10, 0.25, 0.50, 0.75})
-    for (auto ratio : {0.05, 0.25, 0.50, 0.75})
+    for (auto ratio : {fFloorRatio, 0.25, 0.50, 0.75})
     {
         double tb1,tb2,error;
         auto width = FullWidthRatioMaximum(fHistAverage,ratio,10,tb1,tb2,error);
@@ -337,7 +345,7 @@ TCanvas* LKPulseAnalyzer::DrawAverage(TVirtualPad *pad)
         line -> SetLineWidth(4);
         line -> Draw();
 
-        if (ratio==0.05) {
+        if (ratio==fFloorRatio) {
             fTbAtRefFloor1 = tb1;
             fTbAtRefFloor2 = tb2;
             fRefWidth = tb2 - tb1;
@@ -362,34 +370,43 @@ TCanvas* LKPulseAnalyzer::DrawAccumulate(TVirtualPad *pad)
     fHistAccumulate -> SetMinimum(1);
     fHistAccumulate -> Draw("colz");
     fHistAccumulate -> SetTitle(Form("[%s] %d channels",fName,fCountGoodChannels));
-    if (fHistAverage!=nullptr) {
-        auto histClone = (TH1D *) fHistAverage -> Clone(Form("histAverageClone_%s",fName));
-        histClone -> SetLineColor(kRed);
-        histClone -> Draw("samel");
+
+    {
+        GetReferencePulse();
+        fGraphReferenceM100 -> SetLineColor(kRed);
+        fGraphReferenceM100 -> Draw("samel");
+    }
+
+    if (0)
+    {
+        if (fHistAverage!=nullptr) {
+            auto histClone = (TH1D *) fHistAverage -> Clone(Form("histAverageClone_%s",fName));
+            histClone -> SetLineColor(kRed);
+            histClone -> Draw("samel");
+        }
     }
 
     return fCvsAccumulate;
 }
 
-void LKPulseAnalyzer::DrawAccumulatePY()
+void LKPulseAnalyzer::MakeAccumulatePY()
 {
+    if (fRunAccumulatePY==true)
+        return;
+
+    fRunAccumulatePY = true;
+
     if (fHistAverage!=nullptr && fHistAccumulate!=nullptr)
     {
-        int numBinsY = 80;
-        double rMax = .40;
-
         for (auto tBin=1; tBin<=fTbMax; ++tBin)
         {
-            auto yAverage = fHistAverage -> GetBinContent(tBin);
-            auto y1 = yAverage - rMax;
-            auto y2 = yAverage + rMax;
-            auto dy = (y2-y1) / numBinsY;
-
             auto hist = fHistAccumulate -> ProjectionY(Form("%s_px_ybin%d",fHistAccumulate->GetName(),tBin), tBin, tBin);
             hist -> SetTitle(Form("[%s] xbin-%d",fName,tBin));
             auto mean = hist -> GetMean();
             auto sd = hist -> GetStdDev();
             hist -> GetXaxis() -> SetRangeUser(mean-5*sd, mean+5*sd);
+            if (sd==0)
+                hist -> GetXaxis() -> SetRangeUser(mean-5, mean+5);
             fHistArray -> Add(hist);
         }
     }
@@ -451,21 +468,24 @@ TCanvas* LKPulseAnalyzer::DrawReference(TVirtualPad *pad)
     SetCvs(fCvsReference);
     SetHist(fHistReference);
 
-    if (fGraphReference==nullptr)
-        fGraphReference = new TGraph();
-    fGraphReference -> Clear();
-    fGraphReference -> Set(0);
-    fGraphReference -> SetMarkerStyle(20);
-    fGraphReference -> SetMarkerSize(0.4);
+    /*
+    if (fGraphAverage==nullptr)
+        fGraphAverage = new TGraph();
+    fGraphAverage -> Clear();
+    fGraphAverage -> Set(0);
+    fGraphAverage -> SetMarkerStyle(20);
+    fGraphAverage -> SetMarkerSize(0.4);
 
     auto bin1 = fHistAverage -> FindBin(fTbAtRefFloor1);
     auto bin2 = fHistAverage -> FindBin(fTbAtRefFloor2);// + 20;
     for (auto bin=bin1; bin<=bin2; ++bin) {
         auto value = fHistAverage -> GetBinContent(bin);
-        fGraphReference -> SetPoint(fGraphReference->GetN(),fGraphReference->GetN(),value);
+        fGraphAverage -> SetPoint(fGraphAverage->GetN(),fGraphAverage->GetN(),value);
     }
+    */
 
     fHistReference -> Draw();
+    GetReferencePulse();
     fGraphReference -> Draw("samepl");
 
     auto line0 = new TLine(0,0,50,0);
@@ -476,25 +496,94 @@ TCanvas* LKPulseAnalyzer::DrawReference(TVirtualPad *pad)
     return fCvsReference;
 }
 
-void LKPulseAnalyzer::WriteReferecePulse(int tbOffsetFromHead, int tbOffsetFromtail)
+TGraphErrors *LKPulseAnalyzer::GetReferencePulse(int tbOffsetFromHead, int tbOffsetFromTail)
 {
+    MakeAccumulatePY();
+
+    if (fGraphReference==nullptr)
+    {
+        fGraphReference = new TGraphErrors();
+        fGraphReference -> Clear();
+        fGraphReference -> Set(0);
+        fGraphReference -> SetMarkerStyle(20);
+        fGraphReference -> SetMarkerSize(0.4);
+
+        fGraphReferenceError = new TGraph();
+        fGraphReferenceError -> Clear();
+        fGraphReferenceError -> Set(0);
+        fGraphReferenceError -> SetMarkerStyle(20);
+        fGraphReferenceError -> SetMarkerSize(0.4);
+
+        fGraphReferenceM100 = new TGraphErrors();
+        fGraphReferenceM100 -> Clear();
+        fGraphReferenceM100 -> Set(0);
+        fGraphReferenceM100 -> SetMarkerStyle(20);
+        fGraphReferenceM100 -> SetMarkerSize(0.4);
+
+        vector<int> idxBG;
+        vector<int> idxAll;
+        for (auto iPY=20;  iPY<70;  ++iPY) idxBG.push_back(iPY);
+        for (auto iPY=180; iPY<280; ++iPY) idxBG.push_back(iPY);
+        for (auto iPY=0;   iPY<20;  ++iPY) idxAll.push_back(iPY);
+        for (auto iPY=70;  iPY<180; ++iPY) idxAll.push_back(iPY);
+        for (auto iPY=280; iPY<350; ++iPY) idxAll.push_back(iPY);
+
+        TH1D* histBG = nullptr;
+        for (auto iPY : idxBG)
+        {
+            auto hist = (TH1D*) fHistArray -> At(iPY);
+            if (histBG==nullptr)
+                histBG = (TH1D*) hist -> Clone(Form("histAverageBG_%s",fName));
+            else
+                histBG -> Add(hist);
+        }
+        auto meanBG = histBG -> GetMean();
+        auto errorBG = histBG -> GetStdDev();
+
+        if (fTbAtRefFloor2<0)
+        {
+            MakeHistAverage();
+            double tb1,tb2,error;
+            FullWidthRatioMaximum(fHistAverage,fFloorRatio,10,tb1,tb2,error);
+
+            fTbAtRefFloor1 = tb1;
+            fTbAtRefFloor2 = tb2;
+            fRefWidth = tb2 - tb1;
+        }
+
+        auto bin1 = int(fTbAtRefFloor1) + 100 - tbOffsetFromHead;
+        auto bin2 = int(fTbAtRefFloor2) + 100 + tbOffsetFromTail;
+
+        int iPoint = 0;
+        for (auto bin=bin1; bin<=bin2; ++bin)
+        {
+            auto hist = (TH1D*) fHistArray -> At(bin-1);
+            auto mean = hist -> GetMean();
+            auto error = hist -> GetStdDev();
+            if (mean>=fFloorRatio)
+                error = sqrt(error*error + errorBG*errorBG);
+            fGraphReference -> SetPoint(iPoint,iPoint,mean);
+            fGraphReference -> SetPointError(iPoint,0,error);
+            fGraphReferenceM100 -> SetPoint(iPoint,bin-100-0.5,mean);
+            fGraphReferenceM100 -> SetPointError(iPoint,0,error);
+            fGraphReferenceError -> SetPoint(iPoint,iPoint,error);
+            iPoint++;
+        }
+    }
+
+    return fGraphReference;
+}
+
+void LKPulseAnalyzer::WriteReferencePulse(int tbOffsetFromHead, int tbOffsetFromTail)
+{
+    MakeHistAverage();
     if (fHistAverage==nullptr)
         return;
 
-    if (fGraphReference==nullptr)
-        fGraphReference = new TGraph();
-    fGraphReference -> Clear();
-    fGraphReference -> Set(0);
-
-    auto bin1 = fHistAverage -> FindBin(fTbAtRefFloor1)-tbOffsetFromHead;
-    auto bin2 = fHistAverage -> FindBin(fTbAtRefFloor2)+tbOffsetFromtail;
-    for (auto bin=bin1; bin<=bin2; ++bin) {
-        auto value = fHistAverage -> GetBinContent(bin);
-        fGraphReference -> SetPoint(fGraphReference->GetN(),fGraphReference->GetN(),value);
-    }
-
     auto file = new TFile(Form("%s/pulseReference_%s.root",fPath,fName),"recreate");
+    GetReferencePulse(tbOffsetFromHead,tbOffsetFromTail);
     fGraphReference -> Write("pulse");
+    fGraphReferenceError -> Write("error");
 }
 
 TCanvas* LKPulseAnalyzer::DrawWidth(TVirtualPad *pad)

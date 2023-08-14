@@ -10,8 +10,10 @@ LKPulse::LKPulse()
 LKPulse::LKPulse(const char *fileName)
 {
     auto file = new TFile(fileName);
-    auto graph = (TGraph *) file -> Get("pulse");
-    SetPulse(graph);
+    auto graphPulse = (TGraphErrors *) file -> Get("pulse");
+    SetPulse(graphPulse);
+    auto graphError = (TGraph*) file -> Get("error");
+    SetError(graphError);
     file -> Close();
 }
 
@@ -28,28 +30,41 @@ void LKPulse::Print(Option_t *option) const
 {
 }
 
-void LKPulse::SetPulse(TGraph* graph)
+void LKPulse::SetPulse(TGraphErrors* graph)
 {
-    fGraph = graph;
+    fGraphPulse = graph;
     fNumPoints = graph -> GetN();
+}
+
+void LKPulse::SetError(TGraph* graph)
+{
+    fGraphError = graph;
 }
 
 double LKPulse::Eval(double tb)
 {
-    return fGraph -> Eval(tb);
+    return fGraphPulse -> Eval(tb);
 }
 
-TGraph *LKPulse::GetPulseGraph(double tb, double amplitude)
+double LKPulse::Error(double tb)
 {
-    auto graphPulse = new TGraph();
+    return fGraphError -> Eval(tb);
+}
 
-    double x, y;
+TGraphErrors *LKPulse::GetPulseGraph(double tb, double amplitude)
+{
+    auto graphNew = new TGraphErrors();
+
     for (auto iPoint=0; iPoint<fNumPoints; ++iPoint)
     {
-        fGraph -> GetPoint(iPoint,x,y);
-        graphPulse -> SetPoint(iPoint,x+tb,y*amplitude);
+        auto xValue = fGraphPulse -> GetPointX(iPoint);
+        auto yValue = fGraphPulse -> GetPointY(iPoint);
+        auto yError = fGraphPulse -> GetErrorY(iPoint);
+        graphNew -> SetPoint(iPoint,xValue+tb,yValue*amplitude);
+        graphNew -> SetPointError(iPoint,0,yError*amplitude);
+        //cout << yError << endl;
     }
-    graphPulse -> SetLineColor(kRed);
-    graphPulse -> SetMarkerColor(kRed);
-    return graphPulse;
+    graphNew -> SetLineColor(kRed);
+    graphNew -> SetMarkerColor(kRed);
+    return graphNew;
 }

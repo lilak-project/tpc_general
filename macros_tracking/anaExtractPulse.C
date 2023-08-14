@@ -10,10 +10,12 @@ void e_save_all() {}
 void e_batch() {}
 #endif
 
-int fCvsDX = 3000;//1200;
-int fCvsDY = 2000;//720;
-int fCvsGroupDX = 2;
-int fCvsGroupDY = 3;
+//int fCvsDX = 1200;
+//int fCvsDY = 720;
+int fCvsDX = 3000;
+int fCvsDY = 2000;
+int fCvsGroupDX = 5;
+int fCvsGroupDY = 4;
 int fNumCvsGroup = 0;
 bool fDrawChannel = false;
 bool fDrawOnlyGoodChannels = true;
@@ -28,6 +30,7 @@ bool fDrawPedestal = false;
 bool fDrawResidual = false;
 bool fDrawReference = false;
 bool fWriteReferencePulse = false;
+bool fWriteTree = false;
 int  fCAAC = 0;
 int  fMaxInputFiles = 1;
 bool fSaveAll = false;
@@ -36,10 +39,13 @@ const char* fDataPath = "data";
 void SetRunAll();
 void SetDrawCheckAllResults();
 void SetDrawCheckGoodChannels();
-void SetExtractBuffer(int ecaac = 22002);
+void SetExtractBuffer(int ecaac = 22003013);
+//void SetExtractBuffer(int ecaac = 1002000);
+//void SetExtractBuffer(int ecaac = 2000054);
+//void SetExtractBuffer(int ecaac = 12038);
 void SetDrawResidual();
 
-void anaExtractPulse(int mode=4)
+void anaExtractPulse(int mode=3)
 {
     if (mode==0) SetRunAll();
     if (mode==1) SetDrawCheckAllResults();
@@ -121,9 +127,14 @@ void anaExtractPulse(int mode=4)
                 }
             }
 
-            if (fCAAC>0 && caac==fCAAC) ana[type] -> DumpChannel();
+            if (fCAAC>0 && caac==fCAAC) {
+                ana[type] -> DumpChannel();
+            }
         }
     }
+
+    if (fCAAC>0)
+        return;
 
     int divX = 1;
     int divY = 1;
@@ -269,57 +280,29 @@ void anaExtractPulse(int mode=4)
 
     if (fDrawProjY)
     {
-        for (auto iType=0; iType<fNumSel; ++iType) {
+        auto cvsAverageEAll = new TCanvas("cvsAverageEAll","cvsAverageEAll",fCvsDX,fCvsDY);
+        cvsAverageEAll -> Divide(divX,divY);
+        e_add(cvsAverageEAll,"Summary");
+        for (auto iType=0; iType<fNumSel; ++iType)
+        {
             auto type = fSelTypes[iType];
-            ana[type] -> DrawAccumulatePY();
-
-            auto histAverage = ana[type] -> GetHistAverage();
-            auto histArray = ana[type] -> GetHistArray();
-            auto numHists = histArray -> GetEntries(); 
-
-            int dX = 5;
-            int dY = 4;
-            int countCvs = 0;
-            int countPad = 0;
-            TCanvas* cvsProjYAll = nullptr;
-            for (auto iHist=0; iHist<numHists; ++iHist)
-            {
-                auto hist = (TH1D*) histArray -> At(iHist);
-                auto mean = hist -> GetMean();
-                auto stddev = hist -> GetStdDev();
-                if (0)
-                    if (iHist>80&&iHist<160)
-                    {
-                        if (countPad==0) {
-                            cvsProjYAll = new TCanvas(Form("cvsProjYAll%d_%s",countCvs++,fTypeNames[type]),Form("cvsProjYAll4_%s",fTypeNames[type]),fCvsDX,fCvsDY);
-                            cvsProjYAll -> Divide(dX,dY);
-                            e_add(cvsProjYAll,"Projection");
-                        }
-                        countPad++;
-
-                        cvsProjYAll -> cd(countPad);
-                        hist -> Draw();
-
-                        auto average = histAverage -> GetBinContent(iHist+1);
-                        auto line = new TLine(average,hist->GetMinimum(),average,hist->GetMaximum());
-                        line -> SetLineColor(kRed);
-                        line -> SetLineStyle(2);
-                        line -> Draw();
-
-                        if (countPad==dX*dY)
-                            countPad = 0;
-                    }
-            }
+            cvsAverageEAll -> cd(iType+1);
+            //auto histReference2 = new TH2D(Form("histReference2_%s",fTypeNames[iType]),";tb;y",100,0,350,140,-0.2,1.2);
+            //histReference2 -> SetStats(0);
+            //histReference2 -> Draw();
+            ana[type] -> GetReferencePulse() -> Draw("aplz");
         }
     }
 
     if (fWriteReferencePulse) {
         for (auto type : fSelTypes)
-            ana[type] -> WriteReferecePulse(0,20);
+            ana[type] -> WriteReferencePulse(0,0);
     }
 
-    for (auto type : fSelTypes)
-        ana[type] -> WriteTree();
+    if (fWriteTree) {
+        for (auto type : fSelTypes)
+            ana[type] -> WriteTree();
+    }
 
     if (fSaveAll) e_save_all();
 }
@@ -344,11 +327,13 @@ void SetRunAll()
     fDrawResidual = false;
     fDrawReference = false;
     fWriteReferencePulse = true;
+    fWriteTree = true;
     fSaveAll = false;
 }
 
 void SetDrawCheckAllResults()
 {
+    e_batch();
     fMaxInputFiles = 5;
     fDataPath = "data";
     fNumCvsGroup = 5;
@@ -366,11 +351,14 @@ void SetDrawCheckAllResults()
     fDrawResidual = true;
     fDrawReference = true;
     fWriteReferencePulse = false;
+    fWriteTree = false;
     fSaveAll = true;
 }
 
 void SetDrawCheckGoodChannels()
 {
+    e_batch();
+    SetTypeMM(0);
     fMaxInputFiles = 5;
     fDataPath = "data";
     fNumCvsGroup = 5;
@@ -388,17 +376,20 @@ void SetDrawCheckGoodChannels()
     fDrawResidual = true;
     fDrawReference = true;
     fWriteReferencePulse = false;
-    fSaveAll = true;
+    fWriteTree = false;
+    fSaveAll = false;
 }
 
 void SetExtractBuffer(int ecaac)
 {
-    fMaxInputFiles = 5;
+    e_batch();
+    SetTypeMM(0);
+    fMaxInputFiles = 1;
     fDataPath = "data";
-    fNumCvsGroup = 5;
+    fNumCvsGroup = 10;
     fCAAC = ecaac;
-    fDrawChannel = false;
-    fDrawOnlyGoodChannels = false;
+    fDrawChannel = true;
+    fDrawOnlyGoodChannels = true;
     fDrawAverage = false;
     fDrawAccumulate = false;
     fDrawProjY = false;
@@ -410,12 +401,15 @@ void SetExtractBuffer(int ecaac)
     fDrawResidual = false;
     fDrawReference = false;
     fWriteReferencePulse = false;
+    fWriteTree = false;
     fSaveAll = false;
 }
 
 void SetDrawResidual()
 {
-    SetTypeMM(0);
+    e_batch();
+    //SetTypeMM(0);
+    SetTypeMM();
     fMaxInputFiles = 1;
     fDataPath = "data";
     fNumCvsGroup = 1;
@@ -433,5 +427,6 @@ void SetDrawResidual()
     fDrawResidual = true;
     fDrawReference = false;
     fWriteReferencePulse = false;
+    fWriteTree = false;
     fSaveAll = false;
 }

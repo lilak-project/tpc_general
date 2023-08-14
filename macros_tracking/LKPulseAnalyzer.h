@@ -1,5 +1,5 @@
-#ifndef LKCHANNELANALYZER_HH
-#define LKCHANNELANALYZER_HH
+#ifndef LKPULSELANALYZER_HH
+#define LKPULSELANALYZER_HH
 
 #include "TObject.h"
 #include "LKLogger.h"
@@ -60,6 +60,7 @@ class LKPulseAnalyzer : public TObject
             fHAverage = h;
         }
         void SetFixPedestal(double value) { fFixPedestal = value; }
+        void SetFloorRatio(double value) { fFloorRatio = value; }
 
         TCanvas* GetGroupCanvas() { return fCvsGroup; }
         int IsCollected() const { return fIsCollected; }
@@ -68,6 +69,10 @@ class LKPulseAnalyzer : public TObject
         int GetNumChannelPad() const { return fCountChannelPad; }
         int GetNumCvsGroup() const { return fCountCvsGroup; }
         double GetPedestalPry() const { return fPedestalPry; }
+        int GetChannelMax() const { return fChannelMax; }
+        int GetFirstPulseTb() const { return fFirstPulseTb; }
+        int GetMaxValue() const { return fMaxValue; }
+        int GetTbAtMaxValue() const { return fTbAtMaxValue; }
 
         void AddChannel(int *data) { AddChannel(data,-1); }
         void AddChannel(int *data, int event, int cobo, int asad, int aget, int channel);
@@ -77,7 +82,8 @@ class LKPulseAnalyzer : public TObject
         void WriteTree();
 
         bool DrawChannel();
-        void DrawAccumulatePY();
+        void MakeAccumulatePY();
+        void MakeHistAverage();
         TCanvas* DrawAverage(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawAccumulate(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawWidth(TVirtualPad* pad=(TVirtualPad*)nullptr);
@@ -96,7 +102,8 @@ class LKPulseAnalyzer : public TObject
             return FullWidthRatioMaximum(hist, ratioFromMax, numSplitBin, dummy, dummy, dummy);
         }
 
-        void WriteReferecePulse(int tbOffsetFromHead=0, int tbOffsetFromtail=0);
+        TGraphErrors* GetReferencePulse(int tbOffsetFromHead=0, int tbOffsetFromTail=0);
+        void WriteReferencePulse(int tbOffsetFromHead=0, int tbOffsetFromTail=0);
 
         void SetCvs(TCanvas *cvs);
         void SetHist(TH1 *hist);
@@ -154,9 +161,10 @@ class LKPulseAnalyzer : public TObject
         // average
         int          fCountGoodChannels = 0;
         double       fAverageData[512];
-        double       fTbAtRefFloor1 = 0;
-        double       fTbAtRefFloor2 = 0;
+        double       fTbAtRefFloor1 = -1;
+        double       fTbAtRefFloor2 = -1;
         double       fRefWidth = 0;
+        double       fFloorRatio = 0.05;
 
         // average draw
         TObjArray*   fHistArray = nullptr;
@@ -166,11 +174,15 @@ class LKPulseAnalyzer : public TObject
         TH1D*        fHistAverage = nullptr;
         TCanvas*     fCvsReference = nullptr;
         TH2D*        fHistReference = nullptr;
-        TGraph*      fGraphReference = nullptr;
         TCanvas*     fCvsAccumulate = nullptr;
         TH2D*        fHistAccumulate = nullptr;
         int          fWAverage = 600;
         int          fHAverage = 500;
+
+        TGraph*       fGraphAverage = nullptr;
+        TGraphErrors* fGraphReferenceM100 = nullptr;
+        TGraphErrors* fGraphReference = nullptr;
+        TGraph*       fGraphReferenceError = nullptr;
 
         // extra
         TCanvas*     fCvsWidth = nullptr;
@@ -193,6 +205,7 @@ class LKPulseAnalyzer : public TObject
         TTree*       fTree = nullptr;
         bool         fIsSinglePulseChannel = false;
         bool         fIsCollected = false;
+        bool         fRunAccumulatePY = false;
 
     ClassDef(LKPulseAnalyzer,1);
 };
