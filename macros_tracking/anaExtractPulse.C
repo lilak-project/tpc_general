@@ -43,6 +43,7 @@ void SetRunAll();
 void SetDrawCheckAllResults();
 void SetDrawCheckGoodChannels();
 void SetExtractBuffer(int ecaac = 22002);
+void SetDrawMMResiduals();
 
 void anaExtractPulse(int mode=-1)
 {
@@ -50,6 +51,7 @@ void anaExtractPulse(int mode=-1)
     if (mode==1) SetDrawCheckAllResults();
     if (mode==2) SetDrawCheckGoodChannels();
     if (mode==3) SetExtractBuffer();
+    if (mode==4) SetDrawMMResiduals();
 
     auto run = new LKRun();
     run -> AddPar("config.mac");
@@ -71,20 +73,20 @@ void anaExtractPulse(int mode=-1)
 
     LKPulse *pulse[fNumTypes];
     LKPulseAnalyzer *ana[fNumTypes];
-    for (auto iType : fSelTypes)
+    for (auto type : fSelTypes)
     {
-        pulse[iType] = new LKPulse(Form("data/pulseReference_%s.root",fTypeNames[iType]));
+        pulse[type] = new LKPulse(Form("data/pulseReference_%s.root",fTypeNames[type]));
 
-        ana[iType] = new LKPulseAnalyzer(fTypeNames[iType],fDataPath);
-        ana[iType] -> SetTbStart(fTbStart[iType]);
-        ana[iType] -> SetTbMax(350);
-        ana[iType] -> SetThreshold(fPulseCuts[iType][0]);
-        ana[iType] -> SetPulseHeightCuts(fPulseCuts[iType][1],fPulseCuts[iType][2]);
-        ana[iType] -> SetPulseWidthCuts(fPulseCuts[iType][3],fPulseCuts[iType][4]);
-        ana[iType] -> SetPulseTbCuts(fPulseCuts[iType][5],fPulseCuts[iType][6]);
-        ana[iType] -> SetCvsGroup(fCvsDX,fCvsDY,fCvsGroupDX,fCvsGroupDY);
-        ana[iType] -> SetInvertChannel(fInvertChannel[iType]);
-        ana[iType] -> SetFixPedestal(fFixPedestal[iType]);
+        ana[type] = new LKPulseAnalyzer(fTypeNames[type],fDataPath);
+        ana[type] -> SetTbStart(fTbStart[type]);
+        ana[type] -> SetTbMax(350);
+        ana[type] -> SetThreshold(fPulseCuts[type][0]);
+        ana[type] -> SetPulseHeightCuts(fPulseCuts[type][1],fPulseCuts[type][2]);
+        ana[type] -> SetPulseWidthCuts(fPulseCuts[type][3],fPulseCuts[type][4]);
+        ana[type] -> SetPulseTbCuts(fPulseCuts[type][5],fPulseCuts[type][6]);
+        ana[type] -> SetCvsGroup(fCvsDX,fCvsDY,fCvsGroupDX,fCvsGroupDY);
+        ana[type] -> SetInvertChannel(fInvertChannel[type]);
+        ana[type] -> SetFixPedestal(fFixPedestal[type]);
     }
 
     auto numEvents = run -> GetNumEvents();
@@ -133,7 +135,7 @@ void anaExtractPulse(int mode=-1)
     }
 
     int divX = 1;
-    int divY = 1;
+    int divY = 2;
     int divAX = 1;
     int divAY = 2;
     int fNumSel = 0; for (auto type : fSelTypes) fNumSel++;
@@ -154,7 +156,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsAverageAll = new TCanvas("cvsAverageAll","cvsAverageAll",fCvsDX,fCvsDY);
         cvsAverageAll -> Divide(divAX,divAY);
         e_add(cvsAverageAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawAverage(cvsAverageAll->cd(iType+1));
         }
@@ -164,7 +166,7 @@ void anaExtractPulse(int mode=-1)
         frame -> SetStats(0);
         frame -> Draw();
         auto legend = new TLegend(0.5,0.5,0.85,0.95);
-        for (auto iType=0; iType<fSelTypes.size(); ++iType)
+        for (auto iType=0; iType<fNumSel; ++iType)
         {
             auto type = fSelTypes[iType];
             auto graph = new TGraph();
@@ -198,7 +200,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsAccumulateAll = new TCanvas("cvsAccumulateAll","cvsAccumulateAll",fCvsDX,fCvsDY);
         cvsAccumulateAll -> Divide(divX,divY);
         e_add(cvsAccumulateAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawAccumulate(cvsAccumulateAll->cd(iType+1));
         }
@@ -208,7 +210,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsWidthAll = new TCanvas("cvsWidthAll","cvsWidthAll",fCvsDX,fCvsDY);
         cvsWidthAll -> Divide(divX,divY);
         e_add(cvsWidthAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawWidth(cvsWidthAll->cd(iType+1));
         }
@@ -218,7 +220,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsHeightAll = new TCanvas("cvsHeightAll","cvsHeightAll",fCvsDX,fCvsDY);
         cvsHeightAll -> Divide(divX,divY);
         e_add(cvsHeightAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawHeight(cvsHeightAll->cd(iType+1));
         }
@@ -228,7 +230,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsPulseTbAll = new TCanvas("cvsPulseTbAll","cvsPulseTbAll",fCvsDX,fCvsDY);
         cvsPulseTbAll -> Divide(divX,divY);
         e_add(cvsPulseTbAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawPulseTb(cvsPulseTbAll->cd(iType+1));
         }
@@ -238,7 +240,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsPedestalAll = new TCanvas("cvsPedestalAll","cvsPedestalAll",fCvsDX,fCvsDY);
         cvsPedestalAll -> Divide(divX,divY);
         e_add(cvsPedestalAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawPedestal(cvsPedestalAll->cd(iType+1));
         }
@@ -248,7 +250,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsResidualAll = new TCanvas("cvsResidualAll","cvsResidualAll",fCvsDX,fCvsDY);
         cvsResidualAll -> Divide(divX,divY);
         e_add(cvsResidualAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawResidual(cvsResidualAll->cd(iType+1));
         }
@@ -258,7 +260,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsReferenceAll = new TCanvas("cvsReferenceAll","cvsReferenceAll",fCvsDX,fCvsDY);
         cvsReferenceAll -> Divide(divX,divY);
         e_add(cvsReferenceAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawReference(cvsReferenceAll->cd(iType+1));
         }
@@ -268,7 +270,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsHeightWidthAll = new TCanvas("cvsHeightWidthAll","cvsHeightWidthAll",fCvsDX,fCvsDY);
         cvsHeightWidthAll -> Divide(divX,divY);
         e_add(cvsHeightWidthAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawHeightWidth(cvsHeightWidthAll->cd(iType+1));
         }
@@ -278,7 +280,7 @@ void anaExtractPulse(int mode=-1)
         auto cvsMeanAll = new TCanvas("cvsMeanAll","cvsMeanAll",fCvsDX,fCvsDY);
         cvsMeanAll -> Divide(divX,divY);
         e_add(cvsMeanAll,"Summary");
-        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+        for (auto iType=0; iType<fNumSel; ++iType) {
             auto type = fSelTypes[iType];
             ana[type] -> DrawMean(cvsMeanAll->cd(iType+1));
 
@@ -286,9 +288,9 @@ void anaExtractPulse(int mode=-1)
             auto numHists = histArray -> GetEntries(); 
             auto cvsProjYAll = new TCanvas(Form("cvsProjYAll_%s",fTypeNames[type]),Form("cvsProjYAll_%s",fTypeNames[type]),fCvsDX,fCvsDY);
             //cvsProjYAll -> Divide(4,5); if (numHists>20) numHists = 20;
-            cvsProjYAll -> Divide(2,2); if (numHists>4) numHists = 4;
+            //cvsProjYAll -> Divide(2,2); if (numHists>4) numHists = 4;
             //cvsProjYAll -> Divide(4,3); if (numHists>12) numHists = 12;
-            //cvsProjYAll -> Divide(5,4); if (numHists>20) numHists = 20;
+            cvsProjYAll -> Divide(5,4); if (numHists>20) numHists = 20;
             for (auto iHist=0; iHist<numHists; ++iHist)
             {
                 cvsProjYAll -> cd(iHist+1);
@@ -401,4 +403,28 @@ void SetExtractBuffer(int ecaac)
     fDrawReference = false;
     fWriteReferencePulse = false;
     fSaveAll = false;
+}
+
+void SetDrawMMResiduals()
+{
+    //SetTypeMM();
+    fMaxInputFiles = 20;
+    fDataPath = "data";
+    fNumCvsGroup = 5;
+    fCAAC = 0;
+    fDrawChannel = false;
+    fDrawOnlyGoodChannels = false;
+    fDrawAverage = true;
+    fDrawAccumulate = true;
+    fDrawMean  = false;
+    fDrawProjY = true;
+    fDrawHeightWidth = false;
+    fDrawWidth = false;
+    fDrawHeight = false;
+    fDrawPulseTb = false;
+    fDrawPedestal = false;
+    fDrawResidual = true;
+    fDrawReference = false;
+    fWriteReferencePulse = false;
+    fSaveAll = true;
 }
