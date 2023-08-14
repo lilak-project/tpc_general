@@ -8,16 +8,30 @@ using namespace std;
 
 ClassImp(LKPulseAnalyzer);
 
-LKPulseAnalyzer::LKPulseAnalyzer(const char* name)
+LKPulseAnalyzer::LKPulseAnalyzer(const char* name, const char *path)
 {
     fName = name;
+    fPath = path;
     Init();
 }
 
 bool LKPulseAnalyzer::Init()
 {
-    TFile* fFile = new TFile(Form("%s.root",fName),"recreate");
-    TTree* fTree = new TTree("pulse","");
+    fFile = new TFile(Form("%s/summary_%s.root",fPath,fName),"recreate");
+    fTree = new TTree("pulse","");
+    fTree -> Branch("isCollected", &fIsCollected);
+    fTree -> Branch("isSingle", &fIsSinglePulseChannel);
+    fTree -> Branch("numPulse", &fCountPulse);
+    fTree -> Branch("pedestal", &fPedestalPry);
+    fTree -> Branch("tbAtMax", &fTbAtMaxValue);
+    fTree -> Branch("height", &fMaxValue);
+    fTree -> Branch("width", &fWidth); 
+    fTree -> Branch("event", &fEventID);
+    fTree -> Branch("cobo", &fCobo);
+    fTree -> Branch("asad", &fAsad);
+    fTree -> Branch("aget", &fAget);
+    fTree -> Branch("channel", &fChannel);
+
     fHistArray = new TObjArray();
     fHistWidth = new TH1D(Form("histWidth_%s",fName),Form("[%s]  Width;width (tb);count",fName),200,0,200);
     fHistHeight = new TH1D(Form("histHeight_%s",fName),Form("[%s]  Height;height;count",fName),105,0,4200);
@@ -46,20 +60,34 @@ void LKPulseAnalyzer::Print(Option_t *option) const
 {
 }
 
-void LKPulseAnalyzer::AddChannel(int channelID, int *data)
+void LKPulseAnalyzer::AddChannel(int *data, int event, int cobo, int asad, int aget, int channel)
+{
+    fEventID = event;
+    fCobo = cobo;
+    fAsad = asad;
+    fAget = aget;
+    fChannel = channel;
+    auto caac = event*1000000 + cobo*100000 + asad*10000 + aget*1000 + channel;
+    AddChannel(data, caac);
+}
+
+void LKPulseAnalyzer::AddChannel(int *data, int channelID)
 {
     fPreValue = 0;
     fCurValue = 0;
-    fMaxValue = 0;
     fCountPulse = 0;
-    fTbAtMaxValue = 0;
-    fFirstPulseTb = -1;
     fCountWidePulse = 0;
-    fCountTbWhileAbove = 0;
-    fIsGoodChannel = false;
-    fValueIsAboveThreshold = false;
     fCountPedestalPry = 0;
+    fCountTbWhileAbove = 0;
+    fValueIsAboveThreshold = false;
+
+    fIsSinglePulseChannel = false;
+    fIsCollected = false;
+    fFirstPulseTb = -1;
+    fTbAtMaxValue = 0;
     fPedestalPry = 0;
+    fMaxValue = 0;
+    fWidth = 0;
 
     fChannelID = channelID;
     if (fInvertChannel)
@@ -106,6 +134,8 @@ void LKPulseAnalyzer::AddChannel(int channelID, int *data)
     }
 
     fPedestalPry = fPedestalPry / fCountPedestalPry;
+    if (fFixPedestal>-999) fPedestalPry = fFixPedestal;
+    fWidth = fCountTbWhileAbove;
 
     if (fValueIsAboveThreshold && fCountTbWhileAbove>fPulseWidthAtThresholdMax) {
         fHistWidth -> Fill(fCountTbWhileAbove);
@@ -117,6 +147,8 @@ void LKPulseAnalyzer::AddChannel(int channelID, int *data)
 
     if (fCountPulse==1 && fCountWidePulse==0 && fMaxValue>fPulseHeightMin && fMaxValue<fPulseHeightMax)
     {
+        fIsSinglePulseChannel = true;
+
         auto tb1 = fTbStart;
         auto tb2 = fTbAtMaxValue-40;
         auto tb3 = fTbAtMaxValue+40;
@@ -134,13 +166,14 @@ void LKPulseAnalyzer::AddChannel(int channelID, int *data)
         }
 
         fPedestal = fPedestal/countPedestal;
+        if (fFixPedestal>-999) fPedestal = fFixPedestal;
         fHistPedestal -> Fill(fPedestal);
         fPedestalPry = fPedestal;
 
         if (fFirstPulseTb>fPulseTbMin && fFirstPulseTb<fPulseTbMax)
         {
+            fIsCollected = true;
             fCountGoodChannels++;
-            fIsGoodChannel = true;
 
             double scale = 1./(fMaxValue-fPedestal)*1;
             fHistReusedData -> Reset("ICES");
@@ -159,14 +192,36 @@ void LKPulseAnalyzer::AddChannel(int channelID, int *data)
                 fHistReusedData -> SetBinContent(tb_aligned,value);
             }
 
-            auto width = FullWidthRatioMaximum(fHistReusedData,0.05,10);
-            fHistHeightWidth -> Fill(fMaxValue-fPedestal,width);
+            fWidth = FullWidthRatioMaximum(fHistReusedData,0.05,10);
+            fHistHeightWidth -> Fill(fMaxValue-fPedestal,fWidth);
         }
     }
 
     fHistPedestalPry -> Fill(fPedestalPry);
+
+    fTree -> Fill();
 }
 
+void LKPulseAnalyzer::DumpChannel(Option_t *option)
+{
+    const char* fileName = Form("%s/buffer_%s_%d.dat",fPath,fName,fChannelID);
+    ofstream file_out(fileName);
+    cout << fileName << endl;
+    if (TString(option)=="raw")
+        for (auto tb=0; tb<fTbMax; ++tb)
+            file_out << fChannelData[tb] << endl;
+    else {
+        for (auto tb=0; tb<fTbMax; ++tb)
+            file_out << fChannelData[tb] - fPedestal << endl;
+    }
+}
+
+void LKPulseAnalyzer::WriteTree()
+{
+    fFile -> cd();
+    fTree -> Write();
+    cout << fFile -> GetName() << endl;
+}
 
 bool LKPulseAnalyzer::DrawChannel()
 {
@@ -184,7 +239,7 @@ bool LKPulseAnalyzer::DrawChannel()
 
     fCvsGroup -> cd(fCountHistLocal+1);
 
-    if (fIsGoodChannel) {
+    if (fIsCollected) {
         double dy = fMaxValue - fPedestal;
         double y1 = fPedestal - dy*0.20;
         double y2 = fMaxValue + dy*0.20;
@@ -199,7 +254,7 @@ bool LKPulseAnalyzer::DrawChannel()
     }
     hist -> Draw();
 
-    if (fIsGoodChannel) {
+    if (fIsCollected) {
         auto lineC = new TLine(fTbAtMaxValue,fPedestal,fTbAtMaxValue,fMaxValue);
         lineC -> SetLineColor(kBlue);
         lineC -> SetLineStyle(2);
@@ -487,7 +542,7 @@ TCanvas* LKPulseAnalyzer::DrawReference(TVirtualPad *pad)
     return fCvsReference;
 }
 
-void LKPulseAnalyzer::WriteReferecePulse(int tbOffsetFromHead, int tbOffsetFromtail, const char *path)
+void LKPulseAnalyzer::WriteReferecePulse(int tbOffsetFromHead, int tbOffsetFromtail)
 {
     if (fHistAverage==nullptr)
         return;
@@ -504,7 +559,7 @@ void LKPulseAnalyzer::WriteReferecePulse(int tbOffsetFromHead, int tbOffsetFromt
         fGraphReference -> SetPoint(fGraphReference->GetN(),fGraphReference->GetN(),value);
     }
 
-    auto file = new TFile(Form("%s/pulseReference_%s.root",path,fName),"recreate");
+    auto file = new TFile(Form("%s/pulseReference_%s.root",fPath,fName),"recreate");
     fGraphReference -> Write("pulse");
 }
 
@@ -664,6 +719,7 @@ double LKPulseAnalyzer::FullWidthRatioMaximum(TH1D *hist, double ratioFromMax, d
 
     return width;
 }
+
 void LKPulseAnalyzer::SetCvs(TCanvas *cvs)
 { 
     cvs -> SetLeftMargin(0.1);

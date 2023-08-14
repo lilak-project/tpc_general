@@ -257,8 +257,8 @@ void LKChannelAnalyzer::LeastSquareFitAtGivenTb(double *buffer, double tbStartOf
         double val = buffer[tb];
         double ref = fPulse -> Eval(iTbPulse) * amplitude;
         chi2 += (val-ref) * (val-ref);
-        cout << val << " " << ref << " " << (val-ref) * (val-ref) << " " << chi2 << endl;
+        //cout << val << " " << ref << " " << (val-ref) * (val-ref) << " " << chi2 << endl;
     }
-    cout << chi2 << endl;
+    //cout << chi2 << endl;
 }
 

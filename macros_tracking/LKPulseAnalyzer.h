@@ -15,7 +15,8 @@
 class LKPulseAnalyzer : public TObject
 {
     public:
-        LKPulseAnalyzer(const char* name);
+        LKPulseAnalyzer(const char* name, const char *path=".");
+
         LKPulseAnalyzer() : LKPulseAnalyzer(0) { ; }
         virtual ~LKPulseAnalyzer() { ; }
 
@@ -29,8 +30,7 @@ class LKPulseAnalyzer : public TObject
         TH1D* GetHistAverage() const  { return fHistAverage; }
         TH1D* GetHistMean() const  { return fHistMean; }
         TH2D* GetHistAccumulate() const  { return fHistAccumulate; }
-
-        double GetPedestalPry() const { return fPedestalPry; }
+        TTree* GetTree() { return fTree; }
 
         void SetInvertChannel(bool value) { fInvertChannel = value; }
         void SetTbMax(int value) { fTbMax = value; }
@@ -59,16 +59,23 @@ class LKPulseAnalyzer : public TObject
             fWAverage = w;
             fHAverage = h;
         }
+        void SetFixPedestal(double value) { fFixPedestal = value; }
 
         TCanvas* GetGroupCanvas() { return fCvsGroup; }
-        int IsGoodChannel() const { return fIsGoodChannel; }
+        int IsCollected() const { return fIsCollected; }
         int GetNumGoodChannels() const { return fCountGoodChannels; }
-        int GetNumHistChannel() const { return fCountHistChannel; }
+        int GetNumHistChannels() const { return fCountHistChannel; }
         int GetNumHistLocal() const { return fCountHistLocal; }
         int GetNumCvsGroup() const { return fCountCvsGroup; }
+        double GetPedestalPry() const { return fPedestalPry; }
 
-        void AddChannel(int *data) { AddChannel(-1,data); }
-        void AddChannel(int channelID, int *data);
+        void AddChannel(int *data) { AddChannel(data,-1); }
+        void AddChannel(int *data, int event, int cobo, int asad, int aget, int channel);
+        void AddChannel(int *data, int channelID);
+
+        void DumpChannel(Option_t *option="");
+        void WriteTree();
+
         bool DrawChannel();
         TCanvas* DrawMean(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawAverage(TVirtualPad* pad=(TVirtualPad*)nullptr);
@@ -89,13 +96,14 @@ class LKPulseAnalyzer : public TObject
             return FullWidthRatioMaximum(hist, ratioFromMax, numSplitBin, dummy, dummy, dummy);
         }
 
-        void WriteReferecePulse(int tbOffsetFromHead=0, int tbOffsetFromtail=0, const char *path=".");
+        void WriteReferecePulse(int tbOffsetFromHead=0, int tbOffsetFromtail=0);
 
         void SetCvs(TCanvas *cvs);
         void SetHist(TH1 *hist);
 
     private:
-        const char*  fName = 0;
+        const char*  fName = "";
+        const char*  fPath = ".";
 
         // single channel cuts
         int          fTbStart = 0;
@@ -120,12 +128,18 @@ class LKPulseAnalyzer : public TObject
         int          fCountWidePulse = 0;
         int          fChannelID = 0;
         bool         fInvertChannel = false;
-        bool         fIsGoodChannel = false;
         bool         fValueIsAboveThreshold = false;
         int          fCountPedestalPry = 0;
         double       fPedestalPry = 0;
         double       fPedestal = 0;
+        double       fFixPedestal = -999;
+        double       fWidth = 0;
         double       fChannelData[512];
+        int          fEventID = -1;
+        short        fCobo = -1;
+        short        fAsad = -1;
+        short        fAget = -1;
+        int          fChannel = -1;
 
         // single channel draw
         int          fCountHistChannel = 0;
@@ -177,6 +191,8 @@ class LKPulseAnalyzer : public TObject
         // data
         TFile*       fFile = nullptr;
         TTree*       fTree = nullptr;
+        bool         fIsSinglePulseChannel = false;
+        bool         fIsCollected = false;
 
     ClassDef(LKPulseAnalyzer,1);
 };

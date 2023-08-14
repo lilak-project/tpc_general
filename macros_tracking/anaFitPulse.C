@@ -2,32 +2,34 @@
 #include "LKChannelAnalyzer.h"
 //#include "LKPulse.cpp"
 #include "LKPulse.h"
-#include "buffer.h"
 
-void test()
+void anaFitPulse()
 {
     auto pulse = new LKPulse("data/pulseReference_MMCenter.root");
-    for (auto i=0; i<40; ++i) {
-        cout << pulse -> Eval(i) << endl;
+
+    double buffer[350] = {0};
+    ifstream file_buffer("data/buffer_MMLeftCenter_22002.dat");
+    int iTb = 0;
+    double value;
+    while (file_buffer>>value) {
+        buffer[iTb] = value;
+        ++iTb;
     }
 
     auto hist = new TH1D("hist","",350,0,350);
-    for (auto i=0; i<350; ++i) {
+    for (auto i=0; i<350; ++i)
         hist -> SetBinContent(i+1,buffer[i]);
-    }
-
-    auto cvs = new TCanvas();
+    auto cvs = e_cvs();
     hist -> Draw();
-    //pulse -> GetPulseGraph(34,2230) -> Draw("apl");
-    e_add(cvs); 
 
     auto ana = new LKChannelAnalyzer();
     ana -> Init();
     double chi2 = 0;
     double amplitude;
+
     //for (double tb0=40; tb0<60; ++tb0)
-    //for (double tb0=49; tb0<=51; ++tb0)
-    for (double tb0 : {50})
+    for (double tb0=49; tb0<=51; ++tb0)
+    //for (double tb0 : {50})
     { 
         ana -> LeastSquareFitAtGivenTb(buffer, tb0, 30, amplitude, chi2);
         ana -> GetPulse() -> GetPulseGraph(tb0, amplitude) -> Draw("samel");

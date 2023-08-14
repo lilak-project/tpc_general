@@ -2,32 +2,30 @@
 #include "LKPulse.h"
 #include "LKPulseAnalyzer.cpp"
 #include "LKPulseAnalyzer.h"
+#include "setChannels.h"
 
 #ifndef USING_EJUNGWOO
 void e_add(TObject *,const char* opt="") {}
-void e_save(TObject *,const char* opt="") {}
+void e_save_all() {}
 #endif
 
-TObjArray *fCvsList;
-void e_add_cvs(TCanvas *cvs, const char* opt="");
-void e_end();
-
-int fCvsDX = 1200;
-int fCvsDY = 750;
+//int fCvsDX = 1200;
+//int fCvsDY = 750;
+int fCvsDX = 2800;
+int fCvsDY = 2000;
 int fCvsGroupDX = 2;
 int fCvsGroupDY = 3;
-int fNumCvsGroup = 1;
+int fNumCvsGroup = 0;
 
-bool fDrawChannel = true;
+bool fDrawChannel = false;
+bool fDrawOnlyGoodChannels = true;
 
-bool fDrawAverage = false;
+bool fDrawAverage = true;
 bool fDrawAccumulate = true;
 
 bool fDrawMean  = false;
 bool fDrawProjY = false;
-
-bool fDrawHeightWidth = true;
-
+bool fDrawHeightWidth = false;
 bool fDrawWidth = false;
 bool fDrawHeight = false;
 bool fDrawPulseTb = false;
@@ -36,67 +34,37 @@ bool fDrawResidual = false;
 bool fDrawReference = false;
 bool fWriteReferencePulse = false;
 int fCAAC = 0;
-//int fCAAC = 22002;
 
-const int fNumTypes = 11;
-int eMMCenter      = 0;
-int eMMLeftSide    = 1;
-int eMMLeftCenter  = 2;
-int eMMRightSide   = 3;
-int eMMRightCenter = 4;
-int efSiJunction   = 5;
-int efSiOhmic      = 6;
-int efCsI          = 7;
-int eX6Ohmic       = 8;
-int eX6Junction    = 9;
-int eCsICT         = 10;
-//int fSelTypes[] = {eMMCenter};
-int fSelTypes[] = {eMMCenter, eMMLeftSide, eMMLeftCenter, eMMRightSide, eMMRightCenter};
-//int fSelTypes[] = {eMMCenter, eMMLeftSide, eMMLeftCenter, eMMRightSide, eMMRightCenter, efSiJunction, efSiOhmic, efCsI, eX6Ohmic, eX6Junction, eCsICT};
-const char *fTypeNames[fNumTypes] = {"MMCenter", "MMLeftSide", "MMLeftCenter", "MMRightSide", "MMRightCenter", "fSiJunction", "fSiOhmic", "fCsI", "X6Ohmic", "X6Junction", "CsICT"};
-bool fInvertChannel[fNumTypes] = {0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1};
-int fTbStart[] = {0,0,0,0,0,2,2,2,0,0,0};
-int fPulseCuts[fNumTypes][7] = { // threshold, height1, height2, width1, width2, tb1, tb2
-    {700,  700,4000, 20,40,  10,100},  // eMMCenter      = 0;
-    {650,  650,4000, 20,40, 100,300},  // eMMLeftSide    = 1;
-    {650,  650,4000, 20,40, 100,300},  // eMMLeftCenter  = 2;
-    {750,  750,4000, 20,40, 100,300},  // eMMRightSide   = 3;
-    {750,  750,4000, 20,40, 100,300},  // eMMRightCenter = 4;
-    {450,  450,4000, 25,40,  10, 50},  // efSiJunction   = 5;
-    {600,  600,4000, 25,40,  10, 50},  // efSiOhmic      = 6;
-    {600,  800,4000,  2,10,  20,100},  // efCsI          = 7;
-    {650,  800,4000, 20,40,  10, 50},  // eX6Ohmic       = 8;
-    {600,  700,4000, 15,40,  10, 50},  // eX6Junction    = 9;
-    {600,  700,4000, 15,40,  10, 50}   // eCsICT         = 10;
-};
+int fMaxInputFiles = 10;
+bool fSaveAll = false;
+const char* fDataPath = "data";
 
-int GetType(int cobo, int asad, int aget, int chan);
+void SetRunAll();
+void SetDrawCheckAllResults();
+void SetDrawCheckGoodChannels();
+void SetExtractBuffer(int ecaac = 22002);
 
-void anaExtractPulse()
+void anaExtractPulse(int mode=-1)
 {
+    if (mode==0) SetRunAll();
+    if (mode==1) SetDrawCheckAllResults();
+    if (mode==2) SetDrawCheckGoodChannels();
+    if (mode==3) SetExtractBuffer();
+
     auto run = new LKRun();
     run -> AddPar("config.mac");
     auto detector = new TexAT2();
     run -> AddDetector(detector);
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_801.27.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_801.28.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_801.36.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_806.28.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_806.29.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_806.3.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_806.30.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.25.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.3.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.30.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.31.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.32.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.4.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_821.7.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_822.3.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_822.4.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_823.10.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_823.17.root");
-    run -> AddInputFile("/home/ejungwoo/data/texat/conv/texat_823.2.root");
+
+    ifstream file_list_conv("/home/ejungwoo/data/texat/conv/list_conv");
+    int countFiles = 0;
+    TString fileName;
+    while (file_list_conv>>fileName) {
+        if (countFiles>=fMaxInputFiles) break;
+        run -> AddInputFile(fileName);
+        countFiles++;
+    }
+
     run -> SetTag("read");
     run -> Init();
     auto channelArray = run -> GetBranchA("RawData");
@@ -107,7 +75,7 @@ void anaExtractPulse()
     {
         pulse[iType] = new LKPulse(Form("data/pulseReference_%s.root",fTypeNames[iType]));
 
-        ana[iType] = new LKPulseAnalyzer(fTypeNames[iType]);
+        ana[iType] = new LKPulseAnalyzer(fTypeNames[iType],fDataPath);
         ana[iType] -> SetTbStart(fTbStart[iType]);
         ana[iType] -> SetTbMax(350);
         ana[iType] -> SetThreshold(fPulseCuts[iType][0]);
@@ -116,6 +84,7 @@ void anaExtractPulse()
         ana[iType] -> SetPulseTbCuts(fPulseCuts[iType][5],fPulseCuts[iType][6]);
         ana[iType] -> SetCvsGroup(fCvsDX,fCvsDY,fCvsGroupDX,fCvsGroupDY);
         ana[iType] -> SetInvertChannel(fInvertChannel[iType]);
+        ana[iType] -> SetFixPedestal(fFixPedestal[iType]);
     }
 
     auto numEvents = run -> GetNumEvents();
@@ -139,36 +108,27 @@ void anaExtractPulse()
             for (auto type0 : fSelTypes)
                 if (type==type0)
                     selected = true;
-
             if (selected==false)
                 continue;
 
-            ana[type] -> AddChannel(caac,data);
+            ana[type] -> AddChannel(data, iEvent, cobo, asad, aget, chan);
 
             if (fDrawChannel)
             {
-                if (ana[type]->GetNumHistChannel()<fCvsGroupDX*fCvsGroupDY*fNumCvsGroup)
-                //if (ana[type]->IsGoodChannel() && ana[type]->GetNumGoodChannels()<=fCvsGroupDX*fCvsGroupDY*fNumCvsGroup)
+                bool addCvsAll = (ana[type]->GetNumHistChannels()<fCvsGroupDX*fCvsGroupDY*fNumCvsGroup);
+                bool addCvsGood = (ana[type]->IsCollected() && ana[type]->GetNumGoodChannels()<=fCvsGroupDX*fCvsGroupDY*fNumCvsGroup);
+                bool addCvs = (fDrawOnlyGoodChannels?addCvsGood:addCvsAll);
+                if (addCvs)
                 {
                     bool cvsIsNew = ana[type] -> DrawChannel();
                     auto cvs = ana[type] -> GetGroupCanvas();
                     if (cvsIsNew) {
-                        e_add_cvs(cvs,fTypeNames[type]);
+                        e_add(cvs,fTypeNames[type]);
                     }
                 }
             }
 
-            if (fCAAC>0)
-            {
-                if (caac == fCAAC) {
-                    cout << "double data[] = {";
-                    for (auto tb=0; tb<350; ++tb) {
-                        cout << data[tb] - ana[type]->GetPedestalPry() << ", ";
-                    }
-                    cout << "};" << endl;
-                }
-            }
-
+            if (fCAAC>0 && caac==fCAAC) ana[type] -> DumpChannel();
         }
     }
 
@@ -176,7 +136,7 @@ void anaExtractPulse()
     int divY = 1;
     int divAX = 1;
     int divAY = 2;
-    int fNumSel = 0; for (auto iType : fSelTypes) fNumSel++;
+    int fNumSel = 0; for (auto type : fSelTypes) fNumSel++;
     if (fNumSel>1)  { divX = 1; divY = 2; }
     if (fNumSel>2)  { divX = 2; divY = 2; }
     if (fNumSel>4)  { divX = 3; divY = 2; }
@@ -193,40 +153,43 @@ void anaExtractPulse()
     if (fDrawAverage) {
         auto cvsAverageAll = new TCanvas("cvsAverageAll","cvsAverageAll",fCvsDX,fCvsDY);
         cvsAverageAll -> Divide(divAX,divAY);
-        e_add_cvs(cvsAverageAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawAverage(cvsAverageAll->cd(iType+1));
+        e_add(cvsAverageAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawAverage(cvsAverageAll->cd(iType+1));
+        }
 
         cvsAverageAll -> cd(divAX*divAY);
         auto frame = new TH2D("frameWidthAll",";y;width",100,0,100,100,0,60);
         frame -> SetStats(0);
         frame -> Draw();
         auto legend = new TLegend(0.5,0.5,0.85,0.95);
-        for (auto iType : fSelTypes)
+        for (auto iType=0; iType<fSelTypes.size(); ++iType)
         {
+            auto type = fSelTypes[iType];
             auto graph = new TGraph();
-            graph -> SetMarkerStyle(20+iType);
+            graph -> SetMarkerStyle(20+type);
             graph -> SetMarkerSize(0.6);
-            graph -> SetMarkerColor(iType+1);
-            graph -> SetLineColor  (iType+1);
-            if (iType==4) {
+            graph -> SetMarkerColor(type+1);
+            graph -> SetLineColor  (type+1);
+            if (type==4) {
                 graph -> SetMarkerColor(1);
                 graph -> SetLineColor  (1);
                 graph -> SetLineStyle(2);
             }
-            if (iType>8) {
-                graph -> SetMarkerColor(iType+1-8);
-                graph -> SetLineColor  (iType+1-8);
+            if (type>8) {
+                graph -> SetMarkerColor(type+1-8);
+                graph -> SetLineColor  (type+1-8);
                 graph -> SetLineStyle(2);
             }
             for (auto ratio : {0.05, 0.25, 0.50, 0.75})
             {
                 double x0,x1,error;
-                auto width = ana[iType]->FullWidthRatioMaximum(ana[iType]->GetHistAverage(),ratio,4,x0,x1,error);
+                auto width = ana[type]->FullWidthRatioMaximum(ana[type]->GetHistAverage(),ratio,4,x0,x1,error);
                 graph -> SetPoint(graph->GetN(),ratio*100,width);
             }
             graph -> Draw("samelp");
-            legend -> AddEntry(graph,fTypeNames[iType],"lp");
+            legend -> AddEntry(graph,fTypeNames[type],"lp");
         }
         legend -> Draw();
     }
@@ -234,147 +197,208 @@ void anaExtractPulse()
     if (fDrawAccumulate) {
         auto cvsAccumulateAll = new TCanvas("cvsAccumulateAll","cvsAccumulateAll",fCvsDX,fCvsDY);
         cvsAccumulateAll -> Divide(divX,divY);
-        e_add_cvs(cvsAccumulateAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawAccumulate(cvsAccumulateAll->cd(iType+1));
+        e_add(cvsAccumulateAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawAccumulate(cvsAccumulateAll->cd(iType+1));
+        }
     }
 
     if (fDrawWidth) {
         auto cvsWidthAll = new TCanvas("cvsWidthAll","cvsWidthAll",fCvsDX,fCvsDY);
         cvsWidthAll -> Divide(divX,divY);
-        e_add_cvs(cvsWidthAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawWidth(cvsWidthAll->cd(iType+1));
+        e_add(cvsWidthAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawWidth(cvsWidthAll->cd(iType+1));
+        }
     }
 
     if (fDrawHeight) {
         auto cvsHeightAll = new TCanvas("cvsHeightAll","cvsHeightAll",fCvsDX,fCvsDY);
         cvsHeightAll -> Divide(divX,divY);
-        e_add_cvs(cvsHeightAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawHeight(cvsHeightAll->cd(iType+1));
+        e_add(cvsHeightAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawHeight(cvsHeightAll->cd(iType+1));
+        }
     }
 
     if (fDrawPulseTb) {
         auto cvsPulseTbAll = new TCanvas("cvsPulseTbAll","cvsPulseTbAll",fCvsDX,fCvsDY);
         cvsPulseTbAll -> Divide(divX,divY);
-        e_add_cvs(cvsPulseTbAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawPulseTb(cvsPulseTbAll->cd(iType+1));
+        e_add(cvsPulseTbAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawPulseTb(cvsPulseTbAll->cd(iType+1));
+        }
     }
 
     if (fDrawPedestal) {
         auto cvsPedestalAll = new TCanvas("cvsPedestalAll","cvsPedestalAll",fCvsDX,fCvsDY);
         cvsPedestalAll -> Divide(divX,divY);
-        e_add_cvs(cvsPedestalAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawPedestal(cvsPedestalAll->cd(iType+1));
+        e_add(cvsPedestalAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawPedestal(cvsPedestalAll->cd(iType+1));
+        }
     }
 
     if (fDrawResidual) {
         auto cvsResidualAll = new TCanvas("cvsResidualAll","cvsResidualAll",fCvsDX,fCvsDY);
         cvsResidualAll -> Divide(divX,divY);
-        e_add_cvs(cvsResidualAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawResidual(cvsResidualAll->cd(iType+1));
+        e_add(cvsResidualAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawResidual(cvsResidualAll->cd(iType+1));
+        }
     }
 
     if (fDrawReference) {
         auto cvsReferenceAll = new TCanvas("cvsReferenceAll","cvsReferenceAll",fCvsDX,fCvsDY);
         cvsReferenceAll -> Divide(divX,divY);
-        e_add_cvs(cvsReferenceAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawReference(cvsReferenceAll->cd(iType+1));
+        e_add(cvsReferenceAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawReference(cvsReferenceAll->cd(iType+1));
+        }
     }
 
     if (fDrawHeightWidth) {
         auto cvsHeightWidthAll = new TCanvas("cvsHeightWidthAll","cvsHeightWidthAll",fCvsDX,fCvsDY);
         cvsHeightWidthAll -> Divide(divX,divY);
-        e_add_cvs(cvsHeightWidthAll,"Summary");
-        for (auto iType : fSelTypes)
-            ana[iType] -> DrawHeightWidth(cvsHeightWidthAll->cd(iType+1));
+        e_add(cvsHeightWidthAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawHeightWidth(cvsHeightWidthAll->cd(iType+1));
+        }
     }
 
     if (fDrawMean || fDrawProjY) {
         auto cvsMeanAll = new TCanvas("cvsMeanAll","cvsMeanAll",fCvsDX,fCvsDY);
         cvsMeanAll -> Divide(divX,divY);
-        e_add_cvs(cvsMeanAll,"Summary");
-        for (auto iType : fSelTypes) {
-            ana[iType] -> DrawMean(cvsMeanAll->cd(iType+1));
+        e_add(cvsMeanAll,"Summary");
+        for (auto iType=0; iType<fSelTypes.size(); ++iType) {
+            auto type = fSelTypes[iType];
+            ana[type] -> DrawMean(cvsMeanAll->cd(iType+1));
 
-            auto histArray = ana[iType] -> GetHistArray();
+            auto histArray = ana[type] -> GetHistArray();
             auto numHists = histArray -> GetEntries(); 
-            auto cvsProjYAll = new TCanvas(Form("cvsProjYAll_%s",fTypeNames[iType]),Form("cvsProjYAll_%s",fTypeNames[iType]),fCvsDX,fCvsDY);
+            auto cvsProjYAll = new TCanvas(Form("cvsProjYAll_%s",fTypeNames[type]),Form("cvsProjYAll_%s",fTypeNames[type]),fCvsDX,fCvsDY);
             //cvsProjYAll -> Divide(4,5); if (numHists>20) numHists = 20;
-            //cvsProjYAll -> Divide(2,2); if (numHists>4) numHists = 4;
+            cvsProjYAll -> Divide(2,2); if (numHists>4) numHists = 4;
             //cvsProjYAll -> Divide(4,3); if (numHists>12) numHists = 12;
-            cvsProjYAll -> Divide(5,4); if (numHists>20) numHists = 20;
+            //cvsProjYAll -> Divide(5,4); if (numHists>20) numHists = 20;
             for (auto iHist=0; iHist<numHists; ++iHist)
             {
                 cvsProjYAll -> cd(iHist+1);
                 auto hist = (TH1D*) histArray -> At(iHist+100);
                 hist -> Draw();
             }
-            e_add_cvs(cvsProjYAll,"Projection");
+            e_add(cvsProjYAll,"Projection");
         }
     }
 
     if (fWriteReferencePulse) {
-        for (auto iType : fSelTypes)
-            ana[iType] -> WriteReferecePulse(0,20,"data");
+        for (auto type : fSelTypes)
+            ana[type] -> WriteReferecePulse(0,20);
     }
 
-    e_end();
+    for (auto type : fSelTypes)
+        ana[type] -> WriteTree();
+
+    if (fSaveAll) e_save_all();
 }
 
-int GetType(int cobo, int asad, int aget, int chan) 
+void SetRunAll() 
 {
-    if (cobo==0 && (asad==0 || asad==1)) return eMMCenter;
-    if (cobo==0 && asad==2 && (aget==0 || aget==1)) return eMMLeftSide;
-    if (cobo==0 && asad==2 && (aget==2 || aget==3)) return eMMLeftCenter;
-    if (cobo==0 && asad==3 && (aget==0 || aget==1)) return eMMRightSide;
-    if (cobo==0 && asad==3 && (aget==2 || aget==3)) return eMMRightCenter;
-    if (cobo==1 && asad==0 && aget==0) return efSiJunction;
-    if (cobo==1 && asad==0 && aget==1) return efSiOhmic;
-    if (cobo==1 && asad==1
-        && (chan==2
-         || chan==7
-         || chan==10
-         || chan==16
-         || chan==19
-         || chan==25
-         || chan==28
-         || chan==33
-         || chan==36
-         || chan==41)
-       ) 
-        return efCsI;
-    if (cobo==2 && aget==0) return eX6Ohmic;
-    if (cobo==2 && (aget==1 || aget==2)) return eX6Junction;
-    if (cobo==2 && aget==3) return eCsICT;
-
-    return -1;
+    e_batch();
+    SetTypeAll();
+    fDataPath = "data100";
+    fMaxInputFiles = 100;
+    fCAAC = 0;
+    fDrawChannel = false;
+    fDrawOnlyGoodChannels = false;
+    fDrawAverage = false;
+    fDrawAccumulate = false;
+    fDrawMean  = false;
+    fDrawProjY = false;
+    fDrawHeightWidth = false;
+    fDrawWidth = false;
+    fDrawHeight = false;
+    fDrawPulseTb = false;
+    fDrawPedestal = false;
+    fDrawResidual = false;
+    fDrawReference = false;
+    fWriteReferencePulse = true;
+    fSaveAll = false;
 }
 
-void e_add_cvs(TCanvas *cvs, const char* opt="")
+void SetDrawCheckAllResults()
 {
-    return;
-    e_add(cvs,opt);
-    return;
-    if (fCvsList==nullptr)
-        fCvsList = new TObjArray();
-    fCvsList -> Add(cvs);
+    fMaxInputFiles = 5;
+    fDataPath = "data";
+    fNumCvsGroup = 5;
+    fCAAC = 0;
+    fDrawChannel = true;
+    fDrawOnlyGoodChannels = false;
+    fDrawAverage = true;
+    fDrawAccumulate = true;
+    fDrawMean  = true;
+    fDrawProjY = true;
+    fDrawHeightWidth = true;
+    fDrawWidth = true;
+    fDrawHeight = true;
+    fDrawPulseTb = true;
+    fDrawPedestal = true;
+    fDrawResidual = true;
+    fDrawReference = true;
+    fWriteReferencePulse = false;
+    fSaveAll = true;
 }
 
-void e_end()
+void SetDrawCheckGoodChannels()
 {
-    return;
-    if (fCvsList!=nullptr)  {
-        TIter next(fCvsList);
-        while (auto cvs = (TCanvas *) next()) {
-            cvs -> Update();
-            cvs -> Modified();
-            cvs -> SaveAs(Form("figures2/%s.png",cvs->GetName()));
-        }
-    }
+    fMaxInputFiles = 5;
+    fDataPath = "data";
+    fNumCvsGroup = 5;
+    fCAAC = 0;
+    fDrawChannel = true;
+    fDrawOnlyGoodChannels = true;
+    fDrawAverage = true;
+    fDrawAccumulate = true;
+    fDrawMean  = true;
+    fDrawProjY = true;
+    fDrawHeightWidth = true;
+    fDrawWidth = true;
+    fDrawHeight = true;
+    fDrawPulseTb = true;
+    fDrawPedestal = true;
+    fDrawResidual = true;
+    fDrawReference = true;
+    fWriteReferencePulse = false;
+    fSaveAll = true;
+}
+
+void SetExtractBuffer(int ecaac)
+{
+    fMaxInputFiles = 5;
+    fDataPath = "data";
+    fNumCvsGroup = 5;
+    fCAAC = ecaac;
+    fDrawChannel = false;
+    fDrawOnlyGoodChannels = false;
+    fDrawAverage = false;
+    fDrawAccumulate = false;
+    fDrawMean  = false;
+    fDrawProjY = false;
+    fDrawHeightWidth = false;
+    fDrawWidth = false;
+    fDrawHeight = false;
+    fDrawPulseTb = false;
+    fDrawPedestal = false;
+    fDrawResidual = false;
+    fDrawReference = false;
+    fWriteReferencePulse = false;
+    fSaveAll = false;
 }
