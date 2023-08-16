@@ -65,7 +65,7 @@ class LKPulseAnalyzer : public TObject
         int IsCollected() const { return fIsCollected; }
         int GetNumGoodChannels() const { return fCountGoodChannels; }
         int GetNumHistChannels() const { return fCountHistChannel; }
-        int GetNumHistLocal() const { return fCountHistLocal; }
+        int GetNumChannelPad() const { return fCountChannelPad; }
         int GetNumCvsGroup() const { return fCountCvsGroup; }
         double GetPedestalPry() const { return fPedestalPry; }
 
@@ -77,7 +77,7 @@ class LKPulseAnalyzer : public TObject
         void WriteTree();
 
         bool DrawChannel();
-        TCanvas* DrawMean(TVirtualPad* pad=(TVirtualPad*)nullptr);
+        void DrawAccumulatePY();
         TCanvas* DrawAverage(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawAccumulate(TVirtualPad* pad=(TVirtualPad*)nullptr);
         TCanvas* DrawWidth(TVirtualPad* pad=(TVirtualPad*)nullptr);
@@ -143,7 +143,7 @@ class LKPulseAnalyzer : public TObject
 
         // single channel draw
         int          fCountHistChannel = 0;
-        int          fCountHistLocal = 0;
+        int          fCountChannelPad = 0;
         int          fCountCvsGroup = 0;
         TCanvas*     fCvsGroup = nullptr;
         int          fWGroup = 1000;

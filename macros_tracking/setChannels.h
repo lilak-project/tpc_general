@@ -1,76 +1,83 @@
-const int fNumTypes = 11;
-int eMMCenter      = 0;
-int eMMLeftSide    = 1;
-int eMMLeftCenter  = 2;
-int eMMRightSide   = 3;
-int eMMRightCenter = 4;
-int efSiJunction   = 5;
-int efSiOhmic      = 6;
-int efCsI          = 7;
-int eX6Ohmic       = 8;
-int eX6Junction    = 9;
-int eCsICT         = 10;
+const int fNumTypes = 12;
+int eMMCenter1     = 0;
+int eMMCenter2     = 1;
+int eMMLeftSide    = 2;
+int eMMLeftCenter  = 3;
+int eMMRightSide   = 4;
+int eMMRightCenter = 5;
+int efSiJunction   = 6;
+int efSiOhmic      = 7;
+int efCsI          = 8;
+int eX6Ohmic       = 9;
+int eX6Junction    = 10;
+int eCsICT         = 11;
 
-vector<int> fAllTypes = {eMMCenter, eMMLeftSide, eMMLeftCenter, eMMRightSide, eMMRightCenter, efSiJunction, efSiOhmic, efCsI, eX6Ohmic, eX6Junction, eCsICT};
-//vector<int> fSelTypes = {eMMCenter};
-//vector<int> fSelTypes = {eMMCenter, eMMLeftSide, eMMLeftCenter, eMMRightSide, eMMRightCenter};
-vector<int> fSelTypes = {eMMCenter, eMMLeftSide, eMMLeftCenter, eMMRightSide, eMMRightCenter, efSiJunction, efSiOhmic, efCsI, eX6Ohmic, eX6Junction, eCsICT};
-//vector<int> fSelTypes = {eMMCenter,efCsI};
-
-const char *fTypeNames[fNumTypes] = {"MMCenter", "MMLeftSide", "MMLeftCenter", "MMRightSide", "MMRightCenter", "fSiJunction", "fSiOhmic", "fCsI", "X6Ohmic", "X6Junction", "CsICT"};
-bool fInvertChannel[fNumTypes] = {0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1};
-int fTbStart[] = {0,0,0,0,0,2,2,2,0,0,0};
-int fPulseCuts[fNumTypes][7] = { // threshold, height1, height2, width1, width2, tb1, tb2
-    {700,  700,4000, 20,  40,  10,100},  // eMMCenter      = 0;
-    {650,  650,4000, 20,  40, 100,300},  // eMMLeftSide    = 1;
-    {650,  650,4000, 20,  40, 100,300},  // eMMLeftCenter  = 2;
-    {750,  750,4000, 20,  40, 100,300},  // eMMRightSide   = 3;
-    {750,  750,4000, 20,  40, 100,300},  // eMMRightCenter = 4;
-    {450,  450,4000, 25,  40,  10, 50},  // efSiJunction   = 5;
-    {600,  600,4000, 25,  40,  10, 50},  // efSiOhmic      = 6;
-    {600,  800,4000, 50,1000,  20,100},  // efCsI          = 7;
-    {650,  800,4000, 20,  40,  10, 50},  // eX6Ohmic       = 8;
-    {600,  700,4000, 15,  40,  10, 50},  // eX6Junction    = 9;
-    {600,  700,4000, 15,  40,  10, 50}   // eCsICT         = 10;
+vector<int> fSelTypes = {eMMCenter1, eMMCenter2, eMMLeftSide, eMMLeftCenter, eMMRightSide, eMMRightCenter, efSiJunction, efSiOhmic, efCsI, eX6Ohmic, eX6Junction, eCsICT};
+const char *fTypeNames[fNumTypes] = {"MMCenter", "MMCenter2", "MMLeftSide", "MMLeftCenter", "MMRightSide", "MMRightCenter", "fSiJunction", "fSiOhmic", "fCsI", "X6Ohmic", "X6Junction", "CsICT"};
+int fPulseCuts[fNumTypes][10] = {
+ // threshold, h1,h2,    width1,width2, tb1,tb2, tbStart, invert?, fixpd?
+    {700,      700,4000, 20,  40,       100,300, 0,       0,       -999},  // eMMCenter1
+    {700,      700,4000, 20,  40,       100,300, 0,       0,       -999},  // eMMCenter2
+    {650,      650,4000, 20,  40,       100,300, 0,       0,       -999},  // eMMLeftSide
+    {650,      650,4000, 20,  40,       100,300, 0,       0,       -999},  // eMMLeftCenter
+    {750,      750,4000, 20,  40,       100,300, 0,       0,       -999},  // eMMRightSide
+    {750,      750,4000, 20,  40,       100,300, 0,       0,       -999},  // eMMRightCenter
+    {450,      450,4000, 25,  40,        10, 50, 2,       1,       -999},  // efSiJunction
+    {600,      600,4000, 25,  40,        10, 50, 2,       0,       -999},  // efSiOhmic
+    {600,      800,4000, 50,1000,        20,100, 2,       1,          0},  // efCsI
+    {650,      800,4000, 20,  40,        10, 50, 0,       0,       -999},  // eX6Ohmic
+    {600,      700,4000, 15,  40,        10, 50, 0,       1,       -999},  // eX6Junction
+    {600,      700,4000, 15,  40,        10, 50, 0,       1,       -999}   // eCsICT
 };
-
-int fFixPedestal[] = {-999,-999,-999,-999,-999,-999,-999,0,-999,-999,-999};
 
 void SetType1()
 {
     fSelTypes.clear();
-    fAllTypes.push_back(eMMCenter);
+    fSelTypes.push_back(eMMCenter1);
 }
 
-void SetTypeMM()
+void SetTypeMM(int i=-1)
 {
     fSelTypes.clear();
-    fAllTypes.push_back(eMMCenter);
-    fAllTypes.push_back(eMMLeftSide);
-    fAllTypes.push_back(eMMLeftCenter);
-    fAllTypes.push_back(eMMRightSide);
-    fAllTypes.push_back(eMMRightCenter);
+    if (i<0 || i==0) fSelTypes.push_back(eMMCenter1);
+    if (i<0 || i==1) fSelTypes.push_back(eMMCenter2);
+    if (i<0 || i==2) fSelTypes.push_back(eMMLeftSide);
+    if (i<0 || i==3) fSelTypes.push_back(eMMLeftCenter);
+    if (i<0 || i==4) fSelTypes.push_back(eMMRightSide);
+    if (i<0 || i==5) fSelTypes.push_back(eMMRightCenter);
 }
 
 void SetTypeAll()
 {
     fSelTypes.clear();
-    fAllTypes.push_back(eMMCenter);
-    fAllTypes.push_back(eMMLeftSide);
-    fAllTypes.push_back(eMMLeftCenter);
-    fAllTypes.push_back(eMMRightSide);
-    fAllTypes.push_back(eMMRightCenter);
-    fAllTypes.push_back(efSiJunction);
-    fAllTypes.push_back(efSiOhmic);
-    fAllTypes.push_back(efCsI);
-    fAllTypes.push_back(eX6Ohmic);
-    fAllTypes.push_back(eX6Junction);
-    fAllTypes.push_back(eCsICT);
+    fSelTypes.push_back(eMMCenter1);
+    fSelTypes.push_back(eMMCenter2);
+    fSelTypes.push_back(eMMLeftSide);
+    fSelTypes.push_back(eMMLeftCenter);
+    fSelTypes.push_back(eMMRightSide);
+    fSelTypes.push_back(eMMRightCenter);
+    fSelTypes.push_back(efSiJunction);
+    fSelTypes.push_back(efSiOhmic);
+    fSelTypes.push_back(efCsI);
+    fSelTypes.push_back(eX6Ohmic);
+    fSelTypes.push_back(eX6Junction);
+    fSelTypes.push_back(eCsICT);
 }
 
 int GetType(int cobo, int asad, int aget, int chan) 
 {
-    if (cobo==0 && (asad==0 || asad==1)) return eMMCenter;
+    if (cobo==0 && (asad==0 || asad==1)) {
+        int mchannel = chan;
+        if (chan>11) mchannel -= 1;
+        if (chan>22) mchannel -= 1;
+        if (chan>45) mchannel -= 1;
+        if (chan>57) mchannel -= 1;
+
+        if ((int(mchannel+1)/2)%2==0)
+            return eMMCenter1;
+        else
+            return eMMCenter2;
+    }
     if (cobo==0 && asad==2 && (aget==0 || aget==1)) return eMMLeftSide;
     if (cobo==0 && asad==2 && (aget==2 || aget==3)) return eMMLeftCenter;
     if (cobo==0 && asad==3 && (aget==0 || aget==1)) return eMMRightSide;
