@@ -8,6 +8,7 @@ build
 *.o
 
 #simulation/analysis data
+save*
 data
 input
 output

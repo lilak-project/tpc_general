@@ -26,12 +26,20 @@ class LKPulse : public TObject
 
         int GetNDF() const { return fNumPoints; }
 
+        double GetWidth(int i=0) {
+            if (i==1) return fWidth1;
+            if (i==2) return fWidth2;
+            return fWidth;
+        }
+
     private:
 
         int fNumPoints = 0;
         TGraphErrors* fGraphPulse = nullptr;
         TGraph*       fGraphError = nullptr;
-
+        double        fWidth;
+        double        fWidth1;
+        double        fWidth2;
     ClassDef(LKPulse,1);
 };
 

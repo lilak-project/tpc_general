@@ -554,6 +554,8 @@ TGraphErrors *LKPulseAnalyzer::GetReferencePulse(int tbOffsetFromHead, int tbOff
         auto bin1 = int(fTbAtRefFloor1) + 100 - tbOffsetFromHead;
         auto bin2 = int(fTbAtRefFloor2) + 100 + tbOffsetFromTail;
 
+        fHistReusedData -> Reset("ICES");
+
         int iPoint = 0;
         for (auto bin=bin1; bin<=bin2; ++bin)
         {
@@ -562,6 +564,7 @@ TGraphErrors *LKPulseAnalyzer::GetReferencePulse(int tbOffsetFromHead, int tbOff
             auto error = hist -> GetStdDev();
             if (mean>=fFloorRatio)
                 error = sqrt(error*error + errorBG*errorBG);
+            fHistReusedData -> SetBinContent(bin,mean);
             fGraphReference -> SetPoint(iPoint,iPoint,mean);
             fGraphReference -> SetPointError(iPoint,0,error);
             fGraphReferenceM100 -> SetPoint(iPoint,bin-100-0.5,mean);
@@ -569,6 +572,15 @@ TGraphErrors *LKPulseAnalyzer::GetReferencePulse(int tbOffsetFromHead, int tbOff
             fGraphReferenceError -> SetPoint(iPoint,iPoint,error);
             iPoint++;
         }
+
+        double tb1,tb2,error;
+        double tbAtMax = fHistReusedData -> GetBinCenter(fHistReusedData -> GetMaximumBin());
+        FullWidthRatioMaximum(fHistReusedData,fFloorRatio,10,tb1,tb2,error);
+        fTbAtRefFloor1 = tb1;
+        fTbAtRefFloor2 = tb2;
+        fRefWidth = tb2 - tb1;
+        fRefWidth1 = abs(tbAtMax - tb1);
+        fRefWidth2 = abs(tbAtMax - tb2);
     }
 
     return fGraphReference;
@@ -584,6 +596,9 @@ void LKPulseAnalyzer::WriteReferencePulse(int tbOffsetFromHead, int tbOffsetFrom
     GetReferencePulse(tbOffsetFromHead,tbOffsetFromTail);
     fGraphReference -> Write("pulse");
     fGraphReferenceError -> Write("error");
+    (new TParameter<double>("width",fRefWidth)) -> Write("width");
+    (new TParameter<double>("width1",fRefWidth1)) -> Write("width1");
+    (new TParameter<double>("width2",fRefWidth2)) -> Write("width2");
 }
 
 TCanvas* LKPulseAnalyzer::DrawWidth(TVirtualPad *pad)

@@ -1,6 +1,8 @@
 #ifndef LKCHANNELANALYZER_HH
 #define LKCHANNELANALYZER_HH
 
+#define DEBUG_FITPULSE
+
 #include "TObject.h"
 #include "LKLogger.h"
 #include "LKPulse.cpp"
@@ -35,11 +37,7 @@ class LKChannelAnalyzer : public TObject
         void SetPulse(const char* fileName);
         void SetPulse(LKPulse* pulse) { fPulse = pulse; }
         void SetNumHits(int numHits) { fNumHits = numHits; }
-        void SetThreshold(int value) { fThreshold = value; }
-        void SetThresholdOneTbStep(int value) { fThresholdOneTbStep = value; }
 
-        int GetThreshold()          { return fThreshold; }
-        int GetThresholdOneTbStep() { return fThresholdOneTbStep; }
 
         void Analyze(double* data);
         //LKChannelHit GetHit(int i) { return fChannelHitArray[i]; }
@@ -65,7 +63,32 @@ class LKChannelAnalyzer : public TObject
          * Perform least square fitting with the fixed parameter tbStart and ndf.
          * This process is analytic. The amplitude is choosen imidiatly.
          */
-        void LeastSquareFitAtGivenTb(double *buffer, double tbStartOfPulse, int ndf, double &amplitude, double &chi2);
+        void LeastSquareFitAtGivenTb(double *buffer, double tbStartOfPulse, int ndf, double &amplitude, double &chi2NDF);
+
+
+        int GetTbMax() const  { return fTbMax; }
+        int GetTbStart() const  { return fTbStart; }
+        int GetTbStartCut() const  { return fTbStartCut; }
+        int GetThreshold() const  { return fThreshold; }
+        int GetThresholdOneTbStep() const  { return fThresholdOneTbStep; }
+        int GetNumAcendingCut() const  { return fNumAcendingCut; }
+        int GetDynamicRange() const  { return fDynamicRange; }
+        int GetNDFPulse() const  { return fNDFPulse; }
+        int GetIterMax() const  { return fIterMax; }
+        double GetScaleTbStep() const { return fScaleTbStep; }
+        double GetTbStepCut() const { return fTbStepCut; }
+
+        void SetTbMax(int tbMax) { fTbMax = tbMax; }
+        void SetTbStart(int tbStart) { fTbStart = tbStart; }
+        void SetTbStartCut(int tbStartCut) { fTbStartCut = tbStartCut; }
+        void SetThreshold(int threshold) { fThreshold = threshold; }
+        void SetThresholdOneTbStep(int thresholdOneTbStep) { fThresholdOneTbStep = thresholdOneTbStep; }
+        void SetNumAcendingCut(int numAcendingCut) { fNumAcendingCut = numAcendingCut; }
+        void SetDynamicRange(int dynamicRange) { fDynamicRange = dynamicRange; }
+        //void SetNDFPulse(int nDFPulse) { fNDFPulse = nDFPulse; }
+        void SetIterMax(int iterMax) { fIterMax = iterMax; }
+        void SetScaleTbStep(double scaleTbStep) { fScaleTbStep = scaleTbStep; }
+        void SetTbStepCut(double scaleTbStep) { fTbStepCut = scaleTbStep; }
 
     private:
 
@@ -83,44 +106,20 @@ class LKChannelAnalyzer : public TObject
         int          fNumAcendingCut = 5;
         int          fDynamicRange = 4096;
         int          fNDFPulse = 0;
-        int          fIterMax = 40;
+        int          fIterMax = 15;
+        double       fScaleTbStep = 0.5;
+        double       fTbStepCut = 1.e-5;
 
-        /**
-         * Proportional parameter for the time-bucket step when fitting tbStart.
-         *
-         * Each time the least square fit is performed for amplitude of the pulse
-         * with fixed tbStart, we have to select next candidate of the tbStart. 
-         * The step of time-bucket from current tbStart is choosen as
-         * step = fScaleTbStep / peak^2 * stepChi2NDF.
-         *
-         * for stepChi2NDF, see fStepChi2NDFCut.
-         */
-        double fScaleTbStep = 5000.;
-
-        /**
-         * The default cut for stepChi2NDF. If stepChi2NDF becomes lower than fStepChi2NDFCut
-         * for twice in a row, the fit is satisfied.
-         *
-         * stepChi2NDF is defined by
-         *   minus of [difference between least-squares of previous fit and current fit] 
-         *   divided by [difference between time-bucket of previous fit and current fit] 
-         *   divided by NDF: 
-         *   stepChi2NDF = (lsPre-lsCur)/(tbCur-tbPre)/ndf.
-         *
-         * This cut is re-defined as effective threhold for each pulses 
-         * betaCut = fStepChi2NDFCut * peak^2
-         */
-        double fStepChi2NDFCut = 1.e-5;
-        //double fStepChi2NDFCut = 1;
-
-#define DEBUG_FITPULSE
 #ifdef DEBUG_FITPULSE
     public:
-        TGraph* dGraphStep = nullptr;
-        TGraph* dGraphTime = nullptr;
+        TGraph* dGraphTb = nullptr;
+        TGraph* dGraphTbStep = nullptr;
         TGraph* dGraphChi2 = nullptr;
         TGraph* dGraphBeta = nullptr;
-        TGraph* dGraphTbC2 = nullptr;
+        TGraph* dGraphTbChi2 = nullptr;
+        TGraph* dGraphTbBeta = nullptr;
+        TGraph* dGraphBetaInv = nullptr;
+        TGraph* dGraphTbBetaInv = nullptr;
 #endif
 
     ClassDef(LKChannelAnalyzer,1);

@@ -14,6 +14,9 @@ LKPulse::LKPulse(const char *fileName)
     SetPulse(graphPulse);
     auto graphError = (TGraph*) file -> Get("error");
     SetError(graphError);
+    fWidth =  ((TParameter<double>*) file -> Get("width")) -> GetVal();
+    fWidth1 = ((TParameter<double>*) file -> Get("width1")) -> GetVal();
+    fWidth2 = ((TParameter<double>*) file -> Get("width2")) -> GetVal();
     file -> Close();
 }
 

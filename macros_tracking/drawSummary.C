@@ -1,9 +1,4 @@
-#ifndef USING_EJUNGWOO
-TCanvas* e_cvs(const char* name="") { return (new TCanvas(name)); }
-void e_add(TObject *,const char* opt="") {}
-void e_save_all(TObject *) {}
-#endif
-
+#include "ejungwooA.h"
 #include "setChannels.h"
 
 void drawSummary()
@@ -72,5 +67,5 @@ void drawSummary()
         //}
     }
 
-    //e_save_all();
+    e_save_all();
 }

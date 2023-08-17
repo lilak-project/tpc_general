@@ -1,3 +1,4 @@
+#include "ejungwooA.h"
 #include "LKPulseAnalyzer.cpp"
 #include "LKPulseAnalyzer.h"
 #include "LKChannelAnalyzer.cpp"
@@ -5,22 +6,23 @@
 //#include "LKPulse.cpp"
 #include "LKPulse.h"
 
-TH2D *MakeHist(TGraph *graph, const char* name, const char* title);
-
-void anaFitPulse()
+void anaFitPulse(double scaleBeta = 0.2)
 {
-    e_batch();
+    //e_batch();
+
+    int iterationMax = 50;
+    int scaleBeta100 = scaleBeta*100;
 
     gStyle -> SetOptStat(0);
 
     int bufferI[350] = {0};
     double buffer[350] = {0};
     const char *fileNames[] = {
-        "example/buffer_MMCenter1_1002000.dat",
-        "example/buffer_MMCenter1_12038.dat",
-        "example/buffer_MMCenter1_2000054.dat",
-        "example/buffer_MMCenter1_20011054.dat",
-        "example/buffer_MMCenter1_22003013.dat",
+        "dataExample/buffer_MMCenter1_1002000.dat",
+        "dataExample/buffer_MMCenter1_12038.dat",
+        "dataExample/buffer_MMCenter1_2000054.dat",
+        "dataExample/buffer_MMCenter1_20011054.dat",
+        "dataExample/buffer_MMCenter1_22003013.dat",
     };
 
     auto anaP = new LKPulseAnalyzer("ana%d","data");
@@ -40,25 +42,29 @@ void anaFitPulse()
         }
         file_buffer.close();
 
-        auto hist = new TH1D(Form("histChannel_%d",iFile),"",350,0,350);
+        auto hist = new TH1D(Form("histChannel_%d_s%d",iFile,scaleBeta100),Form("%s;tb;",fileName),350,0,350);
         for (auto i=0; i<350; ++i)
             hist -> SetBinContent(i+1,buffer[i]);
 
         auto anaC = new LKChannelAnalyzer();
-        anaC -> Init();
-        anaC -> SetPulse("example/pulseReference_MMCenter1.root");
+        anaC -> SetPulse("dataExample/pulseReference_MMCenter1.root");
+        anaC -> SetTbMax(350);
+        anaC -> SetTbStart(1);
+        anaC -> SetTbStartCut(330);
+        anaC -> SetThreshold(200);
+        anaC -> SetThresholdOneTbStep(2);
+        anaC -> SetNumAcendingCut(5);
+        anaC -> SetDynamicRange(4096);
+        anaC -> SetIterMax(iterationMax);
+        anaC -> SetScaleTbStep(scaleBeta);
         auto pulse = anaC -> GetPulse();
 
         anaP -> AddChannel(bufferI);
-        int tbPulse = anaP -> GetFirstPulseTb() - 10;
         int tbPeak = anaP -> GetTbAtMaxValue();
-        if (tbPeak<1) tbPeak = 1;
-        if (tbPulse<1) tbPulse = tbPeak - 10;
-        if (tbPulse<1) 
-            continue;
-        lk_debug << tbPulse << " " << tbPeak << endl;
+        int tbPulse = int(tbPeak - pulse->GetWidth(1));
 
         bool testWithAna = true;
+        bool findScale = false;
 
         if (testWithAna)
         {
@@ -69,30 +75,71 @@ void anaFitPulse()
             double chi2Fitted;
             anaC -> FitPulse(buffer, tbPulse, tbPeak, tbHit, amplitude, chi2Fitted, ndf, isSaturated);
 
-            auto cvsDebug = e_cvs(Form("cvsDebug_%d",iFile),"",3000,2000,3,2);
-            auto hist1 = MakeHist(anaC -> dGraphStep, Form("hist1_%d",iFile), ";i;dtb ");
-            auto hist2 = MakeHist(anaC -> dGraphTime, Form("hist2_%d",iFile), ";i;time");
-            auto hist3 = MakeHist(anaC -> dGraphChi2, Form("hist3_%d",iFile), ";i;chi2");
-            auto hist4 = MakeHist(anaC -> dGraphBeta, Form("hist4_%d",iFile), ";i;tbStep");
-            auto hist5 = MakeHist(anaC -> dGraphTbC2, Form("hist5_%d",iFile), ";tb;chi2");
-            cvsDebug -> cd(1); hist1 -> Draw(); anaC -> dGraphStep -> Draw("samepl");
-            cvsDebug -> cd(2); hist2 -> Draw(); anaC -> dGraphTime -> Draw("samepl");
-            cvsDebug -> cd(3); hist3 -> Draw(); anaC -> dGraphChi2 -> Draw("samepl");
-            cvsDebug -> cd(4); hist4 -> Draw(); anaC -> dGraphBeta -> Draw("samepl");
-            cvsDebug -> cd(5); hist5 -> Draw(); anaC -> dGraphTbC2 -> Draw("samepl");
-            cvsDebug -> cd(6);
-            hist -> GetXaxis() -> SetRangeUser(tbPulse-5,tbPulse+60);
+#ifdef DEBUG_FITPULSE
+            auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
+            int iCvs = 1;
+            //for (auto graph : {anaC->dGraphTb, anaC->dGraphTbStep, anaC->dGraphChi2, anaC->dGraphBeta, anaC->dGraphTbBeta, anaC->dGraphBetaInv, anaC->dGraphTbBetaInv, anaC->dGraphTbChi2,})
+            //for (auto graph : {anaC->dGraphTb, anaC->dGraphTbStep, anaC->dGraphBeta, anaC->dGraphTbBeta, anaC->dGraphTbChi2,})
+            for (auto graph : {
+                    anaC->dGraphTbChi2,
+                    anaC->dGraphTbBeta,
+                    anaC->dGraphBeta,
+                    anaC->dGraphTbStep,
+                    anaC->dGraphTb,
+                    }
+                )
+            {
+                iCvs++;
+                cvsDebug -> cd(iCvs);
+                auto frame = e_hist(graph,Form("frame%d%d_s%d",iFile,scaleBeta100,iCvs),Form("ex%d) C = %.2f%s",iFile,scaleBeta,graph->GetTitle()));
+                frame -> Draw();
+                graph -> Draw("samepl");
+
+                continue;
+                if (graph==anaC->dGraphTbChi2) {
+                    cvsDebug -> cd(iCvs);
+                    auto fit = new TF1(Form("fitTbC2_%d_s%d",iFile,scaleBeta100),"pol2",0,350);
+                    fit -> SetLineColor(kRed);
+                    fit -> SetLineStyle(2);
+                    graph -> Fit(fit,"QN0");
+                    fit -> Draw("samel");
+                }
+            }
+            cvsDebug -> cd(1);
+            hist -> GetXaxis() -> SetRangeUser(tbPulse-2,tbPulse+55);
             hist -> SetMarkerStyle(20);
-            hist -> SetMarkerSize(0.5);
+            //hist -> SetMarkerSize(0.5);
             hist -> SetMarkerColor(kBlack);
             hist -> Draw("p");
             auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
-            lk_debug << tbHit << " " << amplitude << " " << chi2Fitted << endl;
             graphFitted -> SetFillColor(kGreen);
             graphFitted -> Draw("samelpz");
             hist -> Draw("samep");
+
+            if (findScale)
+            {
+                auto graph = new TGraph();
+                auto nbins = anaC -> dGraphTbBeta -> GetN();
+                //auto nbins = anaC -> dGraphTbBetaInv -> GetN();
+                for (auto iPoint=0; iPoint<nbins; ++iPoint) {
+                    double tb, beta, alpha;
+                    anaC -> dGraphTbBeta -> GetPoint(iPoint,tb,beta);
+                    graph -> SetPoint(iPoint,iPoint,(tbHit-tb)*beta);
+                    //anaC -> dGraphTbBetaInv -> GetPoint(iPoint,tb,alpha);
+                    if (tbHit!=tb)
+                        graph -> SetPoint(graph->GetN(),iPoint,alpha/(tbHit-tb));
+                }
+                cvsDebug -> cd(8);
+                e_hist(graph, Form("hist5_%d_s%d",iFile,scaleBeta100), ";i;ab") -> Draw();
+                graph -> SetMarkerStyle(24);
+                //graph -> SetMarkerSize(0.6);
+                graph -> Draw("sampl");
+            }
+
+            //e_test << "init: tb_peak=" << tbPeak << ", tb_pulse=" << tbPulse << ", w1=" << pulse->GetWidth(1) << ", tb_fit=" << tbHit << ", a=" << amplitude << endl;
             cvsDebug -> Modified();
             cvsDebug -> Update();
+#endif
         }
         else
         {
@@ -113,37 +160,19 @@ void anaFitPulse()
                     leastChi2 = chi2;
                 }
             }
-            auto cvsChannel = e_cvs(Form("channelFit_%d",iFile));
+            auto cvsChannel = e_cvs(Form("channelFit_%d_s%d",iFile,scaleBeta100));
             hist -> Draw();
             auto graphFitted = pulse -> GetPulseGraph(tbAtLeastChi2, amplitudeAtLeastChi2);
             graphFitted -> SetFillColor(kGreen);
             graphFitted -> Draw("samel3");
             hist -> Draw("same");
 
-            auto cvsChi2 = e_cvs(Form("chi2_%d",iFile));
+            auto cvsChi2 = e_cvs(Form("chi2_%d_s%d",iFile,scaleBeta100));
             graphChi2 -> SetMarkerStyle(20);
-            graphChi2 -> SetMarkerSize(0.4);
+            //graphChi2 -> SetMarkerSize(0.4);
             graphChi2 -> Draw("apl");
         }
     }
-}
 
-TH2D *MakeHist(TGraph *graph, const char* name, const char* title)
-{
-    int nbins = graph -> GetN();
-    double x1=DBL_MAX, x2=-DBL_MAX, y1=DBL_MAX, y2=-DBL_MAX;
-    for (auto iPoint=0; iPoint<nbins; ++iPoint) {
-        double x0, y0;
-        graph -> GetPoint(iPoint,x0,y0);
-        if (x0<x1) x1 = x0;
-        if (x0>x2) x2 = x0;
-        if (y0<y1) y1 = y0;
-        if (y0>y2) y2 = y0;
-    }
-    x1 = x1 - (x2-x1) * 0.05;
-    x2 = x2 + (x2-x1) * 0.05;
-    y1 = y1 - (y2-y1) * 0.05;
-    y2 = y2 + (y2-y1) * 0.05;
-    auto hist = new TH2D(name,title,100,x1,x2,100,y1,y2);
-    return hist;
+    e_save_all();
 }

@@ -143,56 +143,68 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         isSaturated = true;
     }
 
-    //double scaleTbStep = fScaleTbStep / (valuePeak * valuePeak); // Weight of time-bucket step
-    //double stepChi2NDFCut = fStepChi2NDFCut * (valuePeak * valuePeak); // Effective cut for dChi2NDFdTb
-    double scaleTbStep = .5;
     double stepChi2NDFCut = 1;
-#ifdef DEBUG_FITPULSE
-    lk_debug << "scaleTbStep = " << scaleTbStep << endl;
-    lk_debug << "stepChi2NDFCut = " << stepChi2NDFCut << endl;
-#endif
 
-    double chi2Prev = DBL_MAX; // Least-squares of previous fit
-    double chi2Curr = DBL_MAX; // Least-squares of current fit
-    double tbStep = - 0.1; // Time-bucket step to next fit
-    double tbPrev = tbStartOfPulse + 1; // Pulse starting time-bucket of previous fit
-    double tbCurr = tbPrev + tbStep; // Pulse starting time-bucket of current fit
+    double chi2NDFPrev = DBL_MAX; // Least-squares of previous fit
+    double chi2NDFCurr = DBL_MAX; // Least-squares of current fit
+    double tbStep = 0.1; // Time-bucket step to next fit
+    double tbCurr = tbStartOfPulse; // Pulse starting time-bucket of current fit
+    double tbPrev = tbCurr - tbStep; // Pulse starting time-bucket of previous fit
 
-    LeastSquareFitAtGivenTb(buffer, tbPrev, ndf, amplitude, chi2Prev);
-    LeastSquareFitAtGivenTb(buffer, tbCurr, ndf, amplitude, chi2Curr);
-    double dChi2NDFdTb = (chi2Prev - chi2Curr) / (tbCurr - tbPrev) / ndf; // this value is in order of 1
-#ifdef DEBUG_FITPULSE
-    lk_debug << tbPrev << " " << ndf << " | " << chi2Prev << " " << chi2Curr << " " << dChi2NDFdTb << endl;
-    if (dGraphStep==nullptr) { dGraphStep = new TGraph(); dGraphStep -> SetMarkerStyle(20); dGraphStep -> SetMarkerSize(0.5); }
-    if (dGraphTime==nullptr) { dGraphTime = new TGraph(); dGraphTime -> SetMarkerStyle(20); dGraphTime -> SetMarkerSize(0.5); }
-    if (dGraphChi2==nullptr) { dGraphChi2 = new TGraph(); dGraphChi2 -> SetMarkerStyle(20); dGraphChi2 -> SetMarkerSize(0.5); }
-    if (dGraphTbC2==nullptr) { dGraphTbC2 = new TGraph(); dGraphTbC2 -> SetMarkerStyle(20); dGraphTbC2 -> SetMarkerSize(0.5); }
-    if (dGraphBeta==nullptr) { dGraphBeta = new TGraph(); dGraphBeta -> SetMarkerStyle(20); dGraphBeta -> SetMarkerSize(0.5); }
-    dGraphStep -> Set(0);
-    dGraphTime -> Set(0);
-    dGraphChi2 -> Set(0);
-    dGraphTbC2 -> Set(0);
-    dGraphBeta -> Set(0);
-#endif
+    LeastSquareFitAtGivenTb(buffer, tbPrev, ndf, amplitude, chi2NDFPrev);
+    LeastSquareFitAtGivenTb(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
+    double beta = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev); // this value is in order of 1
 
-    int countIteration = 1;
+    int countIteration = 0;
     bool firstCheckFlag = false; // Checking flag to apply cut twice in a row
+#ifdef DEBUG_FITPULSE
+    if (dGraphTb==nullptr)        { dGraphTb = new TGraph();         dGraphTb        -> SetTitle(";iteration;tb"); }
+    if (dGraphTbStep==nullptr)    { dGraphTbStep = new TGraph();     dGraphTbStep    -> SetTitle(";iteration;tb step"); }
+    if (dGraphChi2==nullptr)      { dGraphChi2 = new TGraph();       dGraphChi2      -> SetTitle(";iteration;#Chi^{2}/NDF"); }
+    if (dGraphTbChi2==nullptr)    { dGraphTbChi2 = new TGraph();     dGraphTbChi2    -> SetTitle(";tb;#Chi^{2}/NDF"); }
+    if (dGraphBeta==nullptr)      { dGraphBeta = new TGraph();       dGraphBeta      -> SetTitle(";iteration;#beta = d(#Chi^{2}/NDF)/dtb"); }
+    if (dGraphTbBeta==nullptr)    { dGraphTbBeta = new TGraph();     dGraphTbBeta    -> SetTitle(";tb;#beta = d(#Chi^{2}/NDF)/dtb"); }
+    if (dGraphBetaInv==nullptr)   { dGraphBetaInv = new TGraph();    dGraphBetaInv   -> SetTitle(";iteration;1/#beta = dtb/d(#Chi^{2}/NDF)"); }
+    if (dGraphTbBetaInv==nullptr) { dGraphTbBetaInv = new TGraph();  dGraphTbBetaInv -> SetTitle(";tb;1/#beta = dtb/d(#Chi^{2}/NDF)"); }
+    for (auto graph :  {dGraphTb, dGraphTbStep, dGraphChi2, dGraphTbChi2, dGraphBeta, dGraphTbBeta, dGraphBetaInv, dGraphTbBetaInv}) {
+        graph -> SetMarkerStyle(24);
+        //graph -> SetMarkerSize(0.8);
+        graph -> SetLineColor(kBlue);
+    }
+    dGraphTb -> Set(0);
+    dGraphTbStep -> Set(0);
+    dGraphChi2 -> Set(0);
+    dGraphTbChi2 -> Set(0);
+    dGraphBeta -> Set(0);
+    dGraphTbBeta -> Set(0);
+    dGraphBetaInv -> Set(0);
+    dGraphTbBetaInv -> Set(0);
+    dGraphTb -> SetPoint(countIteration, countIteration, tbCurr);
+    dGraphTbStep -> SetPoint(countIteration, countIteration, tbStep);
+    dGraphChi2 -> SetPoint(countIteration, countIteration, chi2NDFCurr);
+    dGraphBeta -> SetPoint(countIteration, countIteration, double(beta));
+    dGraphBetaInv -> SetPoint(countIteration, countIteration, double(1./beta));
+    dGraphTbChi2 -> SetPoint(countIteration, tbCurr, chi2NDFCurr);
+    dGraphTbBeta -> SetPoint(countIteration, tbCurr, double(beta));
+    dGraphTbBetaInv -> SetPoint(countIteration, tbCurr, double(1./beta));
+#endif
+
     while (true)
     {
-        /*
-        if (tbStep!=0 && chi2Curr!=chi2Prev) {
-#ifdef DEBUG_FITPULSE
-            lk_debug << "break : tbStep==0 || chi2Curr!=chi2Prev: " << tbStep << " !=0 && " << chi2Curr << " != " << chi2Prev <<  endl;
-            break;
-#endif
-        }
-        */
+        countIteration++;
         tbPrev = tbCurr;
-        chi2Prev = chi2Curr;
-        tbStep = scaleTbStep * dChi2NDFdTb; // = fScaleTbStep(50) / (valuePeak * valuePeak) * (chi2Prev - chi2Curr) / (tbCurr - tbPrev) / ndf;
-        if (tbStep> 1) tbStep =  1;
-        if (tbStep<-1) tbStep = -1;
+        chi2NDFPrev = chi2NDFCurr;
+        tbStep = fScaleTbStep * beta;
+        if (tbStep<fTbStepCut) {
+#ifdef DEBUG_FITPULSE
+            lk_debug << "break tbStep < " << fTbStepCut << " : " << tbStep << endl;
+#endif
+            break;
+        }
+        else if (tbStep>1) tbStep = 1;
+        else if (tbStep<-1) tbStep = -1;
         tbCurr = tbPrev + tbStep;
+
         if (tbCurr<0 || tbCurr>fTbStartCut) {
 #ifdef DEBUG_FITPULSE
             lk_debug << "break tbCur<0 || tbCur<fTbStartCut : " << tbCurr << " " << fTbStartCut << endl;
@@ -200,37 +212,19 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
             return false;
         }
 
-        LeastSquareFitAtGivenTb(buffer, tbCurr, ndf, amplitude, chi2Curr);
-        dChi2NDFdTb = -(chi2Curr - chi2Prev) / (tbCurr - tbPrev) / ndf; // this value is in order of 1
+        LeastSquareFitAtGivenTb(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
+        beta = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev); // this value is in order of 1
 #ifdef DEBUG_FITPULSE
-        dGraphStep -> SetPoint(dGraphStep->GetN(), dGraphStep->GetN(), tbStep     );
-        dGraphTime -> SetPoint(dGraphTime->GetN(), dGraphTime->GetN(), tbCurr     );
-        dGraphChi2 -> SetPoint(dGraphChi2->GetN(), dGraphChi2->GetN(), chi2Curr   );
-        dGraphTbC2 -> SetPoint(dGraphTbC2->GetN(), tbCurr,             chi2Curr   );
-        dGraphBeta -> SetPoint(dGraphBeta->GetN(), dGraphBeta->GetN(), dChi2NDFdTb);
+        dGraphTb -> SetPoint(countIteration, countIteration, tbCurr);
+        dGraphTbStep -> SetPoint(countIteration, countIteration, tbStep);
+        dGraphChi2 -> SetPoint(countIteration, countIteration, chi2NDFCurr);
+        dGraphBeta -> SetPoint(countIteration, countIteration, double(beta));
+        dGraphBetaInv -> SetPoint(countIteration, countIteration, double(1./beta));
+        dGraphTbChi2 -> SetPoint(countIteration, tbCurr, chi2NDFCurr);
+        dGraphTbBeta -> SetPoint(countIteration, tbCurr, double(beta));
+        dGraphTbBetaInv -> SetPoint(countIteration, tbCurr, double(1./beta));
+        lk_debug << "IT-" << countIteration << " tb: " << tbPrev << "->" << tbCurr << "(" << tbStep << ")" << ",  chi2: " << chi2NDFPrev << "->" << chi2NDFCurr << ",  step: " << beta << "<?" << stepChi2NDFCut << endl;
 #endif
-
-        countIteration++;
-#ifdef DEBUG_FITPULSE
-        //lk_debug << "IT-" << countIteration << " tb: " << tbPrev << "->" << tbCurr << "(" << tbStep << ")" << ",  chi2: " << chi2Prev << "->" << chi2Curr << ",  step: " << dChi2NDFdTb << "<?" << stepChi2NDFCut << endl;
-#endif
-
-        if (abs(dChi2NDFdTb) < stepChi2NDFCut)
-        {
-            /*
-            if (firstCheckFlag==true) {
-                // break if the fit is good enough two times in a row
-#ifdef DEBUG_FITPULSE
-                lk_debug << "break : good chi2 exit" << endl;
-#endif
-                break;
-            }
-            else
-                firstCheckFlag = true;
-                */
-        }
-        else
-            firstCheckFlag = false;
 
         if (countIteration >= fIterMax) {
 #ifdef DEBUG_FITPULSE
@@ -240,13 +234,13 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         }
     }
 
-    if (dChi2NDFdTb > 0) { // pre-fit is better
+    if (beta > 0) { // pre-fit is better
         tbHit = tbPrev;
-        chi2Fitted = chi2Prev;
+        chi2Fitted = chi2NDFPrev;
     }
     else { // current-fit is better
         tbHit = tbCurr;
-        chi2Fitted = chi2Curr;
+        chi2Fitted = chi2NDFCurr;
     }
 
     return true;
@@ -288,7 +282,7 @@ bool LKChannelAnalyzer::TestPulse(double *buffer, double tbHitPrev, double ampli
 
 void LKChannelAnalyzer::LeastSquareFitAtGivenTb(double *buffer, double tbStartOfPulse, int ndf,
         double &amplitude,
-        double &chi2)
+        double &chi2NDF)
 {
     double refy = 0;
     double ref2 = 0;
@@ -306,11 +300,11 @@ void LKChannelAnalyzer::LeastSquareFitAtGivenTb(double *buffer, double tbStartOf
         ref2 += weigth * valueRef * valueRef;
     }
     if (ref2==0) {
-        chi2 = 1.e10;
+        chi2NDF = 1.e10;
         return;
     }
     amplitude = refy / ref2;
-    chi2 = 0;
+    chi2NDF = 0;
 
     //for (int iTbPulse = 0; iTbPulse < ndf; iTbPulse++)
     for (int iTbPulse = 1; iTbPulse < ndf; iTbPulse++)
@@ -321,7 +315,8 @@ void LKChannelAnalyzer::LeastSquareFitAtGivenTb(double *buffer, double tbStartOf
         double valueRefA = amplitude * fPulse -> Eval(tbRef);
         double errorRefA = amplitude * fPulse -> Error(tbRef);
         double residual = (valueData-valueRefA)*(valueData-valueRefA)/errorRefA/errorRefA;
-        chi2 += residual;
+        chi2NDF += residual;
     }
+    chi2NDF = chi2NDF/ndf;
 }
 

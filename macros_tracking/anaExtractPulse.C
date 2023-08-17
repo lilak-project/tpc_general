@@ -1,14 +1,9 @@
+#include "ejungwooA.h"
 #include "LKPulse.cpp"
 #include "LKPulse.h"
 #include "LKPulseAnalyzer.cpp"
 #include "LKPulseAnalyzer.h"
 #include "setChannels.h"
-
-#ifndef USING_EJUNGWOO
-void e_add(TObject *,const char* opt="") {}
-void e_save_all() {}
-void e_batch() {}
-#endif
 
 //int fCvsDX = 1200;
 //int fCvsDY = 720;
