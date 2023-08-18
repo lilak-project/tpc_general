@@ -1,5 +1,5 @@
-THttpServer* eServer = nullptr;
-TObjArray* eObjArray = nullptr;
+#ifndef __EJUNGWOO_A__
+#define __EJUNGWOO_A__
 
 //void e_batch();
 //void e_add(TObject* object, const char *subfolder="");
@@ -8,20 +8,29 @@ TObjArray* eObjArray = nullptr;
 //void e_save_all(const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false);
 //TH2D *e_hist(TGraph *graph, const char* name, const char* title="");
 
-void e_batch() {
+void e_batch()
+{
     gROOT -> SetBatch(1);
 }
 
 void e_add(TObject* object, const char *subfolder="")
 {
-    if (eServer==nullptr) {
-        eServer = new THttpServer("http:8080");
-        cout << "Http server >> http://localhost:8080/" << endl;
+    THttpServer* server = (THttpServer*) gROOT->FindObject("http");
+    if (server==nullptr) {
+        server = new THttpServer("http:8080");
+        gROOT -> Add(server);
+        cout << "Http server : http://localhost:8080/" << endl;
     }
-    eServer -> Register(subfolder, object);
-    if (eObjArray==nullptr)
-        eObjArray = new TObjArray();
-    eObjArray -> Add(object);
+
+    TObjArray* eArray = (TObjArray*) gROOT->FindObject("ejObjArray");
+    if (eArray==nullptr) {
+        eArray = new TObjArray();
+        eArray -> SetName("ejObjArray");
+        gROOT -> Add(eArray);
+    }
+
+    server -> Register(subfolder, object);
+    eArray -> Add(object);
 }
 
 TCanvas *e_cvs(const char* name="", const char* title="", int wx=800, int wy=680, int dx=1, int dy=1)
@@ -110,7 +119,8 @@ void e_save(TObject *object, const char* fileType="", const char* nameVersion=""
 
 void e_save_all(const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false)
 {
-    TIter next(eObjArray);
+    TObjArray* eArray = (TObjArray*) gROOT->FindObject("ejObjArray");
+    TIter next(eArray);
     while (auto obj = next())
         e_save(obj,fileType,nameVersion,savePrimitives,simplifyNames);
 }
@@ -134,3 +144,5 @@ TH2D *e_hist(TGraph *graph, const char* name, const char* title="")
     auto hist = new TH2D(name,title,100,x1,x2,200,y1,y2);
     return hist;
 }
+
+#endif

@@ -101,14 +101,29 @@ class LKChannelAnalyzer : public TObject
         int          fTbMax = 350;
         int          fTbStart = 1;
         int          fTbStartCut = 330;
-        int          fThreshold = 600;
+        int          fThreshold = 50;
         int          fThresholdOneTbStep = 2;
         int          fNumAcendingCut = 5;
         int          fDynamicRange = 4096;
         int          fNDFPulse = 0;
         int          fIterMax = 15;
         double       fScaleTbStep = 0.5;
-        double       fTbStepCut = 1.e-5;
+        double       fTbStepCut = 0.01;
+
+        int          fTbSeparationWidth = 9;
+        int          fNumTbsCorrection = 50;
+
+        int          fMultiplicity;
+        //int          fThreshold;
+        //int          fHeightMin;
+        //int          fHeightMax;
+        //int          fTbMin;
+        //int          fTbMax;
+        double       fFWHM;
+        double       fFloorRatio;
+        double       fRefWidth;
+        double       fWidthLeading;
+        double       fWidthTrailing;
 
 #ifdef DEBUG_FITPULSE
     public:

@@ -10,13 +10,25 @@ LKPulse::LKPulse()
 LKPulse::LKPulse(const char *fileName)
 {
     auto file = new TFile(fileName);
+
     auto graphPulse = (TGraphErrors *) file -> Get("pulse");
     SetPulse(graphPulse);
+
     auto graphError = (TGraph*) file -> Get("error");
     SetError(graphError);
-    fWidth =  ((TParameter<double>*) file -> Get("width")) -> GetVal();
-    fWidth1 = ((TParameter<double>*) file -> Get("width1")) -> GetVal();
-    fWidth2 = ((TParameter<double>*) file -> Get("width2")) -> GetVal();
+
+    fMultiplicity   = ((TParameter<int>*) file -> Get("multiplicity")) -> GetVal();
+    fThreshold      = ((TParameter<int>*) file -> Get("threshold")) -> GetVal();
+    fHeightMin      = ((TParameter<int>*) file -> Get("yMin")) -> GetVal();
+    fHeightMax      = ((TParameter<int>*) file -> Get("yMax")) -> GetVal();
+    fTbMin          = ((TParameter<int>*) file -> Get("xMin")) -> GetVal();
+    fTbMax          = ((TParameter<int>*) file -> Get("xMax")) -> GetVal();
+    fFWHM           = ((TParameter<double>*) file -> Get("FWHM")) -> GetVal();
+    fFloorRatio     = ((TParameter<double>*) file -> Get("ratio")) -> GetVal();
+    fRefWidth       = ((TParameter<double>*) file -> Get("width")) -> GetVal();
+    fWidthLeading   = ((TParameter<double>*) file -> Get("widthLeading")) -> GetVal();
+    fWidthTrailing  = ((TParameter<double>*) file -> Get("widthTrailing")) -> GetVal();
+
     file -> Close();
 }
 
@@ -49,6 +61,11 @@ double LKPulse::Eval(double tb)
     return fGraphPulse -> Eval(tb);
 }
 
+double LKPulse::Eval(double tb, double tb0, double amplitude)
+{
+    return amplitude * fGraphPulse -> Eval(tb-tb0);
+}
+
 double LKPulse::Error(double tb)
 {
     return fGraphError -> Eval(tb);
@@ -65,7 +82,6 @@ TGraphErrors *LKPulse::GetPulseGraph(double tb, double amplitude)
         auto yError = fGraphPulse -> GetErrorY(iPoint);
         graphNew -> SetPoint(iPoint,xValue+tb,yValue*amplitude);
         graphNew -> SetPointError(iPoint,0,yError*amplitude);
-        //cout << yError << endl;
     }
     graphNew -> SetLineColor(kRed);
     graphNew -> SetMarkerColor(kRed);

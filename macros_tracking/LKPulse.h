@@ -19,27 +19,45 @@ class LKPulse : public TObject
 
         void SetPulse(TGraphErrors* graph);
         void SetError(TGraph* graph);
+        double Eval(double tb, double tb0, double amplitude);
         double Eval(double tb);
         double Error(double tb);
 
         TGraphErrors *GetPulseGraph(double tb, double amplitude);
 
         int GetNDF() const { return fNumPoints; }
-
-        double GetWidth(int i=0) {
-            if (i==1) return fWidth1;
-            if (i==2) return fWidth2;
-            return fWidth;
-        }
+        int GetMultiplicity() const  { return fMultiplicity; }
+        int GetThresholdC() const  { return fThreshold; }
+        int GetHeightMin() const  { return fHeightMin; }
+        int GetHeightMax() const  { return fHeightMax; }
+        int GetTbMin() const  { return fTbMin; }
+        int GetTbMax() const  { return fTbMax; }
+        double GetFWHM() const  { return fFWHM; }
+        double GetFloorRatio() const  { return fFloorRatio; }
+        double GetWidth() const  { return fRefWidth; }
+        double GetLeadingWidth() const  { return fWidthLeading; }
+        double GetTrailingWidth() const  { return fWidthTrailing; }
 
     private:
 
         int fNumPoints = 0;
         TGraphErrors* fGraphPulse = nullptr;
         TGraph*       fGraphError = nullptr;
-        double        fWidth;
-        double        fWidth1;
-        double        fWidth2;
+
+        int          fMultiplicity;
+        int          fThreshold;
+        int          fHeightMin;
+        int          fHeightMax;
+        int          fTbMin;
+        int          fTbMax;
+        double       fFWHM;
+        double       fFloorRatio;
+        double       fRefWidth;
+        double       fWidthLeading;
+        double       fWidthTrailing;
+
+
+
     ClassDef(LKPulse,1);
 };
 

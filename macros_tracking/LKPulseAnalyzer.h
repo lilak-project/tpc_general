@@ -163,9 +163,11 @@ class LKPulseAnalyzer : public TObject
         double       fAverageData[512];
         double       fTbAtRefFloor1 = -1;
         double       fTbAtRefFloor2 = -1;
+
+        double       fFWHM = 0;
         double       fRefWidth = 0;
-        double       fRefWidth1 = 0;
-        double       fRefWidth2 = 0;
+        double       fWidthLeading = 0;
+        double       fWidthTrailing = 0;
         double       fFloorRatio = 0.05;
 
         // average draw

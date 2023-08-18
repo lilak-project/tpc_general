@@ -197,7 +197,7 @@ void LKPulseAnalyzer::AddChannel(int *data, int channelID)
             fTbAtRefFloor1 = tb1;
             fTbAtRefFloor2 = tb2;
             fRefWidth = tb2 - tb1;
-            fHistHeightWidth -> Fill(fMaxValue-fPedestal,fWidth);
+            fHistHeightWidth -> Fill(fMaxValue-fPedestal,fWidth,10);
         }
     }
 
@@ -579,8 +579,9 @@ TGraphErrors *LKPulseAnalyzer::GetReferencePulse(int tbOffsetFromHead, int tbOff
         fTbAtRefFloor1 = tb1;
         fTbAtRefFloor2 = tb2;
         fRefWidth = tb2 - tb1;
-        fRefWidth1 = abs(tbAtMax - tb1);
-        fRefWidth2 = abs(tbAtMax - tb2);
+        fWidthLeading = abs(tbAtMax - tb1);
+        fWidthTrailing = abs(tbAtMax - tb2);
+        fFWHM = FullWidthRatioMaximum(fHistReusedData,0.5);
     }
 
     return fGraphReference;
@@ -596,9 +597,19 @@ void LKPulseAnalyzer::WriteReferencePulse(int tbOffsetFromHead, int tbOffsetFrom
     GetReferencePulse(tbOffsetFromHead,tbOffsetFromTail);
     fGraphReference -> Write("pulse");
     fGraphReferenceError -> Write("error");
-    (new TParameter<double>("width",fRefWidth)) -> Write("width");
-    (new TParameter<double>("width1",fRefWidth1)) -> Write("width1");
-    (new TParameter<double>("width2",fRefWidth2)) -> Write("width2");
+
+    (new TParameter<int>   ("multiplicity"  ,fCountGoodChannels)) -> Write();
+    (new TParameter<int>   ("threshold"     ,fThreshold        )) -> Write();
+    (new TParameter<int>   ("yMin"          ,fPulseHeightMin   )) -> Write();
+    (new TParameter<int>   ("yMax"          ,fPulseHeightMax   )) -> Write();
+    (new TParameter<int>   ("xMin"          ,fPulseTbMin       )) -> Write();
+    (new TParameter<int>   ("xMax"          ,fPulseTbMax       )) -> Write();
+
+    (new TParameter<double>("FWHM"          ,fFWHM             )) -> Write();
+    (new TParameter<double>("ratio"         ,fFloorRatio       )) -> Write();
+    (new TParameter<double>("width"         ,fRefWidth         )) -> Write();
+    (new TParameter<double>("widthLeading"  ,fWidthLeading     )) -> Write();
+    (new TParameter<double>("widthTrailing" ,fWidthTrailing    )) -> Write();
 }
 
 TCanvas* LKPulseAnalyzer::DrawWidth(TVirtualPad *pad)

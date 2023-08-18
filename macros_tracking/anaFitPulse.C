@@ -57,18 +57,21 @@ void anaFitPulse(double scaleBeta = 0.2)
         anaC -> SetDynamicRange(4096);
         anaC -> SetIterMax(iterationMax);
         anaC -> SetScaleTbStep(scaleBeta);
+        anaC -> SetTbStepCut(0.01);
+
         auto pulse = anaC -> GetPulse();
+        auto ndfWL = int(pulse -> GetLeadingWidth()) + int(pulse->GetFWHM()/3);
 
         anaP -> AddChannel(bufferI);
         int tbPeak = anaP -> GetTbAtMaxValue();
-        int tbPulse = int(tbPeak - pulse->GetWidth(1));
+        int tbPulse = int(tbPeak - pulse->GetLeadingWidth());
 
         bool testWithAna = true;
         bool findScale = false;
 
         if (testWithAna)
         {
-            int    ndf = 40;
+            int    ndf = ndfWL;
             bool   isSaturated;
             double tbHit;
             double amplitude;
@@ -76,7 +79,8 @@ void anaFitPulse(double scaleBeta = 0.2)
             anaC -> FitPulse(buffer, tbPulse, tbPeak, tbHit, amplitude, chi2Fitted, ndf, isSaturated);
 
 #ifdef DEBUG_FITPULSE
-            auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
+            //auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
+            auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",1200,700,3,2);
             int iCvs = 1;
             //for (auto graph : {anaC->dGraphTb, anaC->dGraphTbStep, anaC->dGraphChi2, anaC->dGraphBeta, anaC->dGraphTbBeta, anaC->dGraphBetaInv, anaC->dGraphTbBetaInv, anaC->dGraphTbChi2,})
             //for (auto graph : {anaC->dGraphTb, anaC->dGraphTbStep, anaC->dGraphBeta, anaC->dGraphTbBeta, anaC->dGraphTbChi2,})
