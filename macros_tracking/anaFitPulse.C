@@ -10,6 +10,7 @@ void anaFitPulse(double scaleBeta = 0.2)
 {
     //e_batch();
 
+    int anaMode = 0;
     int iterationMax = 50;
     int scaleBeta100 = scaleBeta*100;
 
@@ -18,11 +19,18 @@ void anaFitPulse(double scaleBeta = 0.2)
     int bufferI[350] = {0};
     double buffer[350] = {0};
     const char *fileNames[] = {
-        "dataExample/buffer_MMCenter1_1002000.dat",
-        "dataExample/buffer_MMCenter1_12038.dat",
-        "dataExample/buffer_MMCenter1_2000054.dat",
-        "dataExample/buffer_MMCenter1_20011054.dat",
+        "dataExample/buffer_MMCenter1_1000057.dat",
+        "dataExample/buffer_MMCenter1_10024.dat",
+        "dataExample/buffer_MMCenter1_10028.dat",
+        "dataExample/buffer_MMCenter1_2010023.dat",
+        "dataExample/buffer_MMCenter1_2011044.dat",
         "dataExample/buffer_MMCenter1_22003013.dat",
+        "dataExample/buffer_MMCenter1_1000057.dat",
+        //"dataExample/buffer_MMCenter1_1002000.dat",
+        //"dataExample/buffer_MMCenter1_12038.dat",
+        //"dataExample/buffer_MMCenter1_2000054.dat",
+        //"dataExample/buffer_MMCenter1_20011054.dat",
+        //"dataExample/buffer_MMCenter1_22003013.dat",
     };
 
     auto anaP = new LKPulseAnalyzer("ana%d","data");
@@ -46,6 +54,8 @@ void anaFitPulse(double scaleBeta = 0.2)
         for (auto i=0; i<350; ++i)
             hist -> SetBinContent(i+1,buffer[i]);
 
+        auto histSubtracted = new TH1D(Form("histSubtractedChannel_%d_s%d",iFile,scaleBeta100),Form("%s;tb;",fileName),350,0,350);
+
         auto anaC = new LKChannelAnalyzer();
         anaC -> SetPulse("dataExample/pulseReference_MMCenter1.root");
         anaC -> SetTbMax(350);
@@ -62,28 +72,64 @@ void anaFitPulse(double scaleBeta = 0.2)
         auto pulse = anaC -> GetPulse();
         auto ndfWL = int(pulse -> GetLeadingWidth()) + int(pulse->GetFWHM()/3);
 
-        anaP -> AddChannel(bufferI);
-        int tbPeak = anaP -> GetTbAtMaxValue();
-        int tbPulse = int(tbPeak - pulse->GetLeadingWidth());
-
-        bool testWithAna = true;
-        bool findScale = false;
-
-        if (testWithAna)
+        int tbPulse;
+        int tbPeak;
+        if (1)
         {
-            int    ndf = ndfWL;
-            bool   isSaturated;
+            int tbPointer = 0;
+            anaC -> FindPeak(buffer, tbPointer, tbPulse);
+            tbPeak = tbPulse + pulse -> GetLeadingWidth();
+        }
+        if (0)
+        {
+            anaP -> AddChannel(bufferI);
+            tbPeak = anaP -> GetTbAtMaxValue();
+            tbPulse = int(tbPeak - pulse->GetLeadingWidth());
+        }
+
+        if (anaMode==0)
+        {
+            int tbPointer = 0;
+            anaC -> Analyze(buffer);
+            auto numHits = anaC -> GetNumHits();
+
+            auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1500,1000);
+            hist -> SetMarkerStyle(24);
+            hist -> SetMarkerColor(kBlack);
+            hist -> Draw("");
+
+            for (auto iHit=0; iHit<numHits; ++iHit)
+            {
+                auto tbHit = anaC -> GetTbHit(iHit);
+                auto amplitude = anaC -> GetAmplitude(iHit);
+                e_warning << iHit << " " << tbHit << " " << amplitude << endl;
+                auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
+                graphFitted -> SetFillColor(kGreen);
+                //graphFitted -> Draw("samel3");
+                graphFitted -> Draw("samelz");
+            }
+
+            auto bufferSubtracted = anaC -> GetBuffer();
+            for (auto i=0; i<350; ++i)
+                histSubtracted -> SetBinContent(i+1,bufferSubtracted[i]);
+
+            histSubtracted -> SetLineColor(kBlack);
+            histSubtracted -> SetLineStyle(2);
+            histSubtracted -> Draw("same");
+        }
+        else if (anaMode==1)
+        {
             double tbHit;
             double amplitude;
+
+            int ndf = ndfWL;
+            bool isSaturated;
             double chi2Fitted;
             anaC -> FitPulse(buffer, tbPulse, tbPeak, tbHit, amplitude, chi2Fitted, ndf, isSaturated);
 
 #ifdef DEBUG_FITPULSE
-            //auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
-            auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",1200,700,3,2);
+            auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
             int iCvs = 1;
-            //for (auto graph : {anaC->dGraphTb, anaC->dGraphTbStep, anaC->dGraphChi2, anaC->dGraphBeta, anaC->dGraphTbBeta, anaC->dGraphBetaInv, anaC->dGraphTbBetaInv, anaC->dGraphTbChi2,})
-            //for (auto graph : {anaC->dGraphTb, anaC->dGraphTbStep, anaC->dGraphBeta, anaC->dGraphTbBeta, anaC->dGraphTbChi2,})
             for (auto graph : {
                     anaC->dGraphTbChi2,
                     anaC->dGraphTbBeta,
@@ -112,7 +158,6 @@ void anaFitPulse(double scaleBeta = 0.2)
             cvsDebug -> cd(1);
             hist -> GetXaxis() -> SetRangeUser(tbPulse-2,tbPulse+55);
             hist -> SetMarkerStyle(20);
-            //hist -> SetMarkerSize(0.5);
             hist -> SetMarkerColor(kBlack);
             hist -> Draw("p");
             auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
@@ -120,27 +165,6 @@ void anaFitPulse(double scaleBeta = 0.2)
             graphFitted -> Draw("samelpz");
             hist -> Draw("samep");
 
-            if (findScale)
-            {
-                auto graph = new TGraph();
-                auto nbins = anaC -> dGraphTbBeta -> GetN();
-                //auto nbins = anaC -> dGraphTbBetaInv -> GetN();
-                for (auto iPoint=0; iPoint<nbins; ++iPoint) {
-                    double tb, beta, alpha;
-                    anaC -> dGraphTbBeta -> GetPoint(iPoint,tb,beta);
-                    graph -> SetPoint(iPoint,iPoint,(tbHit-tb)*beta);
-                    //anaC -> dGraphTbBetaInv -> GetPoint(iPoint,tb,alpha);
-                    if (tbHit!=tb)
-                        graph -> SetPoint(graph->GetN(),iPoint,alpha/(tbHit-tb));
-                }
-                cvsDebug -> cd(8);
-                e_hist(graph, Form("hist5_%d_s%d",iFile,scaleBeta100), ";i;ab") -> Draw();
-                graph -> SetMarkerStyle(24);
-                //graph -> SetMarkerSize(0.6);
-                graph -> Draw("sampl");
-            }
-
-            //e_test << "init: tb_peak=" << tbPeak << ", tb_pulse=" << tbPulse << ", w1=" << pulse->GetWidth(1) << ", tb_fit=" << tbHit << ", a=" << amplitude << endl;
             cvsDebug -> Modified();
             cvsDebug -> Update();
 #endif

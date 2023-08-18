@@ -68,10 +68,14 @@ int GetType(int cobo, int asad, int aget, int chan)
 {
     if (cobo==0 && (asad==0 || asad==1)) {
         int mchannel = chan;
-        if (chan>11) mchannel -= 1;
-        if (chan>22) mchannel -= 1;
-        if (chan>45) mchannel -= 1;
-        if (chan>57) mchannel -= 1;
+        //if (chan>11) mchannel -= 1;
+        //if (chan>22) mchannel -= 1;
+        //if (chan>45) mchannel -= 1;
+        //if (chan>57) mchannel -= 1;
+             if (chan>57) ;
+        else if (chan>45) mchannel -= 1;
+        else if (chan>22) ;
+        else if (chan>11) mchannel -= 1;
 
         if ((int(mchannel+1)/2)%2==0)
             return eMMCenter1;

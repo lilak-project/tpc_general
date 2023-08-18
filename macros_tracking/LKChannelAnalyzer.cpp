@@ -26,18 +26,35 @@ void LKChannelAnalyzer::SetPulse(const char* fileName)
     //fTbMax          = fPulse -> GetTbMax();
     fFWHM           = fPulse -> GetFWHM();
     fFloorRatio     = fPulse -> GetFloorRatio();
-    fRefWidth       = fPulse -> GetWidth();
+    fWidth          = fPulse -> GetWidth();
     fWidthLeading   = fPulse -> GetLeadingWidth();
     fWidthTrailing  = fPulse -> GetTrailingWidth();
 
-    fTbSeparationWidth = fWidthTrailing / 4;
+    fNDFPulse = fWidthLeading + fFWHM/4;
+    fNumTbsCorrection = int(fWidth);
+    fTbStepIfFoundHit = fNDFPulse;
+    fTbStepIfSaturated = int(fWidth*1.2);
+    fTbSeparationWidth = fNDFPulse;
+
+    e_info << "fFWHM           = " << fFWHM          << endl;
+    e_info << "fFloorRatio     = " << fFloorRatio    << endl;
+    e_info << "fWidth          = " << fWidth         << endl;
+    e_info << "fWidthLeading   = " << fWidthLeading  << endl;
+    e_info << "fWidthTrailing  = " << fWidthTrailing << endl;
+
+    e_info << "fNDFPulse           = " << fNDFPulse          << endl;
+    e_info << "fNumTbsCorrection   = " << fNumTbsCorrection  << endl;
+    e_info << "fTbStepIfFoundHit   = " << fTbStepIfFoundHit  << endl;
+    e_info << "fTbStepIfSaturated  = " << fTbStepIfSaturated << endl;
+    e_info << "fTbSeparationWidth  = " << fTbSeparationWidth << endl;
 }
 
 void LKChannelAnalyzer::Clear(Option_t *option)
 {
     TObject::Clear(option);
     fNumHits = 0;
-    //fChannelHitArray.clear();
+    fTbHitArray.clear();
+    fAmplitudeArray.clear();
 }
 
 void LKChannelAnalyzer::Print(Option_t *option) const
@@ -57,13 +74,23 @@ void LKChannelAnalyzer::Analyze(double* data)
     double amplitude;
     double squareSum;
     int ndf = fNDFPulse;
+    //int ndf = fWidthLeading + fFWHM/4;
 
     // Previous hit information
     double tbHitPrev = fTbStart;
     double amplitudePrev = 0;
 
+    fTbHitArray.clear();
+    fAmplitudeArray.clear();
+
+#ifdef DEBUG_CHANA_ANALYZE
+    lk_debug << endl;
+#endif
     while (FindPeak(fBuffer, tbPointer, tbStartOfPulse))
     {
+#ifdef DEBUG_CHANA_ANALYZE
+        lk_debug << tbPointer << " " << tbStartOfPulse << endl;
+#endif
         if (tbStartOfPulse > fTbStartCut-1)
             break;
 
@@ -75,30 +102,30 @@ void LKChannelAnalyzer::Analyze(double* data)
 
         if (TestPulse(fBuffer, tbHitPrev, amplitudePrev, tbHit, amplitude)) 
         {
-            //auto channelHit = LKChannelHit(tbHit,amplitude);
-            //fChannelHitArray.push_back(channelHit);
+            fTbHitArray.push_back(tbHit);
+            fAmplitudeArray.push_back(amplitude);
 
             tbHitPrev = tbHit;
             amplitudePrev = amplitude;
             if (isSaturated)
-                tbPointer = int(tbHit) + 15;
+                tbPointer = int(tbHit) + fTbStepIfSaturated;
             else
-                tbPointer = int(tbHit) + 9;
+                tbPointer = int(tbHit) + fTbStepIfFoundHit;
         }
     }
+
+    fNumHits = fTbHitArray.size();
 }
 
 bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfPulse)
-{ return true; }
-/*
 {
     int countAscending      = 0;
     int countAscendingBelow = 0;
 
-    for (; tbPointer<fTbEnd; tbPointer++)
+    for (; tbPointer<fTbMax; tbPointer++)
     {
-        double value = buffer[tbPointer]
-        double diff = value - buffer[tbPointer - 1];
+        double value = buffer[tbPointer];
+        double diff = value - buffer[tbPointer-1];
 
         // If buffer difference of step is above threshold
         if (diff > fThresholdOneTbStep) 
@@ -124,7 +151,7 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
 
             // Peak is found!
             tbStartOfPulse = tbPointer - countAscending;
-            while (buffer[tbStartOfPulse] < value * 0.05)
+            while (buffer[tbStartOfPulse] < value * fFloorRatio)
                 tbStartOfPulse++;
 
             return true;
@@ -133,7 +160,6 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
 
     return false;
 }
-*/
 
 bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         double &tbHit, 
@@ -152,8 +178,7 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         ndf = fNDFPulse;
 
     // if peak value is larger than fDynamicRange, the pulse is isSaturated
-    if (valuePeak > fDynamicRange)
-    {
+    if (valuePeak > fDynamicRange) {
         ndf = tbPeak - tbStartOfPulse;
         if (ndf > fNDFPulse)
             ndf = fNDFPulse;

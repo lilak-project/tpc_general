@@ -1,6 +1,11 @@
 #ifndef __EJUNGWOO_A__
 #define __EJUNGWOO_A__
 
+#ifndef KUNPL_NEED_THIS
+    THttpServer* eServer = nullptr;
+    TObjArray* eArray = nullptr;
+#endif
+
 //void e_batch();
 //void e_add(TObject* object, const char *subfolder="");
 //TCanvas *e_cvs(const char* name="", const char* title="", int wx=800, int wy=680, int dx=1, int dy=1);
@@ -15,21 +20,24 @@ void e_batch()
 
 void e_add(TObject* object, const char *subfolder="")
 {
-    THttpServer* server = (THttpServer*) gROOT->FindObject("http");
-    if (server==nullptr) {
-        server = new THttpServer("http:8080");
-        gROOT -> Add(server);
-        cout << "Http server : http://localhost:8080/" << endl;
+#ifdef KUNPL_NEED_THIS
+    THttpServer* eServer = (THttpServer*) gROOT->FindObject("http");
+    TObjArray* eArray = (TObjArray*) gROOT->FindObject("ejObjArray");
+#endif
+    if (eServer==nullptr) {
+        eServer = new THttpServer("http:8080");
+        gROOT -> Add(eServer);
+        //gROOT -> ls();
+        cout << "Http eServer : http://localhost:8080/" << endl;
     }
 
-    TObjArray* eArray = (TObjArray*) gROOT->FindObject("ejObjArray");
     if (eArray==nullptr) {
         eArray = new TObjArray();
         eArray -> SetName("ejObjArray");
         gROOT -> Add(eArray);
     }
 
-    server -> Register(subfolder, object);
+    eServer -> Register(subfolder, object);
     eArray -> Add(object);
 }
 
@@ -119,7 +127,9 @@ void e_save(TObject *object, const char* fileType="", const char* nameVersion=""
 
 void e_save_all(const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false)
 {
+#ifdef KUNPL_NEED_THIS
     TObjArray* eArray = (TObjArray*) gROOT->FindObject("ejObjArray");
+#endif
     TIter next(eArray);
     while (auto obj = next())
         e_save(obj,fileType,nameVersion,savePrimitives,simplifyNames);

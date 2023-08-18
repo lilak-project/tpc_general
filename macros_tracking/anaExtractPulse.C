@@ -34,10 +34,7 @@ const char* fDataPath = "data";
 void SetRunAll();
 void SetDrawCheckAllResults();
 void SetDrawCheckGoodChannels();
-void SetExtractBuffer(int ecaac = 22003013);
-//void SetExtractBuffer(int ecaac = 1002000);
-//void SetExtractBuffer(int ecaac = 2000054);
-//void SetExtractBuffer(int ecaac = 12038);
+void SetExtractBuffer(int ecaac = 2011044);
 void SetDrawResidual();
 
 void anaExtractPulse(int mode=3)

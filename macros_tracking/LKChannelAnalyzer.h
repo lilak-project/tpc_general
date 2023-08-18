@@ -1,7 +1,8 @@
 #ifndef LKCHANNELANALYZER_HH
 #define LKCHANNELANALYZER_HH
 
-#define DEBUG_FITPULSE
+#define DEBUG_CHANA_ANALYZE
+//#define DEBUG_FITPULSE
 
 #include "TObject.h"
 #include "LKLogger.h"
@@ -33,10 +34,12 @@ class LKChannelAnalyzer : public TObject
 
         LKPulse* GetPulse() const  { return fPulse; }
         int GetNumHits() const  { return fNumHits; }
+        double GetTbHit(int i) const  { return fTbHitArray[i]; }
+        double GetAmplitude(int i) const  { return fAmplitudeArray[i]; }
 
         void SetPulse(const char* fileName);
         void SetPulse(LKPulse* pulse) { fPulse = pulse; }
-        void SetNumHits(int numHits) { fNumHits = numHits; }
+        //void SetNumHits(int numHits) { fNumHits = numHits; }
 
 
         void Analyze(double* data);
@@ -90,6 +93,8 @@ class LKChannelAnalyzer : public TObject
         void SetScaleTbStep(double scaleTbStep) { fScaleTbStep = scaleTbStep; }
         void SetTbStepCut(double scaleTbStep) { fTbStepCut = scaleTbStep; }
 
+        double* GetBuffer() { return fBuffer; }
+
     private:
 
         //vector<LKChannelHit> fChannelHitArray;
@@ -97,6 +102,9 @@ class LKChannelAnalyzer : public TObject
         LKPulse*     fPulse = nullptr;
         double       fBuffer[512];
         int          fNumHits = 0;
+
+        vector<double> fTbHitArray;
+        vector<double> fAmplitudeArray;
 
         int          fTbMax = 350;
         int          fTbStart = 1;
@@ -110,6 +118,8 @@ class LKChannelAnalyzer : public TObject
         double       fScaleTbStep = 0.5;
         double       fTbStepCut = 0.01;
 
+        int          fTbStepIfFoundHit = 9;
+        int          fTbStepIfSaturated = 15;
         int          fTbSeparationWidth = 9;
         int          fNumTbsCorrection = 50;
 
@@ -121,7 +131,7 @@ class LKChannelAnalyzer : public TObject
         //int          fTbMax;
         double       fFWHM;
         double       fFloorRatio;
-        double       fRefWidth;
+        double       fWidth;
         double       fWidthLeading;
         double       fWidthTrailing;
 
