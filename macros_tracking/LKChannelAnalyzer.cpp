@@ -31,6 +31,7 @@ void LKChannelAnalyzer::SetPulse(const char* fileName)
     fTbSeparationWidth = fNDFFit;
     if (fTbStartCut<0)
         fTbStartCut = fTbMax - fNDFFit;
+    fNumTbAcendingCut = int(fWidthLeading*2/3);
 
     e_info << "fFWHM               = " << fFWHM              << endl;
     e_info << "fFloorRatio         = " << fFloorRatio        << endl;
