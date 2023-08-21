@@ -5,10 +5,10 @@
 #include "LKPulseAnalyzer.h"
 #include "setChannels.h"
 
-//int fCvsDX = 1200;
-//int fCvsDY = 720;
-int fCvsDX = 3000;
-int fCvsDY = 2000;
+int fCvsDX = 1200;
+int fCvsDY = 720;
+//int fCvsDX = 3000;
+//int fCvsDY = 2000;
 int fCvsGroupDX = 5;
 int fCvsGroupDY = 4;
 int fNumCvsGroup = 0;
@@ -24,6 +24,7 @@ bool fDrawPulseTb = false;
 bool fDrawPedestal = false;
 bool fDrawResidual = false;
 bool fDrawReference = false;
+bool fDrawPulseParameter = false;
 bool fWriteReferencePulse = false;
 bool fWriteTree = false;
 int  fCAAC = 0;
@@ -32,18 +33,21 @@ bool fSaveAll = false;
 const char* fDataPath = "data";
 
 void SetRunAll();
+void SetAllFalse();
 void SetDrawCheckAllResults();
 void SetDrawCheckGoodChannels();
 void SetExtractBuffer(int ecaac = 2011044);
 void SetDrawResidual();
+void SetDebugPulseData();
 
-void anaExtractPulse(int mode=3)
+void anaExtractPulse(int mode=5)
 {
     if (mode==0) SetRunAll();
     if (mode==1) SetDrawCheckAllResults();
     if (mode==2) SetDrawCheckGoodChannels();
     if (mode==3) SetExtractBuffer();
     if (mode==4) SetDrawResidual();
+    if (mode==5) SetDebugPulseData();
 
     auto run = new LKRun();
     run -> AddPar("config.mac");
@@ -67,8 +71,9 @@ void anaExtractPulse(int mode=3)
         //pulse[type] = new LKPulse(Form("data/pulseReference_%s.root",fTypeNames[type]));
 
         ana[type] = new LKPulseAnalyzer(fTypeNames[type],fDataPath);
-        ana[type] -> SetTbStart(fPulseCuts[type][7]);
-        ana[type] -> SetTbMax(350);
+        ana[type] -> SetTbRange(fPulseCuts[type][7],350);
+        //ana[type] -> SetTbStart(fPulseCuts[type][7]);
+        //ana[type] -> SetTbMax(350);
         ana[type] -> SetThreshold(fPulseCuts[type][0]);
         ana[type] -> SetPulseHeightCuts(fPulseCuts[type][1],fPulseCuts[type][2]);
         ana[type] -> SetPulseWidthCuts(fPulseCuts[type][3],fPulseCuts[type][4]);
@@ -286,9 +291,28 @@ void anaExtractPulse(int mode=3)
         }
     }
 
+    if (fDrawPulseParameter)
+    {
+        for (auto type : fSelTypes)
+        {
+            ana[type] -> WriteReferencePulse(20,40);
+            //ana[type] -> GetTree();
+            auto cvsPulseParameter = new TCanvas(Form("cvsPulseParameter_%s",fTypeNames[type]),"cvsAverageEAll",fCvsDX,fCvsDY);
+            cvsPulseParameter -> Divide(2,2);
+            e_add(cvsPulseParameter,"Debug");
+            cvsPulseParameter -> cd(1); ana[type] -> GetHistPedestal() -> Draw();
+            cvsPulseParameter -> cd(2); ana[type] -> GetHistPedestalResidual() -> Draw();
+            cvsPulseParameter -> cd(3); ana[type] -> GetHistYFluctuation() -> Draw();
+            lk_debug << fTypeNames[type]
+                << " bgl " << ana[type] -> GetBackGroundLevel()
+                << " bge " << ana[type] -> GetBackGroundError()
+                << " fll " << ana[type] -> GetFluctuationLevel()  << endl;
+        }
+    }
+
     if (fWriteReferencePulse) {
         for (auto type : fSelTypes)
-            ana[type] -> WriteReferencePulse(0,0);
+            ana[type] -> WriteReferencePulse(20,40);
     }
 
     if (fWriteTree) {
@@ -299,12 +323,12 @@ void anaExtractPulse(int mode=3)
     if (fSaveAll) e_save_all();
 }
 
-void SetRunAll() 
+void SetAllFalse()
 {
-    e_batch();
     SetTypeAll();
-    fDataPath = "data100";
-    fMaxInputFiles = 100;
+    fDataPath = "data";
+    fMaxInputFiles = 1;
+    fNumCvsGroup = 1;
     fCAAC = 0;
     fDrawChannel = false;
     fDrawOnlyGoodChannels = false;
@@ -318,20 +342,28 @@ void SetRunAll()
     fDrawPedestal = false;
     fDrawResidual = false;
     fDrawReference = false;
+    fWriteReferencePulse = false;
+    fWriteTree = false;
+    fSaveAll = false;
+}
+
+void SetRunAll() 
+{
+    SetAllFalse();
+    fDataPath = "data100";
+    fMaxInputFiles = 100;
     fWriteReferencePulse = true;
     fWriteTree = true;
-    fSaveAll = false;
 }
 
 void SetDrawCheckAllResults()
 {
+    SetAllFalse();
     e_batch();
     fMaxInputFiles = 5;
-    fDataPath = "data";
     fNumCvsGroup = 5;
     fCAAC = 0;
     fDrawChannel = true;
-    fDrawOnlyGoodChannels = false;
     fDrawAverage = true;
     fDrawAccumulate = true;
     fDrawProjY = true;
@@ -342,19 +374,15 @@ void SetDrawCheckAllResults()
     fDrawPedestal = true;
     fDrawResidual = true;
     fDrawReference = true;
-    fWriteReferencePulse = false;
-    fWriteTree = false;
     fSaveAll = true;
 }
 
 void SetDrawCheckGoodChannels()
 {
+    SetAllFalse();
     e_batch();
     SetTypeMM(0);
-    fMaxInputFiles = 5;
-    fDataPath = "data";
     fNumCvsGroup = 5;
-    fCAAC = 0;
     fDrawChannel = true;
     fDrawOnlyGoodChannels = true;
     fDrawAverage = true;
@@ -367,58 +395,41 @@ void SetDrawCheckGoodChannels()
     fDrawPedestal = true;
     fDrawResidual = true;
     fDrawReference = true;
-    fWriteReferencePulse = false;
-    fWriteTree = false;
-    fSaveAll = false;
 }
 
 void SetExtractBuffer(int ecaac)
 {
+    SetAllFalse();
     e_batch();
     SetTypeMM(0);
     fMaxInputFiles = 1;
-    fDataPath = "data";
     fNumCvsGroup = 10;
     fCAAC = ecaac;
     fDrawChannel = true;
     fDrawOnlyGoodChannels = true;
-    fDrawAverage = false;
-    fDrawAccumulate = false;
-    fDrawProjY = false;
-    fDrawHeightWidth = false;
-    fDrawWidth = false;
-    fDrawHeight = false;
-    fDrawPulseTb = false;
-    fDrawPedestal = false;
-    fDrawResidual = false;
-    fDrawReference = false;
-    fWriteReferencePulse = false;
-    fWriteTree = false;
-    fSaveAll = false;
 }
 
 void SetDrawResidual()
 {
+    SetAllFalse();
     e_batch();
-    //SetTypeMM(0);
     SetTypeMM();
     fMaxInputFiles = 1;
-    fDataPath = "data";
     fNumCvsGroup = 1;
-    fCAAC = 0;
-    fDrawChannel = false;
-    fDrawOnlyGoodChannels = false;
     fDrawAverage = true;
     fDrawAccumulate = true;
     fDrawProjY = true;
-    fDrawHeightWidth = false;
-    fDrawWidth = false;
-    fDrawHeight = false;
-    fDrawPulseTb = false;
-    fDrawPedestal = false;
     fDrawResidual = true;
-    fDrawReference = false;
-    fWriteReferencePulse = false;
-    fWriteTree = false;
-    fSaveAll = false;
+}
+
+void SetDebugPulseData()
+{
+    SetAllFalse();
+    e_batch();
+    SetTypeMM(0);
+    SetTypeMM();
+    fMaxInputFiles = 2;
+    fNumCvsGroup = 1;
+    fDrawPulseParameter = true;
+    fWriteReferencePulse = true;
 }

@@ -8,8 +8,6 @@ LKChannelAnalyzer::LKChannelAnalyzer()
 
 bool LKChannelAnalyzer::Init()
 {
-    //e_info << "Initializing LKChannelAnalyzer" << std::endl;
-
     return true;
 }
 
@@ -32,29 +30,50 @@ void LKChannelAnalyzer::SetPulse(const char* fileName)
     if (fTbStartCut<0)
         fTbStartCut = fTbMax - fNDFFit;
     fNumTbAcendingCut = int(fWidthLeading*2/3);
-
-    e_info << "fFWHM               = " << fFWHM              << endl;
-    e_info << "fFloorRatio         = " << fFloorRatio        << endl;
-    e_info << "fWidth              = " << fWidth             << endl;
-    e_info << "fWidthLeading       = " << fWidthLeading      << endl;
-    e_info << "fWidthTrailing      = " << fWidthTrailing     << endl;
-    e_info << "fNDFFit             = " << fNDFFit            << endl;
-    e_info << "fNumTbsCorrection   = " << fNumTbsCorrection  << endl;
-    e_info << "fTbStepIfFoundHit   = " << fTbStepIfFoundHit  << endl;
-    e_info << "fTbStepIfSaturated  = " << fTbStepIfSaturated << endl;
-    e_info << "fTbSeparationWidth  = " << fTbSeparationWidth << endl;
 }
 
 void LKChannelAnalyzer::Clear(Option_t *option)
 {
     TObject::Clear(option);
     fNumHits = 0;
-    fTbHitArray.clear();
-    fAmplitudeArray.clear();
+    //fTbHitArray.clear();
+    //fAmplitudeArray.clear();
+    fFitParameterArray.clear();
 }
 
 void LKChannelAnalyzer::Print(Option_t *option) const
 {
+    e_info << "== General" << endl;
+    e_info << "   fTbMax            =" << fTbMax               << endl;
+    e_info << "   fTbStart          =" << fTbStart             << endl;
+    e_info << "   fTbStartCut       =" << fTbStartCut          << endl;
+    e_info << "   fNumTbAcendingCut =" << fNumTbAcendingCut    << endl;
+    e_info << "   fDynamicRange     =" << fDynamicRange        << endl;
+    e_info << "== Pulse information" << endl;
+    e_info << "   fFWHM             =" << fFWHM                << endl;
+    e_info << "   fFloorRatio       =" << fFloorRatio          << endl;
+    e_info << "   fWidth            =" << fWidth               << endl;
+    e_info << "   fWidthLeading     =" << fWidthLeading        << endl;
+    e_info << "   fWidthTrailing    =" << fWidthTrailing       << endl;
+    e_info << "== Peak Finding" << endl;
+    e_info << "   fThreshold        =" << fThreshold           << endl;
+    e_info << "   fThresholdOneStep =" << fThresholdOneStep    << endl;
+    e_info << "   fTbStepIfFoundHit =" << fTbStepIfFoundHit    << endl;
+    e_info << "   fTbStepIfSaturated=" << fTbStepIfSaturated   << endl;
+    e_info << "   fTbSeparationWidth=" << fTbSeparationWidth   << endl;
+    e_info << "   fNumTbsCorrection =" << fNumTbsCorrection    << endl;
+    e_info << "== Pulse Fitting" << endl;
+    e_info << "   fNDFFit           =" << fNDFFit              << endl;
+    e_info << "   fIterMax          =" << fIterMax             << endl;
+    e_info << "   fTbStepCut        =" << fTbStepCut           << endl;
+    e_info << "   fScaleTbStep      =" << fScaleTbStep         << endl;
+    e_info << "== Number of found hits: " << fNumHits << endl;
+    if (fNumHits>0)
+        for (auto iHit=0; iHit<fNumHits; ++iHit) {
+            auto tbHit = GetTbHit(iHit);
+            auto amplitude = GetAmplitude(iHit);
+            e_info << "   Hit-" << iHit << ": tb=" << tbHit << " amplitude=" << amplitude << endl;
+        }
 }
 
 void LKChannelAnalyzer::Analyze(double* data)
@@ -68,15 +87,16 @@ void LKChannelAnalyzer::Analyze(double* data)
     // Fitted hit information
     double tbHit;
     double amplitude;
-    double squareSum;
+    double chi2NDF;
     int ndf = fNDFFit;
 
     // Previous hit information
     double tbHitPrev = fTbStart;
     double amplitudePrev = 0;
 
-    fTbHitArray.clear();
-    fAmplitudeArray.clear();
+    fNumHits = 0;
+    //fTbHitArray.clear();
+    //fAmplitudeArray.clear();
 
     while (FindPeak(fBuffer, tbPointer, tbStartOfPulse))
     {
@@ -87,15 +107,16 @@ void LKChannelAnalyzer::Analyze(double* data)
             break;
 
         bool isSaturated = false;
-        if (FitPulse(fBuffer, tbStartOfPulse, tbPointer, tbHit, amplitude, squareSum, ndf, isSaturated) == false)
+        if (FitPulse(fBuffer, tbStartOfPulse, tbPointer, tbHit, amplitude, chi2NDF, ndf, isSaturated) == false)
             continue;
 
         // Pulse is found!
 
         if (TestPulse(fBuffer, tbHitPrev, amplitudePrev, tbHit, amplitude)) 
         {
-            fTbHitArray.push_back(tbHit);
-            fAmplitudeArray.push_back(amplitude);
+            //fTbHitArray.push_back(tbHit);
+            //fAmplitudeArray.push_back(amplitude);
+            fFitParameterArray.push_back(LKPulseFitParameter(tbHit,amplitude,chi2NDF,ndf));
 
             tbHitPrev = tbHit;
             amplitudePrev = amplitude;
@@ -106,7 +127,7 @@ void LKChannelAnalyzer::Analyze(double* data)
         }
     }
 
-    fNumHits = fTbHitArray.size();
+    //fNumHits = fTbHitArray.size();
 }
 
 bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfPulse)
@@ -120,7 +141,7 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
         double yDiff = value - buffer[tbPointer-1];
 
         // If buffer difference of step is above threshold
-        if (yDiff > fOneStepThreshold)
+        if (yDiff > fThresholdOneStep)
         {
             if (value > fThreshold) countAscending++;
             //else countAscendingBelowThreshold++;
@@ -132,7 +153,7 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
             //if (countAscending < fNumTbAcendingCut || ((countAscendingBelowThreshold >= countAscending) && (-buffer[tbPointer - 1 - countAscending - countAscendingBelowThreshold] > buffer[tbPointer - 1])))
             if (countAscending < fNumTbAcendingCut)
             {
-#ifdef DEBUG_FINDPEAK
+#ifdef DEBUG_CHANA_FINDPEAK
                 if (countAscending>2)
                     lk_debug << "skip candidate num ascending cut : " << countAscending << " < " << fNumTbAcendingCut << endl;
 #endif
@@ -143,7 +164,7 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
 
             tbPointer -= 1;
             if (value < fThreshold) {
-#ifdef DEBUG_FINDPEAK
+#ifdef DEBUG_CHANA_FINDPEAK
                 lk_debug << "skip candidate from threshold cut : " << value << " < " << fThreshold << endl;
 #endif
                 continue;
@@ -154,7 +175,7 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
             while (buffer[tbStartOfPulse] < value * fFloorRatio)
                 tbStartOfPulse++;
 
-#ifdef DEBUG_FINDPEAK
+#ifdef DEBUG_CHANA_FINDPEAK
             lk_debug << "found peak : " << tbStartOfPulse << " = " << tbPointer << " - " << countAscending << " + alpha" << endl;
 #endif
 
@@ -172,7 +193,7 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         int    &ndf,
         bool   &isSaturated)
 {
-#ifdef DEBUG_FITPULSE
+#ifdef DEBUG_CHANA_FITPULSE
     lk_debug << "tb0=" << tbStartOfPulse << ",  tbPeak=" << tbPeak << ",  ndf=" << ndf << endl;
 #endif
     double valuePeak = buffer[tbPeak];
@@ -197,42 +218,44 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
     double tbCurr = tbStartOfPulse; // Pulse starting time-bucket of current fit
     double tbPrev = tbCurr - tbStep; // Pulse starting time-bucket of previous fit
 
-    LeastSquareFitAtGivenTb(buffer, tbPrev, ndf, amplitude, chi2NDFPrev);
-    LeastSquareFitAtGivenTb(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
-    double beta = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev); // this value is in order of 1
+    FitAmplitude(buffer, tbPrev, ndf, amplitude, chi2NDFPrev);
+    FitAmplitude(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
+    double slope = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev);
 
     int countIteration = 0;
     bool firstCheckFlag = false; // Checking flag to apply cut twice in a row
-#ifdef DEBUG_FITPULSE
-    if (dGraphTb==nullptr)        { dGraphTb = new TGraph();         dGraphTb        -> SetTitle(";iteration;tb"); }
-    if (dGraphTbStep==nullptr)    { dGraphTbStep = new TGraph();     dGraphTbStep    -> SetTitle(";iteration;tb step"); }
-    if (dGraphChi2==nullptr)      { dGraphChi2 = new TGraph();       dGraphChi2      -> SetTitle(";iteration;#Chi^{2}/NDF"); }
-    if (dGraphTbChi2==nullptr)    { dGraphTbChi2 = new TGraph();     dGraphTbChi2    -> SetTitle(";tb;#Chi^{2}/NDF"); }
-    if (dGraphBeta==nullptr)      { dGraphBeta = new TGraph();       dGraphBeta      -> SetTitle(";iteration;#beta = d(#Chi^{2}/NDF)/dtb"); }
-    if (dGraphTbBeta==nullptr)    { dGraphTbBeta = new TGraph();     dGraphTbBeta    -> SetTitle(";tb;#beta = d(#Chi^{2}/NDF)/dtb"); }
-    if (dGraphBetaInv==nullptr)   { dGraphBetaInv = new TGraph();    dGraphBetaInv   -> SetTitle(";iteration;1/#beta = dtb/d(#Chi^{2}/NDF)"); }
-    if (dGraphTbBetaInv==nullptr) { dGraphTbBetaInv = new TGraph();  dGraphTbBetaInv -> SetTitle(";tb;1/#beta = dtb/d(#Chi^{2}/NDF)"); }
-    for (auto graph :  {dGraphTb, dGraphTbStep, dGraphChi2, dGraphTbChi2, dGraphBeta, dGraphTbBeta, dGraphBetaInv, dGraphTbBetaInv}) {
+#ifdef DEBUG_CHANA_FITPULSE
+    if (dGraph_it_tb==nullptr)      { dGraph_it_tb = new TGraph();      dGraph_it_tb      -> SetTitle(";iteration;tb"); }
+    if (dGraph_it_tbStep==nullptr)  { dGraph_it_tbStep = new TGraph();  dGraph_it_tbStep  -> SetTitle(";iteration;tb step"); }
+    if (dGraph_it_chi2==nullptr)    { dGraph_it_chi2 = new TGraph();    dGraph_it_chi2    -> SetTitle(";iteration;#Chi^{2}/NDF"); }
+    if (dGraph_tb_chi2==nullptr)    { dGraph_tb_chi2 = new TGraph();    dGraph_tb_chi2    -> SetTitle(";tb;#Chi^{2}/NDF"); }
+    if (dGraph_it_slope==nullptr)    { dGraph_it_slope = new TGraph();    dGraph_it_slope    -> SetTitle(";iteration;#slope = d(#Chi^{2}/NDF)/dtb"); }
+    if (dGraph_tb_slope==nullptr)    { dGraph_tb_slope = new TGraph();    dGraph_tb_slope    -> SetTitle(";tb;#slope = d(#Chi^{2}/NDF)/dtb"); }
+    if (dGraph_it_slopeInv==nullptr) { dGraph_it_slopeInv = new TGraph(); dGraph_it_slopeInv -> SetTitle(";iteration;1/#slope = dtb/d(#Chi^{2}/NDF)"); }
+    if (dGraph_tb_slopeInv==nullptr) { dGraph_tb_slopeInv = new TGraph(); dGraph_tb_slopeInv -> SetTitle(";tb;1/#slope = dtb/d(#Chi^{2}/NDF)"); }
+    for (auto graph : {
+            dGraph_it_tb,
+            dGraph_it_tbStep,
+            dGraph_it_chi2,
+            dGraph_tb_chi2,
+            dGraph_it_slope,
+            dGraph_tb_slope,
+            dGraph_it_slopeInv,
+            dGraph_tb_slopeInv}
+        )
+    {
+        graph -> Set(0);
         graph -> SetMarkerStyle(24);
-        //graph -> SetMarkerSize(0.8);
         graph -> SetLineColor(kBlue);
     }
-    dGraphTb -> Set(0);
-    dGraphTbStep -> Set(0);
-    dGraphChi2 -> Set(0);
-    dGraphTbChi2 -> Set(0);
-    dGraphBeta -> Set(0);
-    dGraphTbBeta -> Set(0);
-    dGraphBetaInv -> Set(0);
-    dGraphTbBetaInv -> Set(0);
-    dGraphTb -> SetPoint(countIteration, countIteration, tbCurr);
-    dGraphTbStep -> SetPoint(countIteration, countIteration, tbStep);
-    dGraphChi2 -> SetPoint(countIteration, countIteration, chi2NDFCurr);
-    dGraphBeta -> SetPoint(countIteration, countIteration, double(beta));
-    dGraphBetaInv -> SetPoint(countIteration, countIteration, double(1./beta));
-    dGraphTbChi2 -> SetPoint(countIteration, tbCurr, chi2NDFCurr);
-    dGraphTbBeta -> SetPoint(countIteration, tbCurr, double(beta));
-    dGraphTbBetaInv -> SetPoint(countIteration, tbCurr, double(1./beta));
+    dGraph_it_tb -> SetPoint(countIteration, countIteration, tbCurr);
+    dGraph_it_tbStep -> SetPoint(countIteration, countIteration, tbStep);
+    dGraph_it_chi2 -> SetPoint(countIteration, countIteration, chi2NDFCurr);
+    dGraph_it_slope -> SetPoint(countIteration, countIteration, double(slope));
+    dGraph_it_slopeInv -> SetPoint(countIteration, countIteration, double(1./slope));
+    dGraph_tb_chi2 -> SetPoint(countIteration, tbCurr, chi2NDFCurr);
+    dGraph_tb_slope -> SetPoint(countIteration, tbCurr, double(slope));
+    dGraph_tb_slopeInv -> SetPoint(countIteration, tbCurr, double(1./slope));
 #endif
 
     while (true)
@@ -240,48 +263,48 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         countIteration++;
         tbPrev = tbCurr;
         chi2NDFPrev = chi2NDFCurr;
-        tbStep = fScaleTbStep * beta;
+        tbStep = fScaleTbStep * slope;
         if (tbStep>1) tbStep = 1;
         else if (tbStep<-1) tbStep = -1;
         tbCurr = tbPrev + tbStep;
 
         if (tbCurr<0 || tbCurr>fTbStartCut) {
-#ifdef DEBUG_FITPULSE
+#ifdef DEBUG_CHANA_FITPULSE
             lk_debug << "break(" << countIteration << ") tbCur<0 || tbCur<fTbStartCut : " << tbCurr << " " << fTbStartCut << endl;
 #endif
             return false;
         }
 
-        LeastSquareFitAtGivenTb(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
-        beta = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev); // this value is in order of 1
-#ifdef DEBUG_FITPULSE
-        dGraphTb -> SetPoint(countIteration, countIteration, tbCurr);
-        dGraphTbStep -> SetPoint(countIteration, countIteration, tbStep);
-        dGraphChi2 -> SetPoint(countIteration, countIteration, chi2NDFCurr);
-        dGraphBeta -> SetPoint(countIteration, countIteration, double(beta));
-        dGraphBetaInv -> SetPoint(countIteration, countIteration, double(1./beta));
-        dGraphTbChi2 -> SetPoint(countIteration, tbCurr, chi2NDFCurr);
-        dGraphTbBeta -> SetPoint(countIteration, tbCurr, double(beta));
-        dGraphTbBetaInv -> SetPoint(countIteration, tbCurr, double(1./beta));
+        FitAmplitude(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
+        slope = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev);
+#ifdef DEBUG_CHANA_FITPULSE
+        dGraph_it_tb -> SetPoint(countIteration, countIteration, tbCurr);
+        dGraph_it_tbStep -> SetPoint(countIteration, countIteration, tbStep);
+        dGraph_it_chi2 -> SetPoint(countIteration, countIteration, chi2NDFCurr);
+        dGraph_it_slope -> SetPoint(countIteration, countIteration, double(slope));
+        dGraph_it_slopeInv -> SetPoint(countIteration, countIteration, double(1./slope));
+        dGraph_tb_chi2 -> SetPoint(countIteration, tbCurr, chi2NDFCurr);
+        dGraph_tb_slope -> SetPoint(countIteration, tbCurr, double(slope));
+        dGraph_tb_slopeInv -> SetPoint(countIteration, tbCurr, double(1./slope));
         lk_debug << "IT-" << countIteration << " tb: " << tbPrev << "->" << tbCurr << "(" << tbStep << ")" << ",  chi2: " << chi2NDFPrev << "->" << chi2NDFCurr << ",  tb-step: " << tbStep << endl;
 #endif
 
         if (abs(tbStep)<fTbStepCut) {
-#ifdef DEBUG_FITPULSE
+#ifdef DEBUG_CHANA_FITPULSE
             lk_debug << "break(" << countIteration << ") tbStep < " << fTbStepCut << " : " << tbStep << endl;
 #endif
             break;
         }
 
         if (countIteration >= fIterMax) {
-#ifdef DEBUG_FITPULSE
+#ifdef DEBUG_CHANA_FITPULSE
             lk_debug << "break(" << countIteration << ") : iteration cut exit: " << countIteration << " < " << fIterMax << endl;
 #endif
             break;
         }
     }
 
-    if (beta > 0) { // pre-fit is better
+    if (slope > 0) { // pre-fit is better
         tbHit = tbPrev;
         chi2Fitted = chi2NDFPrev;
     }
@@ -322,7 +345,7 @@ bool LKChannelAnalyzer::TestPulse(double *buffer, double tbHitPrev, double ampli
     return true;
 }
 
-void LKChannelAnalyzer::LeastSquareFitAtGivenTb(double *buffer, double tbStartOfPulse, int ndf,
+void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse, int ndf,
         double &amplitude,
         double &chi2NDF)
 {

@@ -20,12 +20,11 @@ void anaFitPulse(double scaleBeta = 0.2)
     double buffer[350] = {0};
     const char *fileNames[] = {
         "dataExample/buffer_MMCenter1_1000057.dat",
-        "dataExample/buffer_MMCenter1_10024.dat",
-        "dataExample/buffer_MMCenter1_10028.dat",
-        "dataExample/buffer_MMCenter1_2010023.dat",
-        "dataExample/buffer_MMCenter1_2011044.dat",
-        "dataExample/buffer_MMCenter1_22003013.dat",
-        "dataExample/buffer_MMCenter1_1000057.dat",
+        //"dataExample/buffer_MMCenter1_10024.dat",
+        //"dataExample/buffer_MMCenter1_10028.dat",
+        //"dataExample/buffer_MMCenter1_2010023.dat",
+        //"dataExample/buffer_MMCenter1_2011044.dat",
+        //"dataExample/buffer_MMCenter1_22003013.dat",
         //"dataExample/buffer_MMCenter1_1002000.dat",
         //"dataExample/buffer_MMCenter1_12038.dat",
         //"dataExample/buffer_MMCenter1_2000054.dat",
@@ -61,9 +60,9 @@ void anaFitPulse(double scaleBeta = 0.2)
         anaC -> SetTbMax(350);
         anaC -> SetTbStart(1);
         anaC -> SetTbStartCut(330);
-        anaC -> SetThreshold(200);
-        anaC -> SetThresholdOneTbStep(2);
-        anaC -> SetNumAcendingCut(5);
+        anaC -> SetThreshold(100);
+        anaC -> SetThresholdOneStep(2);
+        anaC -> SetNumTbAcendingCut(5);
         anaC -> SetDynamicRange(4096);
         anaC -> SetIterMax(iterationMax);
         anaC -> SetScaleTbStep(scaleBeta);
@@ -93,7 +92,8 @@ void anaFitPulse(double scaleBeta = 0.2)
             anaC -> Analyze(buffer);
             auto numHits = anaC -> GetNumHits();
 
-            auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1500,1000);
+            //auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1500,1000);
+            auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1200,700);
             hist -> SetMarkerStyle(24);
             hist -> SetMarkerColor(kBlack);
             hist -> Draw("");
@@ -102,7 +102,7 @@ void anaFitPulse(double scaleBeta = 0.2)
             {
                 auto tbHit = anaC -> GetTbHit(iHit);
                 auto amplitude = anaC -> GetAmplitude(iHit);
-                e_warning << iHit << " " << tbHit << " " << amplitude << endl;
+                e_info << iHit << " " << tbHit << " " << amplitude << endl;
                 auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
                 graphFitted -> SetFillColor(kGreen);
                 //graphFitted -> Draw("samel3");
@@ -202,5 +202,5 @@ void anaFitPulse(double scaleBeta = 0.2)
         }
     }
 
-    e_save_all();
+    //e_save_all();
 }

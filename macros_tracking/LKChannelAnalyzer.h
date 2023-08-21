@@ -1,9 +1,9 @@
 #ifndef LKCHANNELANALYZER_HH
 #define LKCHANNELANALYZER_HH
 
-#define DEBUG_FINDPEAK
+#define DEBUG_CHANA_FINDPEAK
 #define DEBUG_CHANA_ANALYZE
-//#define DEBUG_FITPULSE
+//#define DEBUG_CHANA_FITPULSE
 
 #include "TObject.h"
 #include "LKLogger.h"
@@ -12,45 +12,77 @@
 #include <vector>
 using namespace std;
 
+class LKPulseFitParameter
+{
+    public:
+        LKPulseFitParameter(double tbHit, double amplitude, double chi2NDF, int ndf)
+            : fTbHit(tbHit), fAmplitude(amplitude), fChi2NDF(chi2NDF), fNDF(ndf) {}
+        double fTbHit;
+        double fAmplitude;
+        double fChi2NDF;
+        int    fNDF;
+};
+
 /**
- * LKChannelAnalyzer should be set with pulse data file create from LKPulseAnalyzer.
+ * @brief LKChannelAnalyzer find and fit pulse signal from the given channel buffer using input pulse data.
+ * The main usage of LKChannelAnalyzer is to run Analyze() method.
+ * Analyze() method is combination of FindPeak(), FitPulse(), TestPulse(), FitAmplitude()
+ * which are, in principle, can be used independently as well. Read method descriptions for detail.
+ *
+ * LKChannelAnalyzer should be initialized with pulse data file created from LKPulseAnalyzer.
  * See LKPulseAnalyzer for pulse data file.
  * Some parameters are set from pulse data file. Look for keyword "Automatically set".
  * Some parameters must be set by user. Look for keyword "Must be set".
  *
  * Critical parameters affecting the fitting speed and fit resolution are
  *
- * - fNDFFit : Number of points to use. Related to fitting speed. Automatically set from pulse: fNDFFit = fWidthLeading + fFWHM/4. Can be set with Set SetNDFPulse()
- * - fIterMax : Maximum iteration cut. Must be set with SetIterMax()
- * - fTbStepCut : Break from loop if fit-TB-step < fTbStepCut. Related to fitting speed and resolution. Can be set with SetTbStepCut().
- * - fScaleTbStep : (~0.2) Scale factor for choosing fit-TB-step for next TB candidate. Related to fitting speed and iteration #. Must be set with SetScaleTbStep()
+ * @param fNDFFit : Number of points to use. Related to fitting speed. Automatically set from pulse: fNDFFit = fWidthLeading + fFWHM/4. Can be set with Set SetNDFPulse()
+ * @param fIterMax : Maximum iteration cut. Must be set with SetIterMax()
+ * @param fTbStepCut : Break from loop if fit-TB-step < fTbStepCut. Related to fitting speed and resolution. Can be set with SetTbStepCut().
+ * @param fScaleTbStep : (~0.2) Scale factor for choosing fit-TB-step for next TB candidate. Related to fitting speed and iteration #. Must be set with SetScaleTbStep()
  *
- * These parameters depend on experimental settings and therefore, performance by changing them should be tested.
+ * The value of fit-TB-step is chosen by fScaleTbStep times inner parameter "slope".
  *
- * Example of using this LKChannelAnalyzer
- * \code{.cpp}
+ * @param slope inner parameter defined as @f$(\chi^2_{i-1}-\chi^2_{i})/NDF / (t_i-t_{i-1})@f$, where 'i' corresponds to the iteration count and t is the fitting TB-position. This parameter indicates how rapidly the chi-square value changes per unit TB. The program is designed to take larger TB-steps when the chi-square difference is big and smaller TB-steps when the chi-square difference is small. One can adjust the rate of change by modifying the variable fScaleTbStep. The value of slope can be access by using DEBUG_CHANA_FITPULSE macro in LKChannelanalyzer.h
+ *
+ * These parameters depend on the experimental settings. Users should test the parameter dependence on the performance of LKChannelAnalyzer.
+ * For debugging the fitting process, you can utilize the following C++ macros.
+ * To activate them, macros (in LKChannelAnalyzer.h) should be comment-in, and lilak should be re-compiled.
+ *
+ * @param DEBUG_CHANA_FINDPEAK
+ * @param DEBUG_CHANA_ANALYZE
+ * @param DEBUG_CHANA_FITPULSE From this macro, users have access to following graphs, to check how inner parameters change : dGraph_it_tb, dGraph_it_tbStep, dGraph_it_chi2, dGraph_it_slope, dGraph_tb_chi2, dGraph_tb_slope, dGraph_it_slopeInv, dGraph_tb_slopeInv.
+ *
+ *
+ * Example of using LKChannelAnalyzer:
+ *
+ * @code{.cpp}
  *  {
- *      double* buffer = get_data_somehow;
- *
  *      auto ana = LKChannelAnalyzer()
  *      ana -> SetPulse("pulse_data_created_from_LKPulseAnalyzer.root");
  *      ana -> SetTbMax(512);
  *      ana -> SetTbStart(0);
  *      ana -> SetDynamicRange(4096);
- *      ana -> SetThresholdOneTbStep(2);
+ *      ana -> SetThresholdOneStep(2);
  *      ana -> SetThreshold(100);
  *      ana -> SetIterMax(15);
  *      ana -> SetTbStepCut(0.01);
  *      ana -> SetScaleTbStep(0.2);
- *      ana -> Analyze(buffer);
  *
- *      auto numHits = ana -> GetNumHits();
- *      for (auto iHit=0; iHit<numHits; ++iHit) {
- *          auto tbHit = ana -> GetTbHit(iHit);
- *          auto amplitude = ana -> GetAmplitude(iHit);
+ *      for (...)
+ *      {
+ *          double* buffer = get_data_somehow;
+ *          ana -> Analyze(buffer);
+ *
+ *          auto numHits = ana -> GetNumHits();
+ *          for (auto iHit=0; iHit<numHits; ++iHit) {
+ *              auto tbHit = ana -> GetTbHit(iHit);
+ *              auto amplitude = ana -> GetAmplitude(iHit);
+ *              MyAnalysis();
+ *          }
  *      }
  *  }
- * \endcode
+ * @endcode
  */
 
 class LKChannelAnalyzer : public TObject
@@ -63,14 +95,16 @@ class LKChannelAnalyzer : public TObject
         void Clear(Option_t *option="");
         void Print(Option_t *option="") const;
 
-        LKPulse* GetPulse() const  { return fPulse; }
-        int GetNumHits() const  { return fNumHits; }
-        double GetTbHit(int i) const  { return fTbHitArray[i]; }
-        double GetAmplitude(int i) const  { return fAmplitudeArray[i]; }
-
+        /// Set pulse function and related parameter from pulse data file created from LKPulseAnalyzer
         void SetPulse(const char* fileName);
-        void SetPulse(LKPulse* pulse) { fPulse = pulse; }
+        LKPulse* GetPulse() const  { return fPulse; }
 
+        int GetNumHits() const  { return fNumHits; }
+        LKPulseFitParameter GetFitParameter(int i) const  { return fFitParameterArray[i]; }
+        double GetTbHit(int i) const      { return fFitParameterArray[i].fTbHit; }
+        double GetAmplitude(int i) const  { return fFitParameterArray[i].fAmplitude; }
+        double GetChi2NDF(int i) const    { return fFitParameterArray[i].fChi2NDF; }
+        double GetNDF(int i) const        { return fFitParameterArray[i].fNDF; }
 
         void Analyze(double* data);
         //LKChannelHit GetHit(int i) { return fChannelHitArray[i]; }
@@ -97,7 +131,7 @@ class LKChannelAnalyzer : public TObject
          * with waveform f(x) and weight w(x) = 1/(stddev(x)^2).
          * Amplitude = (Sum_i y_i * w(x_i) * f(x_i)) / (Sum_i w(x_i) f^2(x_i)
          */
-        void LeastSquareFitAtGivenTb(double *buffer, double tbStartOfPulse, int ndf, double &amplitude, double &chi2NDF);
+        void FitAmplitude(double *buffer, double tbStartOfPulse, int ndf, double &amplitude, double &chi2NDF);
 
         int GetTbMax() const  { return fTbMax; }
         int GetTbStart() const  { return fTbStart; }
@@ -130,8 +164,9 @@ class LKChannelAnalyzer : public TObject
         LKPulse*     fPulse = nullptr; ///< Pulse pointer
         double       fBuffer[512]; ///< Copied buffer from data
         int          fNumHits = 0; ///< Number of hits found after Analyze()
-        vector<double> fTbHitArray; ///< Vector holding fit TB
-        vector<double> fAmplitudeArray; ///< Vector holding fit amplitude
+        vector<LKPulseFitParameter> fFitParameterArray; ///< Vector holding fit TB
+        //vector<double> fTbHitArray; ///< Vector holding fit TB
+        //vector<double> fAmplitudeArray; ///< Vector holding fit amplitude
 
         // tb
         int          fTbMax = 350; ///< Maximum TB in buffer. Must be set with SetTbMax()
@@ -142,7 +177,7 @@ class LKChannelAnalyzer : public TObject
         // y
         int          fDynamicRange = 4096; ///< Dynamic range of buffer. Used for recognizing saturation. Must be set with SetDynamicRange()
         int          fThreshold = 50; ///< Threshold for recognizing pulse peak. Must be set with SetThreshold()
-        int          fThresholdOneStep = 2; ///< Threshold for counting number-of-TBs-acending (y-current > y-previous). Must be set with SetThresholdOneTbStep()
+        int          fThresholdOneStep = 2; ///< Threshold for counting number-of-TBs-acending (y-current > y-previous). Must be set with SetThresholdOneStep()
 
         // peak finding
         int          fTbStepIfFoundHit = 10; ///< [Peak finding] TB-step after hit was found. Automatically set from pulse: fTbStepIfFoundHit = fNDFFit.
@@ -162,16 +197,16 @@ class LKChannelAnalyzer : public TObject
         double       fWidthLeading; ///< [Pulse] Width measured from leading edge to TB-at-peak. Automatically set from pulse.
         double       fWidthTrailing; ///< [Pulse] Width measured from TB-at-peak to trailing edge. Automatically set from pulse.
 
-#ifdef DEBUG_FITPULSE
+#ifdef DEBUG_CHANA_FITPULSE
     public:
-        TGraph* dGraphTb = nullptr;
-        TGraph* dGraphTbStep = nullptr;
-        TGraph* dGraphChi2 = nullptr;
-        TGraph* dGraphBeta = nullptr;
-        TGraph* dGraphTbChi2 = nullptr;
-        TGraph* dGraphTbBeta = nullptr;
-        TGraph* dGraphBetaInv = nullptr;
-        TGraph* dGraphTbBetaInv = nullptr;
+        TGraph* dGraph_it_tb = nullptr;
+        TGraph* dGraph_it_tbStep = nullptr;
+        TGraph* dGraph_it_chi2 = nullptr;
+        TGraph* dGraph_it_slope = nullptr;
+        TGraph* dGraph_tb_chi2 = nullptr;
+        TGraph* dGraph_tb_slope = nullptr;
+        TGraph* dGraph_it_slopeInv = nullptr;
+        TGraph* dGraph_tb_slopeInv = nullptr;
 #endif
 
     ClassDef(LKChannelAnalyzer,1);
