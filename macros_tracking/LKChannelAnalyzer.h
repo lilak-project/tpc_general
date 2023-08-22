@@ -1,9 +1,10 @@
 #ifndef LKCHANNELANALYZER_HH
 #define LKCHANNELANALYZER_HH
 
-#define DEBUG_CHANA_FINDPEAK
-#define DEBUG_CHANA_ANALYZE
+//#define DEBUG_CHANA_FINDPEAK
+//#define DEBUG_CHANA_ANALYZE
 //#define DEBUG_CHANA_FITPULSE
+//#define DEBUG_CHANA_FITAMPLITUDE
 
 #include "TObject.h"
 #include "LKLogger.h"
@@ -107,8 +108,10 @@ class LKChannelAnalyzer : public TObject
         double GetNDF(int i) const        { return fFitParameterArray[i].fNDF; }
 
         void Analyze(double* data);
+        void Analyze(int* data);
         //LKChannelHit GetHit(int i) { return fChannelHitArray[i]; }
 
+        double FindAndSubtractPedestal(double *buffer);
         /**
          * Find first peak from adc time-bucket starting from input tbCurrent
          * tbCurrent and tbStart becomes time-bucket of the peak and starting point
@@ -131,7 +134,7 @@ class LKChannelAnalyzer : public TObject
          * with waveform f(x) and weight w(x) = 1/(stddev(x)^2).
          * Amplitude = (Sum_i y_i * w(x_i) * f(x_i)) / (Sum_i w(x_i) f^2(x_i)
          */
-        void FitAmplitude(double *buffer, double tbStartOfPulse, int ndf, double &amplitude, double &chi2NDF);
+        void FitAmplitude(double *buffer, double tbStartOfPulse, int &ndf, double &amplitude, double &chi2NDF);
 
         int GetTbMax() const  { return fTbMax; }
         int GetTbStart() const  { return fTbStart; }
@@ -183,7 +186,7 @@ class LKChannelAnalyzer : public TObject
         int          fTbStepIfFoundHit = 10; ///< [Peak finding] TB-step after hit was found. Automatically set from pulse: fTbStepIfFoundHit = fNDFFit.
         int          fTbStepIfSaturated = 15; ///< [Peak finding] TB-step after saturation was found. Automatically set from pulse: fTbStepIfSaturated = int(fWidth*1.2);
         int          fTbSeparationWidth = 10; ///< [Peak finding] Estimation of # of TB that can separate two different pulse. Automatically set from pulse: fTbSeparationWidth = fNDFFit.
-        int          fNumTbsCorrection = 50; ///< [Peak finding] Number of TBs to subtract from the found pulse. Automatically set from pulse: fNumTbsCorrection = int(numPulsePoints);
+        //int          fNumTbsCorrection = 50; ///< [Peak finding] Number of TBs to subtract from the found pulse. Automatically set from pulse: fNumTbsCorrection = int(numPulsePoints);
 
         // fitting
         int          fNDFFit = 0; ///< [Pulse-fitting] Number of points to use. Related to fitting speed. Automatically set from pulse: fNDFFit = fWidthLeading + fFWHM/4. Can be set with Set SetNDFPulse()
@@ -196,6 +199,9 @@ class LKChannelAnalyzer : public TObject
         double       fWidth; ///< [Pulse] Width of the pulse. Automatically set from pulse.
         double       fWidthLeading; ///< [Pulse] Width measured from leading edge to TB-at-peak. Automatically set from pulse.
         double       fWidthTrailing; ///< [Pulse] Width measured from TB-at-peak to trailing edge. Automatically set from pulse.
+        double       fPulseRefTbMin;
+        double       fPulseRefTbMax;
+        int          fNDFPulse;
 
 #ifdef DEBUG_CHANA_FITPULSE
     public:

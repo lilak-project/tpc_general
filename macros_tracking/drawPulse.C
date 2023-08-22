@@ -3,6 +3,6 @@
 
 void drawPulse()
 {
-    auto pulse = new LKPulse("data100/pulseReference_MMCenter1.root");
-    pulse -> GetPulseGraph(10,100) -> Draw("apl");
+    auto pulse = new LKPulse("data/pulseReference_MMCenter1.root");
+    pulse -> GetPulseGraph(0,100) -> Draw("apl");
 }

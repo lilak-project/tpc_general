@@ -1,7 +1,7 @@
 #include "ejungwooA.h"
 #include "setChannels.h"
 
-void drawSummary()
+void drawExtractSummary()
 {
     int fnw = 40;
     double fw1 = 20;

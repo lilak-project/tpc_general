@@ -12,6 +12,7 @@ void LKChannelSimulator::SetPulse(const char* fileName)
 
     fBackGroundLevel = fPulse -> GetBackGroundLevel();
     fPedestalFluctuationLevel = fPulse -> GetFluctuationLevel();
+    fFloorRatio = fPulse -> GetFloorRatio();
 }
 
 void LKChannelSimulator::SetPedestal(int* buffer)
@@ -71,14 +72,25 @@ void LKChannelSimulator::AddHit(int* buffer, double tb0, double amplitude)
 {
     for (auto tb=0; tb<fTbMax; ++tb)
     {
-        double value = fPulse -> Eval(tb, tb0, amplitude);
-        if (value>1 && fPulseErrorScale>0)
+        double value = fPulse -> EvalTb(tb, tb0, amplitude);
+        if (value>amplitude*fFloorRatio && fPulseErrorScale>0)
         {
-            double error = gRandom -> Gaus(0, fPulse->Error0(tb,tb0,fPulseErrorScale*amplitude));
+            double error = gRandom -> Gaus(0, fPulse->Error0Tb(tb,tb0,fPulseErrorScale*amplitude));
             value = value + error;
         }
         buffer[tb] = buffer[tb] + value;
     }
+
+    for (auto tb=0; tb<fTbMax; ++tb) {
+        if (buffer[tb] > fYMax)
+            buffer[tb] = fYMax;
+    }
+
+    if (fCutBelow0)
+        for (auto tb=0; tb<fTbMax; ++tb) {
+            if (buffer[tb] < 0)
+                buffer[tb] = 0;
+        }
 }
 
 void LKChannelSimulator::Smoothing(int* buffer, int n, int smoothingLevel, int numSmoothing)

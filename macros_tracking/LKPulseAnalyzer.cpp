@@ -560,7 +560,7 @@ TGraphErrors *LKPulseAnalyzer::GetReferencePulse(int tbOffsetFromHead, int tbOff
         fBackGroundError = fHistPedestalResidual -> GetStdDev();
         fFluctuationLevel = fHistYFluctuation -> GetStdDev();
 
-        if (fTbAtRefFloor2<0)
+        //if (fTbAtRefFloor2<0)
         {
             MakeHistAverage();
             double tbLeading,tbTrailing,error;
@@ -571,97 +571,124 @@ TGraphErrors *LKPulseAnalyzer::GetReferencePulse(int tbOffsetFromHead, int tbOff
             fRefWidth = tbTrailing - tbLeading;
         }
 
-        auto bin0 = int(fTbAtRefFloor1) + 100;
-        auto bin1 = int(fTbAtRefFloor1) + 100 - tbOffsetFromHead;
-        auto bin2 = int(fTbAtRefFloor2) + 100 + tbOffsetFromTail;
-        fPulseRefTbMin = bin1;
-        fPulseRefTbMax = bin2;
-
-
-        fHistReusedData -> Reset("ICES");
-
-        int iPoint = 0;
-        double xRef = 0;
-        for (auto bin=bin0; bin<=bin2; ++bin)
+        if (0)
         {
-            auto hist = (TH1D*) fHistArray -> At(bin-1);
-            auto mean = hist -> GetMean();
-            double x100 = bin - 100 - 0.5;
+            auto bin0 = fTbAtRefFloor1;
+            auto bin1 = fTbAtRefFloor1 - tbOffsetFromHead;
+            auto bin2 = fTbAtRefFloor2 + tbOffsetFromTail;
+            lk_debug << fTbAtRefFloor1 << " " << fTbAtRefFloor2 << endl;
+            lk_debug << bin0 << " " << bin1 << " " << bin2 << endl;
 
-            fHistReusedData -> SetBinContent(bin,mean);
-            fGraphReference -> SetPoint(iPoint,xRef,mean);
-            fGraphReferenceM100 -> SetPoint(iPoint,x100,mean);
-            iPoint++;
-            xRef++;
+            int iPoint = 0;
+            double xRef = 0;
+            for (auto bin=bin0; bin<=bin2; bin+=1)
+            {
+                auto hist = (TH1D*) fHistArray -> At(bin-1);
+                auto mean = hist -> GetMean();
+                double x100 = bin - 100 - 0.5;
+
+                fHistReusedData -> SetBinContent(bin,mean);
+                fGraphReference -> SetPoint(iPoint,xRef,mean);
+                fGraphReferenceM100 -> SetPoint(iPoint,x100,mean);
+                iPoint++;
+                xRef++;
+            }
         }
-
-        xRef = -1;
-        for (auto bin=bin0-1; bin>=bin1; --bin)
+        else
         {
-            auto hist = (TH1D*) fHistArray -> At(bin-1);
-            auto mean = hist -> GetMean();
-            auto x100 = bin - 100 - 0.5;
+            auto bin0 = int(fTbAtRefFloor1) + 100;
+            auto bin1 = int(fTbAtRefFloor1) + 100 - tbOffsetFromHead;
+            auto bin2 = int(fTbAtRefFloor2) + 100 + tbOffsetFromTail;
+            //lk_debug << fTbAtRefFloor1 << " " << fTbAtRefFloor2 << endl;
+            //lk_debug << bin0 << " " << bin1 << " " << bin2 << endl;
+            fPulseRefTbMin = bin1-bin0;
+            fPulseRefTbMax = bin2-bin0;
 
-            fHistReusedData -> SetBinContent(bin,mean);
-            fGraphReference -> SetPoint(iPoint,xRef,mean);
-            fGraphReferenceM100 -> SetPoint(iPoint,x100,mean);
-            iPoint++;
-            xRef--;
-        }
+            fHistReusedData -> Reset("ICES");
 
-        double tbLeading,tbTrailing,error;
-        double tbAtMax = fHistReusedData -> GetBinCenter(fHistReusedData -> GetMaximumBin());
-        FullWidthRatioMaximum(fHistReusedData,fFloorRatio,10,tbLeading,tbTrailing,error);
-        fTbAtRefFloor1 = tbLeading;
-        fTbAtRefFloor2 = tbTrailing;
-        fRefWidth = tbTrailing - tbLeading;
-        fWidthLeading = abs(tbAtMax - tbLeading);
-        fWidthTrailing = abs(tbAtMax - tbTrailing);
-        fFWHM = FullWidthRatioMaximum(fHistReusedData,0.5);
+            int iPoint = 0;
+            double xRef = 0;
+            for (auto bin=bin0; bin<=bin2; ++bin)
+            {
+                auto hist = (TH1D*) fHistArray -> At(bin-1);
+                auto mean = hist -> GetMean();
+                double x100 = bin - 100 - 0.5;
 
-        iPoint = 0;
-        xRef = 0;
-        for (auto bin=bin0; bin<=bin2; ++bin)
-        {
-            auto hist = (TH1D*) fHistArray -> At(bin-1);
-            auto error = hist -> GetStdDev();
-            auto x100 = bin - 100 - 0.5;
+                fHistReusedData -> SetBinContent(bin,mean);
+                fGraphReference -> SetPoint(iPoint,xRef,mean);
+                fGraphReferenceM100 -> SetPoint(iPoint,x100,mean);
+                iPoint++;
+                xRef++;
+            }
 
-            int bin101 = bin-101;
-            auto errorBGContribution = fFluctuationLevel;
-                 if (bin<101) errorBGContribution =  fFluctuationLevel * (bin101 + fWidthLeading) / fWidthLeading;
-            else if (bin>101) errorBGContribution = -fFluctuationLevel * (bin101 - fWidthTrailing) / fWidthTrailing;
-            if (errorBGContribution<0) errorBGContribution = 0;
-            auto errorFinal = sqrt(error*error + errorBGContribution*errorBGContribution);
+            xRef = -1;
+            for (auto bin=bin0-1; bin>=bin1; --bin)
+            {
+                auto hist = (TH1D*) fHistArray -> At(bin-1);
+                auto mean = hist -> GetMean();
+                auto x100 = bin - 100 - 0.5;
 
-            fGraphReference -> SetPointError(iPoint,0,errorFinal);
-            fGraphReferenceM100 -> SetPointError(iPoint,0,errorFinal);
-            fGraphReferenceError -> SetPoint(iPoint,xRef,errorFinal);
-            fGraphReferenceRawError -> SetPoint(iPoint,xRef,error);
-            iPoint++;
-            xRef++;
-        }
+                fHistReusedData -> SetBinContent(bin,mean);
+                fGraphReference -> SetPoint(iPoint,xRef,mean);
+                fGraphReferenceM100 -> SetPoint(iPoint,x100,mean);
+                iPoint++;
+                xRef--;
+            }
 
-        xRef = -1;
-        for (auto bin=bin0-1; bin>=bin1; --bin)
-        {
-            auto hist = (TH1D*) fHistArray -> At(bin-1);
-            auto error = hist -> GetStdDev();
-            auto x100 = bin - 100 - 0.5;
+            double tbLeading,tbTrailing,error;
+            double tbAtMax = fHistReusedData -> GetBinCenter(fHistReusedData -> GetMaximumBin());
+            FullWidthRatioMaximum(fHistReusedData,fFloorRatio,10,tbLeading,tbTrailing,error);
+            fTbAtRefFloor1 = tbLeading;
+            fTbAtRefFloor2 = tbTrailing;
+            fRefWidth = tbTrailing - tbLeading;
+            fWidthLeading = abs(tbAtMax - tbLeading);
+            fWidthTrailing = abs(tbAtMax - tbTrailing);
+            fFWHM = FullWidthRatioMaximum(fHistReusedData,0.5);
 
-            int bin101 = bin-101;
-            auto errorBGContribution = fFluctuationLevel;
-                 if (bin<101) errorBGContribution =  fFluctuationLevel * (bin101 + fWidthLeading) / fWidthLeading;
-            else if (bin>101) errorBGContribution = -fFluctuationLevel * (bin101 - fWidthTrailing) / fWidthTrailing;
-            if (errorBGContribution<0) errorBGContribution = 0;
-            auto errorFinal = sqrt(error*error + errorBGContribution*errorBGContribution);
+            iPoint = 0;
+            xRef = 0;
+            for (auto bin=bin0; bin<=bin2; ++bin)
+            {
+                auto hist = (TH1D*) fHistArray -> At(bin-1);
+                auto error = hist -> GetStdDev();
+                auto x100 = bin - 100 - 0.5;
 
-            fGraphReference -> SetPointError(iPoint,0,errorFinal);
-            fGraphReferenceM100 -> SetPointError(iPoint,0,errorFinal);
-            fGraphReferenceError -> SetPoint(iPoint,xRef,errorFinal);
-            fGraphReferenceRawError -> SetPoint(iPoint,xRef,error);
-            iPoint++;
-            xRef--;
+                int bin101 = bin-101;
+                auto errorBGContribution = fFluctuationLevel;
+                if (bin<101) errorBGContribution =  fFluctuationLevel * (bin101 + fWidthLeading) / fWidthLeading;
+                else if (bin>101) errorBGContribution = -fFluctuationLevel * (bin101 - fWidthTrailing) / fWidthTrailing;
+                if (errorBGContribution<0) errorBGContribution = 0;
+                auto errorFinal = sqrt(error*error + errorBGContribution*errorBGContribution);
+
+                fGraphReference -> SetPointError(iPoint,0,errorFinal);
+                fGraphReferenceM100 -> SetPointError(iPoint,0,errorFinal);
+                fGraphReferenceError -> SetPoint(iPoint,xRef,errorFinal);
+                fGraphReferenceRawError -> SetPoint(iPoint,xRef,error);
+                iPoint++;
+                xRef++;
+            }
+
+            xRef = -1;
+            for (auto bin=bin0-1; bin>=bin1; --bin)
+            {
+                auto hist = (TH1D*) fHistArray -> At(bin-1);
+                auto error = hist -> GetStdDev();
+                auto x100 = bin - 100 - 0.5;
+
+                int bin101 = bin-101;
+                auto errorBGContribution = fFluctuationLevel;
+                if (bin<101) errorBGContribution =  fFluctuationLevel * (bin101 + fWidthLeading) / fWidthLeading;
+                else if (bin>101) errorBGContribution = -fFluctuationLevel * (bin101 - fWidthTrailing) / fWidthTrailing;
+                if (errorBGContribution<0) errorBGContribution = 0;
+                auto errorFinal = sqrt(error*error + errorBGContribution*errorBGContribution);
+
+                fGraphReference -> SetPointError(iPoint,0,errorFinal);
+                fGraphReferenceM100 -> SetPointError(iPoint,0,errorFinal);
+                fGraphReferenceError -> SetPoint(iPoint,xRef,errorFinal);
+                fGraphReferenceRawError -> SetPoint(iPoint,xRef,error);
+                iPoint++;
+                xRef--;
+            }
         }
     }
 

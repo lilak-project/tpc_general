@@ -21,9 +21,13 @@ void LKChannelAnalyzer::SetPulse(const char* fileName)
     fWidth          = fPulse -> GetWidth();
     fWidthLeading   = fPulse -> GetLeadingWidth();
     fWidthTrailing  = fPulse -> GetTrailingWidth();
+    fPulseRefTbMin  = fPulse -> GetPulseRefTbMin();
+    fPulseRefTbMax  = fPulse -> GetPulseRefTbMax();
+    fNDFPulse       = fWidthLeading + fWidthTrailing;
+    //fNDFPulse       = fPulse -> GetNDF();
 
     fNDFFit = fWidthLeading + fFWHM/4;
-    fNumTbsCorrection = int(numPulsePoints);
+    //fNumTbsCorrection = int(numPulsePoints);
     fTbStepIfFoundHit = fNDFFit;
     fTbStepIfSaturated = int(fWidth*1.2);
     fTbSeparationWidth = fNDFFit;
@@ -55,13 +59,15 @@ void LKChannelAnalyzer::Print(Option_t *option) const
     e_info << "   fWidth            =" << fWidth               << endl;
     e_info << "   fWidthLeading     =" << fWidthLeading        << endl;
     e_info << "   fWidthTrailing    =" << fWidthTrailing       << endl;
+    e_info << "   fPulseRefTbMin    =" << fPulseRefTbMin       << endl;
+    e_info << "   fPulseRefTbMax    =" << fPulseRefTbMax       << endl;
     e_info << "== Peak Finding" << endl;
     e_info << "   fThreshold        =" << fThreshold           << endl;
     e_info << "   fThresholdOneStep =" << fThresholdOneStep    << endl;
     e_info << "   fTbStepIfFoundHit =" << fTbStepIfFoundHit    << endl;
     e_info << "   fTbStepIfSaturated=" << fTbStepIfSaturated   << endl;
     e_info << "   fTbSeparationWidth=" << fTbSeparationWidth   << endl;
-    e_info << "   fNumTbsCorrection =" << fNumTbsCorrection    << endl;
+    //e_info << "   fNumTbsCorrection =" << fNumTbsCorrection    << endl;
     e_info << "== Pulse Fitting" << endl;
     e_info << "   fNDFFit           =" << fNDFFit              << endl;
     e_info << "   fIterMax          =" << fIterMax             << endl;
@@ -74,6 +80,13 @@ void LKChannelAnalyzer::Print(Option_t *option) const
             auto amplitude = GetAmplitude(iHit);
             e_info << "   Hit-" << iHit << ": tb=" << tbHit << " amplitude=" << amplitude << endl;
         }
+}
+
+void LKChannelAnalyzer::Analyze(int* data)
+{
+    for (auto tb=0; tb<fTbMax; ++tb)
+        fBuffer[tb] = double(data[tb]);
+    Analyze(fBuffer);
 }
 
 void LKChannelAnalyzer::Analyze(double* data)
@@ -98,6 +111,7 @@ void LKChannelAnalyzer::Analyze(double* data)
     //fTbHitArray.clear();
     //fAmplitudeArray.clear();
 
+    FindAndSubtractPedestal(fBuffer);
     while (FindPeak(fBuffer, tbPointer, tbStartOfPulse))
     {
 #ifdef DEBUG_CHANA_ANALYZE
@@ -127,7 +141,15 @@ void LKChannelAnalyzer::Analyze(double* data)
         }
     }
 
+    fNumHits = fFitParameterArray.size();
     //fNumHits = fTbHitArray.size();
+}
+
+double LKChannelAnalyzer::FindAndSubtractPedestal(double *buffer)
+{
+    double pedestal = 0;
+    fDynamicRange = fDynamicRange - pedestal;
+    return pedestal;
 }
 
 bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfPulse)
@@ -139,6 +161,9 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
     {
         double value = buffer[tbPointer];
         double yDiff = value - buffer[tbPointer-1];
+#ifdef DEBUG_CHANA_FINDPEAK
+        lk_debug << "tbPointer=" << tbPointer << ", value=" << value  << endl;
+#endif
 
         // If buffer difference of step is above threshold
         if (yDiff > fThresholdOneStep)
@@ -167,6 +192,7 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
 #ifdef DEBUG_CHANA_FINDPEAK
                 lk_debug << "skip candidate from threshold cut : " << value << " < " << fThreshold << endl;
 #endif
+                tbPointer += 1;
                 continue;
             }
 
@@ -199,14 +225,14 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
     double valuePeak = buffer[tbPeak];
     isSaturated = false;
 
-    if (ndf > fNDFFit)
-        ndf = fNDFFit;
+    //if (ndf > fNDFFit)
+        //ndf = fNDFFit;
 
     // if peak value is larger than fDynamicRange, the pulse is isSaturated
-    if (valuePeak > fDynamicRange) {
-        ndf = tbPeak - tbStartOfPulse;
-        if (ndf > fNDFFit)
-            ndf = fNDFFit;
+    if (valuePeak >= fDynamicRange) {
+        //ndf = tbPeak - tbStartOfPulse;
+        //if (ndf > fNDFFit)
+        //  ndf = fNDFFit;
         isSaturated = true;
     }
 
@@ -218,7 +244,9 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
     double tbCurr = tbStartOfPulse; // Pulse starting time-bucket of current fit
     double tbPrev = tbCurr - tbStep; // Pulse starting time-bucket of previous fit
 
+    ndf = fNDFFit;
     FitAmplitude(buffer, tbPrev, ndf, amplitude, chi2NDFPrev);
+    ndf = fNDFFit;
     FitAmplitude(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
     double slope = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev);
 
@@ -275,6 +303,7 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
             return false;
         }
 
+        ndf = fNDFFit;
         FitAmplitude(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
         slope = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev);
 #ifdef DEBUG_CHANA_FITPULSE
@@ -316,13 +345,82 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
     return true;
 }
 
+void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse,
+        int &ndf,
+        double &amplitude,
+        double &chi2NDF)
+{
+    double refy = 0;
+    double ref2 = 0;
+    int tb0 = int(tbStartOfPulse); 
+    double tbOffset = tbStartOfPulse - tb0; 
+
+    int ndfFit = 0;
+    int iTbPulse = 0;
+    for (; (ndfFit<ndf && iTbPulse<fNDFPulse); iTbPulse++)
+    {
+        int tbData = tb0 + iTbPulse;
+        //if (tbData<0 || tbData>=350)
+        //    lk_debug << tbData << endl;
+        if (tbData>=fTbMax)
+            break;
+        double valueData = buffer[tbData];
+        if (valueData>=fDynamicRange)
+            continue;
+        ndfFit++;
+        double tbRef = iTbPulse - tbOffset + 0.5;
+        double valueRef = fPulse -> Eval(tbRef);
+        double errorRef = fPulse -> Error(tbRef);
+        double weigth = 1./(errorRef*errorRef);
+        refy += weigth * valueRef * valueData;
+        ref2 += weigth * valueRef * valueRef;
+    }
+    ndfFit = ndfFit-2;
+#ifdef DEBUG_CHANA_FITAMPLITUDE
+    lk_debug << "ndf is " << ndf << " ndfFit is " << ndfFit << endl;
+#endif
+
+    if (ref2==0) {
+        chi2NDF = 1.e10;
+        return;
+    }
+    amplitude = refy / ref2;
+    chi2NDF = 0;
+
+    ndfFit = 0;
+    iTbPulse = 0;
+    for (; (ndfFit<ndf && iTbPulse<fNDFPulse); iTbPulse++)
+    {
+        int tbData = tb0 + iTbPulse;
+        //if (tbData<0 || tbData>=350)
+        //    lk_debug << "e " << tbData << endl;
+        if (tbData>=fTbMax)
+            break;
+        double valueData = buffer[tbData];
+        if (valueData>=fDynamicRange)
+            continue;
+        ndfFit++;
+        double tbRef = iTbPulse - tbOffset + 0.5;
+        double valueRefA = amplitude * fPulse -> Eval(tbRef);
+        double errorRefA = amplitude * fPulse -> Error(tbRef);
+        double residual = (valueData-valueRefA)*(valueData-valueRefA)/errorRefA/errorRefA;
+        chi2NDF += residual;
+    }
+    ndfFit = ndfFit-2;
+
+    //lk_debug << "ndfFit: " << ndfFit << endl;
+
+    chi2NDF = chi2NDF/ndfFit;
+    ndf = ndfFit;
+}
+
 bool LKChannelAnalyzer::TestPulse(double *buffer, double tbHitPrev, double amplitudePrev, double tbHit, double amplitude)
 {
-    int numTbsCorrection = fNumTbsCorrection;
-    if (numTbsCorrection + int(tbHit) >= fTbMax)
-        numTbsCorrection = fTbMax - int(tbHit);
+    //int numTbsCorrection = fNumTbsCorrection;
+    //if (numTbsCorrection + int(tbHit) >= fTbMax)
+    //    numTbsCorrection = fTbMax - int(tbHit);
 
-    if (amplitude < fThreshold) 
+    if (amplitude < fThreshold)
         return false;
 
     /*
@@ -337,51 +435,21 @@ bool LKChannelAnalyzer::TestPulse(double *buffer, double tbHitPrev, double ampli
     }
     */
 
+    /*
     for (int iTbPulse = -1; iTbPulse < numTbsCorrection; iTbPulse++) {
         int tb = int(tbHit) + iTbPulse;
         buffer[tb] -= fPulse -> Eval(tb, tbHit, amplitude);
     }
+    */
+
+    int tbCorrectionRange1 = tbHit + fPulseRefTbMin;
+    int tbCorrectionRange2 = tbHit + fPulseRefTbMax;
+    if (tbCorrectionRange1 < 0)       tbCorrectionRange1 = 0;
+    if (tbCorrectionRange2 >= fTbMax) tbCorrectionRange2 = fTbMax-1;
+    //lk_debug << fPulse << endl;
+    for (int tb = tbCorrectionRange1; tb < tbCorrectionRange2; tb++) {
+        buffer[tb] -= fPulse -> Eval(tb+0.5, tbHit, amplitude);
+    }
 
     return true;
 }
-
-void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse, int ndf,
-        double &amplitude,
-        double &chi2NDF)
-{
-    double refy = 0;
-    double ref2 = 0;
-    int tb0 = int(tbStartOfPulse); 
-    double tbOffset = tbStartOfPulse - tb0; 
-    for (int iTbPulse = 1; iTbPulse < ndf; iTbPulse++)
-    {
-        int tbData = tb0 + iTbPulse;
-        double valueData = buffer[tbData];
-        double tbRef = iTbPulse - tbOffset + 0.5;
-        double valueRef = fPulse -> Eval(tbRef);
-        double errorRef = fPulse -> Error(tbRef);
-        double weigth = 1./(errorRef*errorRef);
-        refy += weigth * valueRef * valueData;
-        ref2 += weigth * valueRef * valueRef;
-    }
-    if (ref2==0) {
-        chi2NDF = 1.e10;
-        return;
-    }
-    amplitude = refy / ref2;
-    chi2NDF = 0;
-
-    //for (int iTbPulse = 0; iTbPulse < ndf; iTbPulse++)
-    for (int iTbPulse = 1; iTbPulse < ndf; iTbPulse++)
-    {
-        int tbData = tb0 + iTbPulse;
-        double valueData = buffer[tbData];
-        double tbRef = iTbPulse - tbOffset + 0.5;
-        double valueRefA = amplitude * fPulse -> Eval(tbRef);
-        double errorRefA = amplitude * fPulse -> Error(tbRef);
-        double residual = (valueData-valueRefA)*(valueData-valueRefA)/errorRefA/errorRefA;
-        chi2NDF += residual;
-    }
-    chi2NDF = chi2NDF/ndf;
-}
-

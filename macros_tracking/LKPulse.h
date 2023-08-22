@@ -21,15 +21,15 @@ class LKPulse : public TObject
         void Clear(Option_t *option="");
         void Print(Option_t *option="") const;
 
-        double Eval(double tb, double tb0, double amplitude);
-        double Error(double tb, double tb0, double amplitude);
-        double Error0(double tb, double tb0, double amplitude);
+        double EvalTb(double tb, double tb0=0, double amplitude=1);
+        double ErrorTb(double tb, double tb0=0, double amplitude=1);
+        double Error0Tb(double tb, double tb0=0, double amplitude=1);
 
-        double Eval(double tb) { return Eval(tb,0,1); }
-        double Error(double tb) { return Error(tb,0,1); }
-        double Error0(double tb) { return Error0(tb,0,1); }
+        double Eval(double tb, double tb0=0, double amplitude=1);
+        double Error(double tb, double tb0=0, double amplitude=1);
+        double Error0(double tb, double tb0=0, double amplitude=1);
 
-        TGraphErrors *GetPulseGraph(double tb, double amplitude);
+        TGraphErrors *GetPulseGraph(double tb0, double amplitude);
 
         int GetNDF() const { return fNumPoints; }
         int GetNumAnalyzedChannels() const  { return fNumAnalyzedChannels; }

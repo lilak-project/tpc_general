@@ -6,7 +6,7 @@
 //#include "LKPulse.cpp"
 #include "LKPulse.h"
 
-void anaFitPulse(double scaleBeta = 0.2)
+void anaFitPulse(double scaleBeta = 0.7)
 {
     //e_batch();
 
@@ -19,7 +19,8 @@ void anaFitPulse(double scaleBeta = 0.2)
     int bufferI[350] = {0};
     double buffer[350] = {0};
     const char *fileNames[] = {
-        "dataExample/buffer_MMCenter1_1000057.dat",
+        "data/buffer_sim.dat",
+        //"dataExample/buffer_MMCenter1_1000057.dat",
         //"dataExample/buffer_MMCenter1_10024.dat",
         //"dataExample/buffer_MMCenter1_10028.dat",
         //"dataExample/buffer_MMCenter1_2010023.dat",
@@ -102,11 +103,12 @@ void anaFitPulse(double scaleBeta = 0.2)
             {
                 auto tbHit = anaC -> GetTbHit(iHit);
                 auto amplitude = anaC -> GetAmplitude(iHit);
-                e_info << iHit << " " << tbHit << " " << amplitude << endl;
+                //e_info << iHit << " " << tbHit << " " << amplitude << endl;
                 auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
                 graphFitted -> SetFillColor(kGreen);
                 //graphFitted -> Draw("samel3");
-                graphFitted -> Draw("samelz");
+                graphFitted -> Draw("samel");
+                //graphFitted -> Draw("samelz");
             }
 
             auto bufferSubtracted = anaC -> GetBuffer();
@@ -116,6 +118,48 @@ void anaFitPulse(double scaleBeta = 0.2)
             histSubtracted -> SetLineColor(kBlack);
             histSubtracted -> SetLineStyle(2);
             histSubtracted -> Draw("same");
+
+#ifdef DEBUG_CHANA_FITPULSE
+            auto cvs_chana_debug = e_cvs(Form("cvsChanaDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
+            int iCvs = 1;
+            for (auto graph : {
+                    anaC->dGraph_tb_chi2,
+                    anaC->dGraph_tb_slope,
+                    anaC->dGraph_it_slope,
+                    anaC->dGraph_it_tbStep,
+                    anaC->dGraph_it_tb,
+                    }
+                )
+            {
+                iCvs++;
+                cvs_chana_debug -> cd(iCvs);
+                auto frame = e_hist(graph,Form("frame%d%d_s%d",iFile,scaleBeta100,iCvs),Form("ex%d) C = %.2f%s",iFile,scaleBeta,graph->GetTitle()));
+                frame -> Draw();
+                graph -> Draw("samepl");
+
+                continue;
+                if (graph==anaC->dGraph_tb_chi2) {
+                    cvs_chana_debug -> cd(iCvs);
+                    auto fit = new TF1(Form("fitTbC2_%d_s%d",iFile,scaleBeta100),"pol2",0,350);
+                    fit -> SetLineColor(kRed);
+                    fit -> SetLineStyle(2);
+                    graph -> Fit(fit,"QN0");
+                    fit -> Draw("samel");
+                }
+            }
+            cvs_chana_debug -> cd(1);
+            //hist -> GetXaxis() -> SetRangeUser(tbPulse-2,tbPulse+55);
+            //hist -> SetMarkerStyle(20);
+            //hist -> SetMarkerColor(kBlack);
+            //hist -> Draw("p");
+            //auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
+            //graphFitted -> SetFillColor(kGreen);
+            //graphFitted -> Draw("samelpz");
+            //hist -> Draw("samep");
+
+            cvs_chana_debug -> Modified();
+            cvs_chana_debug -> Update();
+#endif
         }
         else if (anaMode==1)
         {
@@ -127,15 +171,15 @@ void anaFitPulse(double scaleBeta = 0.2)
             double chi2Fitted;
             anaC -> FitPulse(buffer, tbPulse, tbPeak, tbHit, amplitude, chi2Fitted, ndf, isSaturated);
 
-#ifdef DEBUG_FITPULSE
+#ifdef DEBUG_CHANA_FITPULSE
             auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
             int iCvs = 1;
             for (auto graph : {
-                    anaC->dGraphTbChi2,
-                    anaC->dGraphTbBeta,
-                    anaC->dGraphBeta,
-                    anaC->dGraphTbStep,
-                    anaC->dGraphTb,
+                    anaC->dGraph_tb_chi2,
+                    anaC->dGraph_tb_slope,
+                    anaC->dGraph_it_slope,
+                    anaC->dGraph_it_tbStep,
+                    anaC->dGraph_it_tb,
                     }
                 )
             {
@@ -146,7 +190,7 @@ void anaFitPulse(double scaleBeta = 0.2)
                 graph -> Draw("samepl");
 
                 continue;
-                if (graph==anaC->dGraphTbChi2) {
+                if (graph==anaC->dGraph_tb_chi2) {
                     cvsDebug -> cd(iCvs);
                     auto fit = new TF1(Form("fitTbC2_%d_s%d",iFile,scaleBeta100),"pol2",0,350);
                     fit -> SetLineColor(kRed);
@@ -180,7 +224,8 @@ void anaFitPulse(double scaleBeta = 0.2)
 
             for (double tbTest=tbPulse-2; tbTest<=tbPulse+10; tbTest+=0.50)
             { 
-                anaC -> LeastSquareFitAtGivenTb(buffer, tbTest, 30, amplitude, chi2);
+                int ndf = 30;
+                anaC -> FitAmplitude(buffer, tbTest, ndf, amplitude, chi2);
                 graphChi2 -> SetPoint(graphChi2->GetN(),tbTest,chi2);
                 if (chi2<leastChi2) {
                     amplitudeAtLeastChi2 = amplitude;

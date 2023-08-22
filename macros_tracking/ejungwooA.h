@@ -12,6 +12,7 @@
 //void e_save(TObject *object, const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false);
 //void e_save_all(const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false);
 //TH2D *e_hist(TGraph *graph, const char* name, const char* title="");
+//TF1 *e_fit_gaus(TH1D* hist, double sigmaWidth, Option_t *opt="RQ0")
 
 void e_batch()
 {
@@ -153,6 +154,22 @@ TH2D *e_hist(TGraph *graph, const char* name, const char* title="")
     y2 = y2 + (y2-y1) * 0.05;
     auto hist = new TH2D(name,title,100,x1,x2,200,y1,y2);
     return hist;
+}
+
+TF1 *e_fit_gaus(TH1D* hist, double sigmaWidth=1.5, Option_t *opt="RQ0")
+{
+    auto binMax = hist -> GetMaximumBin();
+    auto max = hist -> GetBinContent(binMax);
+    auto xMax = hist -> GetXaxis() -> GetBinCenter(binMax);
+    auto xErr = hist -> GetStdDev();
+    auto func = new TF1(Form("%s_fitg",hist->GetName()),"gaus(0)",xMax-xErr*sigmaWidth,xMax+xErr*sigmaWidth);
+    func -> SetParameters(max,xMax,xErr);
+    hist -> Fit(func,opt);
+    xMax = func -> GetParameter(1);
+    xErr = func -> GetParameter(2);
+    func -> SetRange(xMax-sigmaWidth*xErr,xMax+sigmaWidth*xErr);
+    hist -> Fit(func,opt);
+    return func;
 }
 
 #endif

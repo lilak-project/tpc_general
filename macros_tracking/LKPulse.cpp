@@ -1,3 +1,5 @@
+#ifndef LKPULSE_CPP
+#define LKPULSE_CPP
 #include "LKPulse.h"
 
 ClassImp(LKPulse);
@@ -62,11 +64,15 @@ void LKPulse::Print(Option_t *option) const
     e_info << "fBackGroundError     : " << fBackGroundError     << endl;
 }
 
+double LKPulse::EvalTb  (double tb, double tb0, double amplitude) { return (amplitude * fGraphPulse  -> Eval(tb-tb0+0.5)); }
+double LKPulse::ErrorTb (double tb, double tb0, double amplitude) { return (amplitude * fGraphError  -> Eval(tb-tb0+0.5)); }
+double LKPulse::Error0Tb(double tb, double tb0, double amplitude) { return (amplitude * fGraphError0 -> Eval(tb-tb0+0.5)); }
+
 double LKPulse::Eval  (double tb, double tb0, double amplitude) { return (amplitude * fGraphPulse  -> Eval(tb-tb0)); }
 double LKPulse::Error (double tb, double tb0, double amplitude) { return (amplitude * fGraphError  -> Eval(tb-tb0)); }
 double LKPulse::Error0(double tb, double tb0, double amplitude) { return (amplitude * fGraphError0 -> Eval(tb-tb0)); }
 
-TGraphErrors *LKPulse::GetPulseGraph(double tb, double amplitude)
+TGraphErrors *LKPulse::GetPulseGraph(double tb0, double amplitude)
 {
     auto graphNew = new TGraphErrors();
     for (auto iPoint=0; iPoint<fNumPoints; ++iPoint)
@@ -74,10 +80,11 @@ TGraphErrors *LKPulse::GetPulseGraph(double tb, double amplitude)
         auto xValue = fGraphPulse -> GetPointX(iPoint);
         auto yValue = fGraphPulse -> GetPointY(iPoint);
         auto yError = fGraphPulse -> GetErrorY(iPoint);
-        graphNew -> SetPoint(iPoint,xValue+tb,yValue*amplitude);
+        graphNew -> SetPoint(iPoint,xValue+tb0,yValue*amplitude);
         graphNew -> SetPointError(iPoint,0,yError*amplitude);
     }
     graphNew -> SetLineColor(kRed);
     graphNew -> SetMarkerColor(kRed);
     return graphNew;
 }
+#endif

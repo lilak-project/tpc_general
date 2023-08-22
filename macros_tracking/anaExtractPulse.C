@@ -293,9 +293,11 @@ void anaExtractPulse(int mode=5)
 
     if (fDrawPulseParameter)
     {
+        //auto histArray = ana[type] -> GetHistArray();
         for (auto type : fSelTypes)
         {
             ana[type] -> WriteReferencePulse(20,40);
+            //ana[type] -> WriteReferencePulse(0,0);
             //ana[type] -> GetTree();
             auto cvsPulseParameter = new TCanvas(Form("cvsPulseParameter_%s",fTypeNames[type]),"cvsAverageEAll",fCvsDX,fCvsDY);
             cvsPulseParameter -> Divide(2,2);
@@ -303,16 +305,17 @@ void anaExtractPulse(int mode=5)
             cvsPulseParameter -> cd(1); ana[type] -> GetHistPedestal() -> Draw();
             cvsPulseParameter -> cd(2); ana[type] -> GetHistPedestalResidual() -> Draw();
             cvsPulseParameter -> cd(3); ana[type] -> GetHistYFluctuation() -> Draw();
-            lk_debug << fTypeNames[type]
+            e_info << fTypeNames[type]
                 << " bgl " << ana[type] -> GetBackGroundLevel()
                 << " bge " << ana[type] -> GetBackGroundError()
                 << " fll " << ana[type] -> GetFluctuationLevel()  << endl;
         }
     }
 
-    if (fWriteReferencePulse) {
+    if (!fDrawPulseParameter && fWriteReferencePulse) {
         for (auto type : fSelTypes)
             ana[type] -> WriteReferencePulse(20,40);
+            //ana[type] -> WriteReferencePulse(0,0);
     }
 
     if (fWriteTree) {
@@ -427,9 +430,10 @@ void SetDebugPulseData()
     SetAllFalse();
     e_batch();
     SetTypeMM(0);
-    SetTypeMM();
-    fMaxInputFiles = 2;
+    fMaxInputFiles = 1;
     fNumCvsGroup = 1;
+    //fDrawAverage = true;
+    //fDrawAccumulate = true;
     fDrawPulseParameter = true;
     fWriteReferencePulse = true;
 }
