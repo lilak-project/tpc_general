@@ -120,6 +120,7 @@
 class LKPulseAnalyzer : public TObject
 {
     public:
+        //LKPulseAnalyzer(const char* name, const char *path=".");
         LKPulseAnalyzer(const char* name, const char *path=".");
 
         LKPulseAnalyzer() : LKPulseAnalyzer(0) { ; }
@@ -202,7 +203,7 @@ class LKPulseAnalyzer : public TObject
         void AddChannel(int *data, int channelID);
 
         void DumpChannel(Option_t *option="");
-        void WriteTree();
+        TFile* WriteTree();
 
         bool DrawChannel();
         void MakeAccumulatePY();
@@ -226,14 +227,14 @@ class LKPulseAnalyzer : public TObject
         }
 
         TGraphErrors* GetReferencePulse(int tbOffsetFromHead=0, int tbOffsetFromTail=0);
-        void WriteReferencePulse(int tbOffsetFromHead=0, int tbOffsetFromTail=0);
+        TFile* WriteReferencePulse(int tbOffsetFromHead=0, int tbOffsetFromTail=0);
 
         void SetCvs(TCanvas *cvs);
         void SetHist(TH1 *hist);
 
     private:
-        const char*  fName = "";
-        const char*  fPath = ".";
+        TString fName = "";
+        TString fPath = ".";
 
         // data
         TFile*       fFile = nullptr;
