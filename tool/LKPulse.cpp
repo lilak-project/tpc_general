@@ -1,6 +1,9 @@
-#ifndef LKPULSE_CPP
-#define LKPULSE_CPP
 #include "LKPulse.h"
+#include "TFile.h"
+#include "TTree.h"
+#include "TParameter.h"
+#include <iostream>
+using namespace std;
 
 ClassImp(LKPulse);
 
@@ -87,4 +90,3 @@ TGraphErrors *LKPulse::GetPulseGraph(double tb0, double amplitude)
     graphNew -> SetMarkerColor(kRed);
     return graphNew;
 }
-#endif

@@ -19,10 +19,10 @@ void anaFitPulse(double scaleBeta = 0.7)
     int bufferI[350] = {0};
     double buffer[350] = {0};
     const char *fileNames[] = {
-        "data/buffer_sim.dat",
-        //"dataExample/buffer_MMCenter1_1000057.dat",
-        //"dataExample/buffer_MMCenter1_10024.dat",
-        //"dataExample/buffer_MMCenter1_10028.dat",
+        //"data/buffer_sim.dat",
+        "dataExample/buffer_MMCenter1_1000057.dat",
+        "dataExample/buffer_MMCenter1_10024.dat",
+        "dataExample/buffer_MMCenter1_10028.dat",
         //"dataExample/buffer_MMCenter1_2010023.dat",
         //"dataExample/buffer_MMCenter1_2011044.dat",
         //"dataExample/buffer_MMCenter1_22003013.dat",
@@ -94,7 +94,8 @@ void anaFitPulse(double scaleBeta = 0.7)
             auto numHits = anaC -> GetNumHits();
 
             //auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1500,1000);
-            auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1200,700);
+            //auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1200,700);
+            auto cvsDebug = e_cvs_full(Form("cvsAna0_%d_s%d",iFile,scaleBeta100));
             hist -> SetMarkerStyle(24);
             hist -> SetMarkerColor(kBlack);
             hist -> Draw("");
@@ -120,7 +121,9 @@ void anaFitPulse(double scaleBeta = 0.7)
             histSubtracted -> Draw("same");
 
 #ifdef DEBUG_CHANA_FITPULSE
-            auto cvs_chana_debug = e_cvs(Form("cvsChanaDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
+            //auto cvs_chana_debug = e_cvs(Form("cvsChanaDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
+            auto cvs_chana_debug = e_cvs(Form("cvsChanaDebug_%d_s%d",iFile,scaleBeta100));
+            cvs_chana_debug -> Divide(3,2);
             int iCvs = 1;
             for (auto graph : {
                     anaC->dGraph_tb_chi2,
@@ -172,7 +175,9 @@ void anaFitPulse(double scaleBeta = 0.7)
             anaC -> FitPulse(buffer, tbPulse, tbPeak, tbHit, amplitude, chi2Fitted, ndf, isSaturated);
 
 #ifdef DEBUG_CHANA_FITPULSE
-            auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
+            //auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
+            auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100));//,"",3500,2000,3,2);
+            cvsDebug -> Divide(3,2);
             int iCvs = 1;
             for (auto graph : {
                     anaC->dGraph_tb_chi2,

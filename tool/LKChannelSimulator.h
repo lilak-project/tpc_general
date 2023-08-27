@@ -3,7 +3,6 @@
 
 #include "TObject.h"
 #include "LKLogger.h"
-#include "LKPulse.cpp"
 #include "LKPulse.h"
 
 /**

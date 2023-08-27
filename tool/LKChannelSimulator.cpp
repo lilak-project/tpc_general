@@ -1,4 +1,5 @@
 #include "LKChannelSimulator.h"
+#include "TRandom.h"
 
 ClassImp(LKChannelSimulator);
 

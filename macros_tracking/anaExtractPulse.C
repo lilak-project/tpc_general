@@ -9,8 +9,8 @@ int fCvsDX = 1200;
 int fCvsDY = 720;
 //int fCvsDX = 3000;
 //int fCvsDY = 2000;
-int fCvsGroupDX = 5;
-int fCvsGroupDY = 4;
+int fCvsGroupDX = 3;
+int fCvsGroupDY = 2;
 int fNumCvsGroup = 0;
 bool fDrawChannel = false;
 bool fDrawOnlyGoodChannels = true;
@@ -38,16 +38,17 @@ void SetDrawCheckAllResults();
 void SetDrawCheckGoodChannels();
 void SetExtractBuffer(int ecaac = 2011044);
 void SetDrawResidual();
-void SetDebugPulseData();
+void SetDebugPulseData(int i);
 
-void anaExtractPulse(int mode=5)
+void anaExtractPulse(int mode=1)
 {
     if (mode==0) SetRunAll();
     if (mode==1) SetDrawCheckAllResults();
     if (mode==2) SetDrawCheckGoodChannels();
     if (mode==3) SetExtractBuffer();
     if (mode==4) SetDrawResidual();
-    if (mode==5) SetDebugPulseData();
+    if (mode==5) SetDebugPulseData(0);
+    if (mode==6) SetDebugPulseData(efCsI);
 
     auto run = new LKRun();
     run -> AddPar("config.mac");
@@ -361,10 +362,11 @@ void SetRunAll()
 
 void SetDrawCheckAllResults()
 {
-    SetAllFalse();
+    //SetAllFalse();
+    SetMMType();
     e_batch();
     fMaxInputFiles = 5;
-    fNumCvsGroup = 5;
+    fNumCvsGroup = 4;
     fCAAC = 0;
     fDrawChannel = true;
     fDrawAverage = true;
@@ -384,7 +386,7 @@ void SetDrawCheckGoodChannels()
 {
     SetAllFalse();
     e_batch();
-    SetTypeMM(0);
+    SetType(0);
     fNumCvsGroup = 5;
     fDrawChannel = true;
     fDrawOnlyGoodChannels = true;
@@ -404,7 +406,7 @@ void SetExtractBuffer(int ecaac)
 {
     SetAllFalse();
     e_batch();
-    SetTypeMM(0);
+    SetType(0);
     fMaxInputFiles = 1;
     fNumCvsGroup = 10;
     fCAAC = ecaac;
@@ -416,7 +418,7 @@ void SetDrawResidual()
 {
     SetAllFalse();
     e_batch();
-    SetTypeMM();
+    SetType();
     fMaxInputFiles = 1;
     fNumCvsGroup = 1;
     fDrawAverage = true;
@@ -425,13 +427,14 @@ void SetDrawResidual()
     fDrawResidual = true;
 }
 
-void SetDebugPulseData()
+void SetDebugPulseData(int i)
 {
     SetAllFalse();
     e_batch();
-    SetTypeMM(0);
-    fMaxInputFiles = 1;
-    fNumCvsGroup = 1;
+    SetType(i);
+    fMaxInputFiles = 5;
+    fNumCvsGroup = 10;
+    fDrawChannel = true;
     //fDrawAverage = true;
     //fDrawAccumulate = true;
     fDrawPulseParameter = true;

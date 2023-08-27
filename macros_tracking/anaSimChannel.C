@@ -2,6 +2,7 @@
 #include "LKChannelAnalyzer.cpp"
 #include "ejungwooA.h"
 
+vector<int> fSimIDArray;
 int fSimNumChannels = 1000000;
 bool fSetDraw = true;
 bool fSimIntegerTbHit = true;
@@ -17,35 +18,47 @@ double fSimTbHitRange1 = 0;
 double fSimTbHitRange2 = 350;
 double fSimAmplitudeRange1 = 100;
 double fSimAmplitudeRange2 = 10000;
-const char *fSimName = "test";
+//const char *fSimName = "test";
+TString fSimName = "test";
 void SetIdealPulseSimulation();
 void SetCleanPulseSimulation();
 void SetMessyPulseSimulation();
+void SetTestPulseSimulation();
 void JustForDrawing();
+void DebugPulseFit(const char* fileName, int numHits);
 
 void anaSimChannel(int setIdx=2)
 {
     if (setIdx==0) SetIdealPulseSimulation();
     if (setIdx==1) SetCleanPulseSimulation();
     if (setIdx==2) SetMessyPulseSimulation();
-    //JustForDrawing();
+    if (setIdx==3) SetTestPulseSimulation();
+    JustForDrawing();
+    //DebugPulseFit("data/simulationSelection_TestPulse.root",24);
+    //DebugPulseFit("data/simulationSelection_TestPulse.cutt_ampRec_ampSim_split.root",24);
+    //DebugPulseFit("data/simulationSelection_CleanPulse.cutt_ampRec_ampSim_split.root",24);
+    //DebugPulseFit("data/simulationSelection_MessyPulse.cutt_tbRem_dTb_leftCross.root",24);
 
     //int seed = time(0);
     int seed = 1692677674;
-    e_test << seed << endl;
+    e_info << seed << endl;
+    new TRandom3();
     gRandom -> SetSeed(seed);
     gStyle -> SetOptStat(0);
     double anaThreshold = fSimAmplitudeRange1*0.8;
 
     int divX = 3;
     int divY = 2;
-    if (fSimNumChannels==1) { divX = 1; divY = 1; }
-    if (fSimNumChannels >1) { divX = 2; divY = 2; }
-    if (fSimNumChannels >4) { divX = 3; divY = 2; }
-    if (fSimNumChannels >6) { divX = 3; divY = 3; }
-    if (fSimNumChannels >9) { divX = 4; divY = 3; }
+    int numChannelsDraw = fSimNumChannels;
+    if (fSimIDArray.size()>0) { numChannelsDraw = fSimIDArray.size(); }
+    if (numChannelsDraw==1) { divX = 1; divY = 1; }
+    if (numChannelsDraw >1) { divX = 2; divY = 2; }
+    if (numChannelsDraw >4) { divX = 3; divY = 2; }
+    //if (numChannelsDraw >6) { divX = 3; divY = 3; }
+    //if (numChannelsDraw >9) { divX = 4; divY = 3; }
 
-    int    RecNumHitsCorrectr = false;
+    int    bSimID = 0;
+    int    bRecNumHitsCorrectr = false;
     int    bNumSimHits = 0;
     int    bNumRecHits = 0;
     int    bIndexHit = 0;
@@ -90,19 +103,19 @@ void anaSimChannel(int setIdx=2)
     double tbHitArray[5] = {0};
     double amplitudeArray[5] = {0};
 
-    const char *fileName = Form("data/simulationSummary_%s.root",fSimName);
+    const char *fileName = Form("data/simulationSummary_%s.root",fSimName.Data());
     e_info << fileName << endl;
 
     auto file = new TFile(fileName,"recreate");
-    (new TParameter<double>("pedestalFluctuationLevel",sim->GetPedestalFluctuationLevel())) -> Write();
 
     auto treeEvent = new TTree("event","");
-    treeEvent -> Branch("correctN",&RecNumHitsCorrectr);
+    treeEvent -> Branch("correctN",&bRecNumHitsCorrectr);
     treeEvent -> Branch("numSimHits",&bNumSimHits);
     treeEvent -> Branch("numRecHits",&bNumRecHits);
 
     auto treeHit = new TTree("hit","");
-    treeHit -> Branch("correctN",&RecNumHitsCorrectr);
+    treeHit -> Branch("id", &bSimID);
+    treeHit -> Branch("correctN", &bRecNumHitsCorrectr);
     treeHit -> Branch("tbSim", &bTbHitSim);
     treeHit -> Branch("ampSim", &bAmplitudeSim);
     treeHit -> Branch("tbRec", &bTbHitRec);
@@ -113,10 +126,31 @@ void anaSimChannel(int setIdx=2)
     int countSimForCvs = divX*divY+2;
     TCanvas* cvsGroup = nullptr;
 
+    int fCountSimDebug = 0;
+
     int xxx = fSimNumChannels/10;
+    if (xxx==0) xxx = 1;
+    e_info << "numSimChannels: " << fSimNumChannels << " " << xxx << endl;
     for (auto iSim=0; iSim<fSimNumChannels; ++iSim)
     {
-        if (iSim%xxx==0) e_test << iSim << endl;
+        bSimID = iSim;
+        if (iSim%xxx==0)
+            e_info << int(double(iSim)/fSimNumChannels*100) << " % " << endl;
+
+        if (fSimIDArray.size()>0) {
+            if (fCountSimDebug==fSimIDArray.size()) {
+                break;
+            }
+            fSetDraw = false;
+            for (auto selSim : fSimIDArray) {
+                if (selSim==iSim) {
+                    e_test << "Debugging " << iSim << endl;
+                    fSetDraw = true;
+                    fCountSimDebug++;
+                    break;
+                }
+            }
+        }
 
         memset(buffer, 0, sizeof(buffer));
 
@@ -127,10 +161,13 @@ void anaSimChannel(int setIdx=2)
         double tbHitSim;
         double amplitude;
 
-        if (fSimNumHits>0) numSimHits = fSimNumHits;
+        if (fSimNumHits>0) {
+            numSimHits = fSimNumHits;
+        }
         else 
-            while (numSimHits>0)
+            while (numSimHits>0) {
                 numSimHits = int(gRandom -> Integer(fSimNumHitsMax));
+            }
 
         for (auto iHit=0; iHit<numSimHits; ++iHit)
         {
@@ -167,7 +204,9 @@ void anaSimChannel(int setIdx=2)
         ana -> Analyze(buffer);
         auto numRecHits = ana -> GetNumHits();
 #ifdef DEBUG_CHANA_FITPULSE
-        auto cvsDebug = e_cvs(Form("cvsDebug_sim%d",iSim),"",3500,2000,3,2);
+        //auto cvsDebug = e_cvs(Form("cvsDebug_sim%d",iSim),"",3500,2000,3,2);
+        auto cvsDebug = e_cvs_full(Form("cvsDebug_sim%d",iSim));//,"",3500,2000,3,2);
+        cvsDebug -> Divide(3,2);
         int iCvs = 1;
         for (auto graph : { ana->dGraph_tb_chi2, ana->dGraph_tb_slope, ana->dGraph_it_slope, ana->dGraph_it_tbStep, ana->dGraph_it_tb, })
         {
@@ -192,12 +231,12 @@ void anaSimChannel(int setIdx=2)
         cvsDebug -> Update();
 #endif
 
-        RecNumHitsCorrectr = false;
+        bRecNumHitsCorrectr = false;
         bNumSimHits = numSimHits;
         bNumRecHits = numRecHits;
         if (numSimHits==numRecHits)
         {
-            RecNumHitsCorrectr = true;
+            bRecNumHitsCorrectr = true;
             for (bIndexHit=0; bIndexHit<numSimHits; ++bIndexHit)
             {
                 bTbHitSim = tbHitArray[bIndexHit];
@@ -211,56 +250,73 @@ void anaSimChannel(int setIdx=2)
         }
         treeEvent -> Fill();
 
-        if (fSetDraw) {
+        e_test << fSimName << endl;
+
+        if (fSetDraw)
+        {
             countSimForCvs++;
+
             if (countSimForCvs>divX*divY) {
-                cvsGroup = e_cvs(Form("cvsSim%d",iSim),"",3000,2000,divX,divY);
+                const char* nameGroupCvs = Form("cvsSim_%s_%d",fSimName.Data(),iSim);
+                cvsGroup = e_cvs_full(nameGroupCvs);//,"",3000,2000,divX,divY);
+                cvsGroup -> Divide(divX,divY);
                 cvsGroup -> cd(1);
                 countSimForCvs = 1;
             }
             else
                 cvsGroup -> cd(countSimForCvs);
 
-            auto histOriginal = new TH1D(Form("histSimulation_%d",iSim),Form("%d) sim/rec-hits = %d/%d;tb;y",iSim, numSimHits, numRecHits),350,0,350);
-            for (auto tb=0; tb<350; ++tb)
-                histOriginal -> SetBinContent(tb+1,buffer[tb]);
-            histOriginal -> SetMaximum( histOriginal->GetBinContent(histOriginal->GetMaximumBin())*1.15);
-            histOriginal -> SetMinimum(-histOriginal->GetBinContent(histOriginal->GetMaximumBin())*0.15);
-
-            auto histSubtracted = new TH1D(Form("histSubtracted_%d",iSim),Form("%d) sim/rec-hits = %d/%d;tb;y",iSim, numSimHits, numRecHits),350,0,350);
+            auto histSimulation = new TH1D(Form("histSimulation_%d",iSim),Form("%s-%d %d %d;tb;y",fSimName.Data(),iSim,numRecHits,numSimHits),350,0,350);
+            auto histSubtracted = new TH1D(Form("histSubtracted_%d",iSim),Form("%s-%d %d %d;tb;y",fSimName.Data(),iSim,numRecHits,numSimHits),350,0,350);
             auto bufferSubtracted = ana -> GetBuffer();
-            for (auto tb=0; tb<350; ++tb)
+            for (auto tb=0; tb<350; ++tb) {
+                histSimulation -> SetBinContent(tb+1,buffer[tb]);
                 histSubtracted -> SetBinContent(tb+1,bufferSubtracted[tb]);
+            }
+
+            histSimulation -> SetMaximum( histSimulation->GetBinContent(histSimulation->GetMaximumBin())*1.15);
+            histSimulation -> SetMinimum(-histSimulation->GetBinContent(histSimulation->GetMaximumBin())*0.15);
             histSubtracted -> SetLineColor(kGreen+1);
             histSubtracted -> SetLineWidth(2);
-            histSubtracted -> SetMaximum( histOriginal->GetBinContent(histOriginal->GetMaximumBin())*1.15);
-            histSubtracted -> SetMinimum(-histOriginal->GetBinContent(histOriginal->GetMaximumBin())*0.15);
+            histSubtracted -> SetMaximum( histSimulation->GetBinContent(histSimulation->GetMaximumBin())*1.15);
+            histSubtracted -> SetMinimum(-histSimulation->GetBinContent(histSimulation->GetMaximumBin())*0.15);
 
             auto line0 = new TLine(0,0,350,0);
             line0 -> SetLineStyle(2);
 
             histSubtracted -> Draw("same");
-            histOriginal -> Draw("same");
+            histSimulation -> Draw("same");
             line0 -> Draw();
 
+            int tbRangeUser1 = 350;
+            int tbRangeUser2 = 0;
             for (auto iHit=0; iHit<numRecHits; ++iHit)
             {
                 auto tbHit = ana -> GetTbHit(iHit);
                 auto amplitude = ana -> GetAmplitude(iHit);
-                auto graphFitted = ana -> GetPulse() -> GetPulseGraph(tbHit, amplitude);
+                auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
                 graphFitted -> Draw("samelx");
+                if (tbRangeUser1 > tbHit - 10) tbRangeUser1 = tbHit - 10;
+                if (tbRangeUser2 < tbHit + pulse->GetTrailingWidth()) tbRangeUser2 = tbHit + pulse->GetTrailingWidth();
             }
+
+            //if (fSimIDArray.size()>0) histSubtracted -> GetXaxis() -> SetRangeUser(tbRangeUser1,tbRangeUser2);
         }
     }
 
     file -> cd();
     treeHit -> Write();
     treeEvent -> Write();
+    (new TParameter<double>("seed",seed)) -> Write();
+    (new TParameter<double>("pedestalFluctuationLevel",sim->GetPedestalFluctuationLevel())) -> Write();
+
+    e_save_all();
 }
 
 void SetIdealPulseSimulation()
 {
     fSimName = "IdealPulse";
+    //fSimIDArray.clear();
     //fSimNumChannels = 100000;
     fSetDraw = false;
     fSimIntegerTbHit = true;
@@ -281,6 +337,7 @@ void SetIdealPulseSimulation()
 void SetCleanPulseSimulation()
 {
     fSimName = "CleanPulse";
+    //fSimIDArray.clear();
     //fSimNumChannels = 100000;
     fSetDraw = false;
     fSimIntegerTbHit = false;
@@ -301,6 +358,7 @@ void SetCleanPulseSimulation()
 void SetMessyPulseSimulation()
 {
     fSimName = "MessyPulse";
+    //fSimIDArray.clear();
     //fSimNumChannels = 100000;
     fSetDraw = false;
     fSimIntegerTbHit = false;
@@ -318,9 +376,50 @@ void SetMessyPulseSimulation()
     fSimAmplitudeRange2 = 10000;
 }
 
+void SetTestPulseSimulation()
+{
+    fSimName = "TestPulse";
+    //fSimIDArray.clear();
+    fSimNumChannels = 10000;
+    fSetDraw = false;
+    fSimIntegerTbHit = false;
+    fSimIntegerAmplitude = false;
+    fSimFluctuatingPedestal = true;
+    fSimPulseErrorScale = 0.1;
+    fSimPedestalErrorScale = 0.2;
+    fSimNumHits = 1;
+    fSimNumHitsMax = 2;
+    fSimTbHit = -1;
+    fSimAmplitude = -1;
+    fSimTbHitRange1 = 0;
+    fSimTbHitRange2 = 350;
+    fSimAmplitudeRange1 = 100;
+    fSimAmplitudeRange2 = 10000;
+}
+
+
 void JustForDrawing()
 {
-    fSimName = Form("%s_JD",fSimName);
+    fSimName = Form("%s_JD",fSimName.Data());
+    //fSimIDArray.clear();
+    //fSimNumChannels = 100;
     fSimNumChannels = 24;
     fSetDraw = true;
+}
+
+void DebugPulseFit(const char* fileName, int numHitsUser)
+{
+    int bSimID = 0;
+    auto file = new TFile(fileName);
+    auto treeHit = (TTree*) file -> Get("hit");
+    treeHit -> SetBranchAddress("id", &bSimID);
+    auto numHits = treeHit -> GetEntries();
+    if (numHitsUser>numHits) numHitsUser = numHits;
+    for (auto iHit=0; iHit<numHitsUser; ++iHit) {
+        treeHit -> GetEntry(iHit);
+        fSimIDArray.push_back(bSimID);
+    }
+    file -> Close();
+    fSimName = Form("%s_Debug",fSimName.Data());
+    fSetDraw = false;
 }

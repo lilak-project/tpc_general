@@ -11,6 +11,9 @@
 #include "TObjArray.h"
 #include "TFile.h"
 #include "TTree.h"
+#include "TGraph.h"
+#include "TGraphErrors.h"
+#include "TParameter.h"
 
 /**
  * @brief LKPulseAnalyzer find channels containing single pulse and create reference pulse from their average.

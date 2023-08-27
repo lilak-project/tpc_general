@@ -6,23 +6,18 @@
 //#define DEBUG_CHANA_FITPULSE
 //#define DEBUG_CHANA_FITAMPLITUDE
 
-#include "TObject.h"
-#include "LKLogger.h"
-#include "LKPulse.cpp"
-#include "LKPulse.h"
 #include <vector>
+#include <cfloat>
 using namespace std;
 
-class LKPulseFitParameter
-{
-    public:
-        LKPulseFitParameter(double tbHit, double amplitude, double chi2NDF, int ndf)
-            : fTbHit(tbHit), fAmplitude(amplitude), fChi2NDF(chi2NDF), fNDF(ndf) {}
-        double fTbHit;
-        double fAmplitude;
-        double fChi2NDF;
-        int    fNDF;
-};
+#include "TObject.h"
+#include "TGraph.h"
+#include "TGraphErrors.h"
+#include "TParameter.h"
+
+#include "LKLogger.h"
+#include "LKPulse.h"
+#include "LKPulseFitParameter.h"
 
 /**
  * @brief LKChannelAnalyzer find and fit pulse signal from the given channel buffer using input pulse data.
