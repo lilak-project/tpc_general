@@ -13,7 +13,8 @@ bool LKChannelAnalyzer::Init()
 
 void LKChannelAnalyzer::SetPulse(const char* fileName)
 {
-    fPulse = new LKPulse(fileName);
+    fPulseFileName = fileName;
+    fPulse = new LKPulse(fPulseFileName);
 
     auto numPulsePoints = fPulse -> GetNDF();
     fFWHM           = fPulse -> GetFWHM();
@@ -38,7 +39,7 @@ void LKChannelAnalyzer::SetPulse(const char* fileName)
 
 void LKChannelAnalyzer::Clear(Option_t *option)
 {
-    TObject::Clear(option);
+    fDynamicRange = fDynamicRangeOriginal;
     fNumHits = 0;
     //fTbHitArray.clear();
     //fAmplitudeArray.clear();
@@ -82,15 +83,14 @@ void LKChannelAnalyzer::Print(Option_t *option) const
         }
 }
 
-void LKChannelAnalyzer::Analyze(int* data)
-{
-    for (auto tb=0; tb<fTbMax; ++tb)
-        fBuffer[tb] = double(data[tb]);
-    Analyze(fBuffer);
-}
-
 void LKChannelAnalyzer::Analyze(double* data)
 {
+    Clear();
+    //fNumHits = 0;
+    //fTbHitArray.clear();
+    //fAmplitudeArray.clear();
+
+    FindAndSubtractPedestal(data);
     memcpy(&fBuffer, data, sizeof(double)*fTbMax);
 
     // Found peak information
@@ -107,11 +107,6 @@ void LKChannelAnalyzer::Analyze(double* data)
     double tbHitPrev = fTbStart;
     double amplitudePrev = 0;
 
-    fNumHits = 0;
-    //fTbHitArray.clear();
-    //fAmplitudeArray.clear();
-
-    FindAndSubtractPedestal(fBuffer);
     while (FindPeak(fBuffer, tbPointer, tbStartOfPulse))
     {
 #ifdef DEBUG_CHANA_ANALYZE
@@ -131,7 +126,10 @@ void LKChannelAnalyzer::Analyze(double* data)
             //fTbHitArray.push_back(tbHit);
             //fAmplitudeArray.push_back(amplitude);
             fFitParameterArray.push_back(LKPulseFitParameter(tbHit,amplitude,chi2NDF,ndf));
-
+#ifdef DEBUG_CHANA_ANALYZE_NHIT
+            if (fFitParameterArray.size()>=DEBUG_CHANA_ANALYZE_NHIT)
+                break;
+#endif
             tbHitPrev = tbHit;
             amplitudePrev = amplitude;
             if (isSaturated)
@@ -147,20 +145,116 @@ void LKChannelAnalyzer::Analyze(double* data)
 
 double LKChannelAnalyzer::FindAndSubtractPedestal(double *buffer)
 {
-    double pedestal = 0;
-    fDynamicRange = fDynamicRange - pedestal;
-    return pedestal;
+    int numTbPart = fTbMax/NUMBER_OF_PEDESTAL_TEST_REGIONS;
+    int numTbPartLast = fTbMax - numTbPart*(NUMBER_OF_PEDESTAL_TEST_REGIONS_M1);
+    double pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS] = {0.};
+
+    int tbGlobal = 0;
+    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS_M1; ++iPart) {
+        for (int iTb=0; iTb<numTbPart; iTb++) {
+            pedestalPart[iPart] += buffer[tbGlobal];
+            tbGlobal++;
+        }
+        pedestalPart[iPart] = pedestalPart[iPart] / numTbPart;
+    }
+    for (int iTb=0; iTb<numTbPartLast; iTb++) {
+        pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] = pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] + buffer[tbGlobal];
+        tbGlobal++;
+    }
+    pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] = pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] / numTbPartLast;
+
+    double pedestalDiffMin = DBL_MAX;
+    double pedestalMeanRef = 0;
+    int idx1 = 0;
+    int idx2 = 0;
+    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
+        for (auto jPart=0; jPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++jPart) {
+            if (iPart>=jPart) continue;
+            double diff = abs(pedestalPart[iPart] - pedestalPart[jPart]);
+            if (diff<pedestalDiffMin) {
+                pedestalDiffMin = diff;
+                pedestalMeanRef = 0.5 * (pedestalPart[iPart] + pedestalPart[jPart]);
+                idx1 = iPart;
+                idx2 = jPart;
+            }
+        }
+    }
+
+    double pedestalErrorRef  = 0.1 * pedestalMeanRef;
+    double pedestalErrorRefPart = 0.2 * pedestalMeanRef;
+    pedestalErrorRefPart = sqrt(pedestalErrorRefPart*pedestalErrorRefPart + pedestalDiffMin*pedestalDiffMin);
+
+#ifdef DEBUG_CHANA_FINDPED
+    lk_debug << "diff min : " << pedestalDiffMin << endl;
+    lk_debug << "ref-diff : " << pedestalMeanRef << endl;
+    lk_debug << "ref-error: " << pedestalErrorRef << endl;
+    lk_debug << "ref-error-part: " << pedestalErrorRefPart << endl;
+    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart)
+        lk_debug << iPart << " " << pedestalPart[iPart] << endl;
+#endif
+
+    double pedestalFinal = 0;
+    int countNumPedestalTb = 0;
+
+    tbGlobal = 0;
+    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS_M1; ++iPart)
+    {
+        double diffPart = abs(pedestalMeanRef - pedestalPart[iPart]);
+        if (diffPart<pedestalErrorRefPart)
+        {
+            countNumPedestalTb += numTbPart;
+            for (int iTb=0; iTb<numTbPart; iTb++)
+            {
+                pedestalFinal += buffer[tbGlobal];
+                tbGlobal++;
+            }
+#ifdef DEBUG_CHANA_FINDPED
+            lk_debug << iPart << " diff=" << diffPart << " " << pedestalFinal/countNumPedestalTb << " " << countNumPedestalTb << endl;
+#endif
+        }
+        else
+            tbGlobal += numTbPart;
+    }
+    double diffPart = abs(pedestalMeanRef - pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1]);
+    if (diffPart<pedestalErrorRefPart)
+    {
+        countNumPedestalTb += numTbPartLast;
+        for (int iTb=0; iTb<numTbPartLast; iTb++) {
+            pedestalFinal += buffer[tbGlobal];
+            tbGlobal++;
+        }
+#ifdef DEBUG_CHANA_FINDPED
+        lk_debug << NUMBER_OF_PEDESTAL_TEST_REGIONS_M1 << " diff=" << diffPart << " " << pedestalFinal/countNumPedestalTb << " " << countNumPedestalTb << endl;
+#endif
+    }
+
+    pedestalFinal = pedestalFinal / countNumPedestalTb;
+
+#ifdef DEBUG_CHANA_FINDPED
+    lk_debug << pedestalFinal << endl;
+#endif
+    for (auto iTb=0; iTb<fTbMax; ++iTb)
+        buffer[iTb] = buffer[iTb] - pedestalFinal;
+
+    fDynamicRange = fDynamicRange - pedestalFinal;
+
+    return pedestalFinal;
 }
 
 bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfPulse)
 {
-    int countAscending      = 0;
+    int countAscending = 0;
     //int countAscendingBelowThreshold = 0;
+
+    if (tbPointer==0)
+        tbPointer = 1;
+
+    double valuePrev = buffer[tbPointer-1];
 
     for (; tbPointer<fTbMax; tbPointer++)
     {
         double value = buffer[tbPointer];
-        double yDiff = value - buffer[tbPointer-1];
+        double yDiff = value - valuePrev;
 #ifdef DEBUG_CHANA_FINDPEAK
         lk_debug << "tbPointer=" << tbPointer << ", value=" << value  << endl;
 #endif
@@ -207,6 +301,8 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
 
             return true;
         }
+
+        valuePrev = value;
     }
 
     return false;
@@ -236,6 +332,9 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         isSaturated = true;
     }
 
+    LKTbIterationParameters par;
+    par.SetScaleTbStep(fScaleTbStep);
+
     double stepChi2NDFCut = 1;
 
     double chi2NDFPrev = DBL_MAX; // Least-squares of previous fit
@@ -248,7 +347,15 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
     FitAmplitude(buffer, tbPrev, ndf, amplitude, chi2NDFPrev);
     ndf = fNDFFit;
     FitAmplitude(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
-    double slope = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev);
+
+    par.Add(chi2NDFPrev,tbPrev);
+    par.Add(chi2NDFCurr,tbCurr);
+    double slope = par.Slope();
+
+#ifdef DEBUG_CHANA_FITPULSE
+    //lk_debug << "slope is " << slope << " " << chi2NDFCurr << " " << chi2NDFPrev << " " <<  tbCurr << " " << tbPrev << endl;
+    double chi2NDF0 = chi2NDFPrev;
+#endif
 
     int countIteration = 0;
     bool firstCheckFlag = false; // Checking flag to apply cut twice in a row
@@ -276,25 +383,32 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         graph -> SetMarkerStyle(24);
         graph -> SetLineColor(kBlue);
     }
+    double slope2 = abs(slope);
     dGraph_it_tb -> SetPoint(countIteration, countIteration, tbCurr);
     dGraph_it_tbStep -> SetPoint(countIteration, countIteration, tbStep);
     dGraph_it_chi2 -> SetPoint(countIteration, countIteration, chi2NDFCurr);
-    dGraph_it_slope -> SetPoint(countIteration, countIteration, double(slope));
-    dGraph_it_slopeInv -> SetPoint(countIteration, countIteration, double(1./slope));
+    dGraph_it_slope -> SetPoint(countIteration, countIteration, slope2);
+    dGraph_it_slopeInv -> SetPoint(countIteration, countIteration, double(1./slope2));
     dGraph_tb_chi2 -> SetPoint(countIteration, tbCurr, chi2NDFCurr);
-    dGraph_tb_slope -> SetPoint(countIteration, tbCurr, double(slope));
-    dGraph_tb_slopeInv -> SetPoint(countIteration, tbCurr, double(1./slope));
+    dGraph_tb_slope -> SetPoint(countIteration, tbCurr, slope2);
+    dGraph_tb_slopeInv -> SetPoint(countIteration, tbCurr, double(1./slope2));
 #endif
 
+    bool foundNewMinimum = true;
     while (true)
     {
         countIteration++;
-        tbPrev = tbCurr;
-        chi2NDFPrev = chi2NDFCurr;
-        tbStep = fScaleTbStep * slope;
-        if (tbStep>1) tbStep = 1;
-        else if (tbStep<-1) tbStep = -1;
-        tbCurr = tbPrev + tbStep;
+        if (foundNewMinimum) {
+            tbPrev = tbCurr;
+            chi2NDFPrev = chi2NDFCurr;
+        }
+        //tbStep = fScaleTbStep * slope;
+        //if (tbStep>1) tbStep = 1;
+        //else if (tbStep<-1) tbStep = -1;
+        //tbCurr = tbPrev + tbStep;
+
+        tbStep = par.TbStep();
+        tbCurr = par.NextTb(tbPrev);
 
         if (tbCurr<0 || tbCurr>fTbStartCut) {
 #ifdef DEBUG_CHANA_FITPULSE
@@ -305,17 +419,20 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
 
         ndf = fNDFFit;
         FitAmplitude(buffer, tbCurr, ndf, amplitude, chi2NDFCurr);
-        slope = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev);
+        //slope = -(chi2NDFCurr-chi2NDFPrev) / (tbCurr-tbPrev);
+        foundNewMinimum = par.Add(chi2NDFCurr,tbCurr);
+        slope = par.Slope();
 #ifdef DEBUG_CHANA_FITPULSE
+        double slope2 = abs(slope);
         dGraph_it_tb -> SetPoint(countIteration, countIteration, tbCurr);
         dGraph_it_tbStep -> SetPoint(countIteration, countIteration, tbStep);
         dGraph_it_chi2 -> SetPoint(countIteration, countIteration, chi2NDFCurr);
-        dGraph_it_slope -> SetPoint(countIteration, countIteration, double(slope));
-        dGraph_it_slopeInv -> SetPoint(countIteration, countIteration, double(1./slope));
+        dGraph_it_slope -> SetPoint(countIteration, countIteration, double(slope2));
+        dGraph_it_slopeInv -> SetPoint(countIteration, countIteration, double(1./slope2));
         dGraph_tb_chi2 -> SetPoint(countIteration, tbCurr, chi2NDFCurr);
-        dGraph_tb_slope -> SetPoint(countIteration, tbCurr, double(slope));
-        dGraph_tb_slopeInv -> SetPoint(countIteration, tbCurr, double(1./slope));
-        lk_debug << "IT-" << countIteration << " tb: " << tbPrev << "->" << tbCurr << "(" << tbStep << ")" << ",  chi2: " << chi2NDFPrev << "->" << chi2NDFCurr << ",  tb-step: " << tbStep << endl;
+        dGraph_tb_slope -> SetPoint(countIteration, tbCurr, double(slope2));
+        dGraph_tb_slopeInv -> SetPoint(countIteration, tbCurr, double(1./slope2));
+        lk_debug << "IT-" << countIteration << " tb: " << tbPrev << "->" << tbCurr << "(" << tbStep << ")" << ",  c2/n: " << chi2NDFPrev << "->" << chi2NDFCurr << ",  tb-step: " << tbStep << " ndf=" << ndf << endl;
 #endif
 
         if (abs(tbStep)<fTbStepCut) {
@@ -333,14 +450,18 @@ bool LKChannelAnalyzer::FitPulse(double *buffer, int tbStartOfPulse, int tbPeak,
         }
     }
 
-    if (slope > 0) { // pre-fit is better
-        tbHit = tbPrev;
-        chi2Fitted = chi2NDFPrev;
-    }
-    else { // current-fit is better
-        tbHit = tbCurr;
-        chi2Fitted = chi2NDFCurr;
-    }
+
+    tbHit = par.fT1;
+    chi2Fitted = par.fC1;
+
+    //if (slope > 0) { // pre-fit is better
+    //    tbHit = tbPrev;
+    //    chi2Fitted = chi2NDFPrev;
+    //}
+    //else { // current-fit is better
+    //    tbHit = tbCurr;
+    //    chi2Fitted = chi2NDFCurr;
+    //}
 
     return true;
 }
@@ -350,6 +471,9 @@ void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse,
         double &amplitude,
         double &chi2NDF)
 {
+#ifdef DEBUG_CHANA_FITAMPLITUDE
+    lk_debug << "pulse: "; for (auto i=0; i<20; ++i) e_cout << i << "/" << fPulse -> Eval(i) << ", "; e_cout << endl;
+#endif
     double refy = 0;
     double ref2 = 0;
     int tb0 = int(tbStartOfPulse); 
@@ -374,10 +498,13 @@ void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse,
         double weigth = 1./(errorRef*errorRef);
         refy += weigth * valueRef * valueData;
         ref2 += weigth * valueRef * valueRef;
+#ifdef DEBUG_CHANA_FITAMPLITUDE
+        lk_debug << iTbPulse << "; " << refy << " / " << ref2 << endl;
+#endif
     }
     ndfFit = ndfFit-2;
 #ifdef DEBUG_CHANA_FITAMPLITUDE
-    lk_debug << "ndf is " << ndf << " ndfFit is " << ndfFit << endl;
+    //lk_debug << "ndf is " << ndf << " ndfFit is " << ndfFit << endl;
 #endif
 
     if (ref2==0) {
@@ -385,6 +512,9 @@ void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse,
         return;
     }
     amplitude = refy / ref2;
+#ifdef DEBUG_CHANA_FITAMPLITUDE
+    lk_debug << "amplitude = " << amplitude << " = " << refy << " / " << ref2 << endl;
+#endif
     chi2NDF = 0;
 
     ndfFit = 0;
@@ -404,6 +534,9 @@ void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse,
         double valueRefA = amplitude * fPulse -> Eval(tbRef);
         double errorRefA = amplitude * fPulse -> Error(tbRef);
         double residual = (valueData-valueRefA)*(valueData-valueRefA)/errorRefA/errorRefA;
+#ifdef DEBUG_CHANA_FITAMPLITUDE
+        lk_debug << residual << " = (" << valueData << " - " << valueRefA << ")^2 / " << errorRefA << "^2 at " << tbRef << endl;
+#endif
         chi2NDF += residual;
     }
     ndfFit = ndfFit-2;

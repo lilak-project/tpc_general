@@ -363,7 +363,7 @@ void SetRunAll()
 void SetDrawCheckAllResults()
 {
     //SetAllFalse();
-    SetMMType();
+    //SetMMType();
     e_batch();
     fMaxInputFiles = 5;
     fNumCvsGroup = 4;

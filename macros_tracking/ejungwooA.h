@@ -272,15 +272,67 @@ TCanvas *LKWindowManager::CanvasR(const char *name, Int_t w, Int_t h, Int_t ww, 
 
 namespace ejungwoo
 {
+    class Range
+    {
+        public:
+            Range() {}
+            Range(double range1, double range2, bool setToMaximum) {
+                AddRange(range1, range2, setToMaximum);
+            }
+            void AddRange(double range1, double range2, bool setToMaximum) {
+                fSetToMaximum = setToMaximum;
+                if (range1>range2) {
+                    double range3 = range2;
+                    range2 = range1;
+                    range1 = range3;
+                }
+                fRange1.push_back(range1);
+                fRange2.push_back(range2);
+                if (range2>fRangeMaximum) fRangeMaximum = range2;
+                if (range1<fRangeMinimum) fRangeMinimum = range1;
+                ++fNumRanges;
+            }
+            bool IsInRange(double value) {
+                if (fNumRanges==0)
+                    return true;
+                for (auto iRange=0; iRange<fNumRanges; ++iRange) {
+                    double range1 = fRange1[iRange];
+                    double range2 = fRange2[iRange];
+                    if (value>range1&&value<range2)
+                        return true;
+                }
+                return false;
+            }
+            double SetValue(double value) {
+                if (IsInRange(value))
+                    return value;
+                if (fSetToMaximum)
+                    return fRangeMaximum;
+                return fRangeMinimum;
+            }
+        private:
+            int fNumRanges = 0;
+            double fRangeMaximum;
+            double fRangeMinimum;
+            vector<double> fRange1;
+            vector<double> fRange2;
+            bool fSetToMaximum = true;
+    };
+
     void     Batch();
     void     Add    (TObject* object, const char *subfolder="");
     void     Save   (TObject *object, const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false);
     TCanvas* Canvas (const char* name="", int wx=800, int wy=680, int dx=1, int dy=1);
     void     SaveAll(const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false);
-    TH2D*    Frame  (TGraph *graph, const char* name);
-    TH2D*    Frame  (TGraph *graph, const char* name, const char* title="");
+    TH2D*    Frame  (TGraph *graph, const char* name, const char* title="",
+                     ejungwoo::Range rx1=ejungwoo::Range(), ejungwoo::Range rx2=ejungwoo::Range(),
+                     ejungwoo::Range ry1=ejungwoo::Range(), ejungwoo::Range ry2=ejungwoo::Range());
     TF1*     FitG   (TH1D* hist, double sigmaWidth, Option_t *opt="RQ0");
+    TH1D*    MakeChannelHist(int*    data, int nTb, TString name);
+    TH1D*    MakeChannelHist(double* data, int nTb, TString name);
+
 }
+
 
 void ejungwoo::Batch()
 {
@@ -332,13 +384,11 @@ TCanvas *ejungwoo::Canvas(const char* name="", int wx=800, int wy=680, int dx=1,
         for (auto ix=0; ix<dx; ++ix)
             for (auto iy=0; iy<dy; ++iy) {
                 auto cvsIn = cvs0 -> cd(iy*dx+ix+1);
-                cvsIn -> SetLeftMargin(0.12);
-                cvsIn -> SetRightMargin(0.15);
+                cvsIn -> SetMargin(0.15,0.12,0.12,0.12);
             }
     }
     else {
-        cvs0 -> SetLeftMargin(0.12);
-        cvs0 -> SetRightMargin(0.15);
+        cvs0 -> SetMargin(0.15,0.12,0.12,0.12);
     }
     Add(cvs0);
     return cvs0;
@@ -424,7 +474,7 @@ void ejungwoo::SaveAll(const char* fileType="", const char* nameVersion="", bool
         Save(obj,fileType,nameVersion,savePrimitives,simplifyNames);
 }
 
-TH2D *ejungwoo::Frame(TGraph *graph, const char* name, const char* title="")
+TH2D *ejungwoo::Frame(TGraph *graph, const char* name, const char* title="", ejungwoo::Range rx1, ejungwoo::Range rx2, ejungwoo::Range ry1, ejungwoo::Range ry2)
 {
     int nbins = graph -> GetN();
     double x1=DBL_MAX, x2=-DBL_MAX, y1=DBL_MAX, y2=-DBL_MAX;
@@ -440,6 +490,12 @@ TH2D *ejungwoo::Frame(TGraph *graph, const char* name, const char* title="")
     x2 = x2 + (x2-x1) * 0.05;
     y1 = y1 - (y2-y1) * 0.05;
     y2 = y2 + (y2-y1) * 0.05;
+    lk_debug << "x: " << x1 << " " << x2 << ", y:" << y1 << " " << y2 << endl;
+    x1 = rx1.SetValue(x1);
+    y1 = ry1.SetValue(y1);
+    x2 = rx2.SetValue(x2);
+    y2 = ry2.SetValue(y2);
+    lk_debug << "x: " << x1 << " " << x2 << ", y:" << y1 << " " << y2 << endl;
     auto hist = new TH2D(name,title,100,x1,x2,200,y1,y2);
     return hist;
 }
@@ -458,6 +514,27 @@ TF1 *ejungwoo::FitG(TH1D* hist, double sigmaWidth=1.5, Option_t *opt="RQ0")
     func -> SetRange(xMax-sigmaWidth*xErr,xMax+sigmaWidth*xErr);
     hist -> Fit(func,opt);
     return func;
+}
+
+TH1D* ejungwoo::MakeChannelHist(int* data, int nTb, TString name)
+{
+    auto hist = new TH1D(name,name+";tb;y",nTb,0,nTb);
+    //cout << "{";
+    for (auto tb=0; tb<nTb; ++tb) {
+        hist -> SetBinContent(tb+1,data[tb]);
+        //cout << data[tb] << ",";
+    }
+    //cout << "}" << endl;
+    return hist;
+}
+
+TH1D* ejungwoo::MakeChannelHist(double* data, int nTb, TString name)
+{
+    auto hist = new TH1D(name,name+";tb;y",nTb,0,nTb);
+    for (auto tb=0; tb<nTb; ++tb) {
+        hist -> SetBinContent(tb+1,data[tb]);
+    }
+    return hist;
 }
 
 //using namespace ejungwoo;

@@ -1,10 +1,12 @@
 #ifndef LKCHANNELANALYZER_HH
 #define LKCHANNELANALYZER_HH
 
-//#define DEBUG_CHANA_FINDPEAK
-//#define DEBUG_CHANA_ANALYZE
-//#define DEBUG_CHANA_FITPULSE
-//#define DEBUG_CHANA_FITAMPLITUDE
+#define DEBUG_CHANA_FINDPED
+#define DEBUG_CHANA_FINDPEAK
+#define DEBUG_CHANA_ANALYZE
+#define DEBUG_CHANA_FITPULSE
+#define DEBUG_CHANA_FITAMPLITUDE
+#define DEBUG_CHANA_ANALYZE_NHIT 1
 
 #include <vector>
 #include <cfloat>
@@ -18,6 +20,67 @@ using namespace std;
 #include "LKLogger.h"
 #include "LKPulse.h"
 #include "LKPulseFitParameter.h"
+
+#define NUMBER_OF_PEDESTAL_TEST_REGIONS 6
+#define NUMBER_OF_PEDESTAL_TEST_REGIONS_M1 NUMBER_OF_PEDESTAL_TEST_REGIONS-1
+
+class LKTbIterationParameters
+{
+    public:
+        LKTbIterationParameters() {}
+
+        double fC1 = DBL_MAX;
+        double fC2 = DBL_MAX;
+        double fT1 = 0;
+        double fT2 = 0;
+        double fScaleTbStep0 = 1;
+        double fScaleTbStep = 1;
+
+        void SetScaleTbStep(double value) {
+            fScaleTbStep0 = value;
+            fScaleTbStep = value;
+        }
+
+        double Slope() const {
+            double slope = - (fC1 - fC2) / (fT1 - fT2);
+            return slope;
+        }
+
+        double TbStep() const {
+            double tbStep = fScaleTbStep * Slope();
+            lk_debug << tbStep << " " << fScaleTbStep << " * " << Slope() << " ... " << fC1 << " " << fC2 << " " << fT1 << " " << fT2 << endl;
+            return tbStep;
+        }
+
+        double NextTb(double tb) const {
+            double step = TbStep();
+                 if (step> 1) step =  1;
+            else if (step<-1) step = -1;
+            double tbNext = tb + step;
+            return tbNext;
+        }
+
+        bool Add(double c0, double t0) {
+            if (c0<fC1) {
+                fC2 = fC1;
+                fT2 = fT1;
+                fC1 = c0;
+                fT1 = t0;
+                fScaleTbStep = fScaleTbStep0;
+                return true;
+            }
+            else if (c0<fC2) {
+                fC2 = c0;
+                fT2 = t0;
+                fScaleTbStep = fScaleTbStep0;
+                return true;
+            }
+            else {
+                fScaleTbStep = 0.5 * fScaleTbStep;
+                return false;
+            }
+        }
+};
 
 /**
  * @brief LKChannelAnalyzer find and fit pulse signal from the given channel buffer using input pulse data.
@@ -39,7 +102,7 @@ using namespace std;
  *
  * The value of fit-TB-step is chosen by fScaleTbStep times inner parameter "slope".
  *
- * @param slope inner parameter defined as @f$(\chi^2_{i-1}-\chi^2_{i})/NDF / (t_i-t_{i-1})@f$, where 'i' corresponds to the iteration count and t is the fitting TB-position. This parameter indicates how rapidly the chi-square value changes per unit TB. The program is designed to take larger TB-steps when the chi-square difference is big and smaller TB-steps when the chi-square difference is small. One can adjust the rate of change by modifying the variable fScaleTbStep. The value of slope can be access by using DEBUG_CHANA_FITPULSE macro in LKChannelanalyzer.h
+ * @param slope inner parameter defined as @f$(\chi^2_{i-1}/NDF_{i-1}-\chi^2_{i}/NDF_{i}) / (t_i-t_{i-1})@f$, where 'i' corresponds to the iteration count and t is the fitting TB-position. This parameter indicates how rapidly the chi-square value changes per unit TB. The program is designed to take larger TB-steps when the chi-square difference is big and smaller TB-steps when the chi-square difference is small. One can adjust the rate of change by modifying the variable fScaleTbStep. The value of slope can be access by using DEBUG_CHANA_FITPULSE macro in LKChannelanalyzer.h
  *
  * These parameters depend on the experimental settings. Users should test the parameter dependence on the performance of LKChannelAnalyzer.
  * For debugging the fitting process, you can utilize the following C++ macros.
@@ -80,7 +143,6 @@ using namespace std;
  *  }
  * @endcode
  */
-
 class LKChannelAnalyzer : public TObject
 {
     public:
@@ -94,6 +156,7 @@ class LKChannelAnalyzer : public TObject
         /// Set pulse function and related parameter from pulse data file created from LKPulseAnalyzer
         void SetPulse(const char* fileName);
         LKPulse* GetPulse() const  { return fPulse; }
+        TString GetPulseFileName() const { return fPulseFileName; }
 
         int GetNumHits() const  { return fNumHits; }
         LKPulseFitParameter GetFitParameter(int i) const  { return fFitParameterArray[i]; }
@@ -103,7 +166,6 @@ class LKChannelAnalyzer : public TObject
         double GetNDF(int i) const        { return fFitParameterArray[i].fNDF; }
 
         void Analyze(double* data);
-        void Analyze(int* data);
         //LKChannelHit GetHit(int i) { return fChannelHitArray[i]; }
 
         double FindAndSubtractPedestal(double *buffer);
@@ -153,7 +215,7 @@ class LKChannelAnalyzer : public TObject
         void SetNDFPulse(int nDFPulse) { fNDFFit = nDFPulse; }
         void SetIterMax(int iterMax) { fIterMax = iterMax; }
         void SetScaleTbStep(double scaleTbStep) { fScaleTbStep = scaleTbStep; }
-        void SetTbStepCut(double scaleTbStep) { fTbStepCut = scaleTbStep; }
+        void SetTbStepCut(double value) { fTbStepCut = value; }
 
         double* GetBuffer() { return fBuffer; }
 
@@ -173,6 +235,7 @@ class LKChannelAnalyzer : public TObject
         int          fNumTbAcendingCut = 5; ///< Peak will be recognize if number-of-TBs-acending >= fNumTbAcendingCut. Automatically set from pulse: fNumTbAcendingCut = int(fWidthLeading*2/3).Can be set with SetNumTbAcendingCut()
 
         // y
+        int          fDynamicRangeOriginal = 4096; ///< Dynamic range of buffer. Used for recognizing saturation. Must be set with SetDynamicRange()
         int          fDynamicRange = 4096; ///< Dynamic range of buffer. Used for recognizing saturation. Must be set with SetDynamicRange()
         int          fThreshold = 50; ///< Threshold for recognizing pulse peak. Must be set with SetThreshold()
         int          fThresholdOneStep = 2; ///< Threshold for counting number-of-TBs-acending (y-current > y-previous). Must be set with SetThresholdOneStep()
@@ -197,6 +260,8 @@ class LKChannelAnalyzer : public TObject
         double       fPulseRefTbMin;
         double       fPulseRefTbMax;
         int          fNDFPulse;
+
+        TString      fPulseFileName;
 
 #ifdef DEBUG_CHANA_FITPULSE
     public:

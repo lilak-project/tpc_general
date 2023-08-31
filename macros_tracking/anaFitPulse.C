@@ -1,256 +1,208 @@
 #include "ejungwooA.h"
-#include "LKPulseAnalyzer.cpp"
+#include "setChannels.h"
 #include "LKPulseAnalyzer.h"
-#include "LKChannelAnalyzer.cpp"
 #include "LKChannelAnalyzer.h"
-//#include "LKPulse.cpp"
 #include "LKPulse.h"
+
+int fCvsDX = 1200;
+int fCvsDY = 720;
+int fCvsGroupDX = 3;
+int fCvsGroupDY = 2;
+int fNumCvsGroup = 0;
+int fMaxInputFiles = 1;
+const char* fDataPath = "data";
+int fNumChannels;
+int fIdxChannel = 0;
+bool fEndOfEvent = true;
+TClonesArray* fChannelArray = nullptr;
+LKRun* fRun;
+LKChannelAnalyzer *fChannelAnalyzer[fNumTypes];
+TCanvas *fCvs;
+TCanvas *fCvsDebug;
+
+void NextChannel(int pass=0);
 
 void anaFitPulse(double scaleBeta = 0.7)
 {
-    //e_batch();
+    fRun = new LKRun();
+    fRun -> AddDetector(new TexAT2);
+    fRun -> AddPar("config.mac");
 
-    int anaMode = 0;
-    int iterationMax = 50;
-    int scaleBeta100 = scaleBeta*100;
-
-    gStyle -> SetOptStat(0);
-
-    int bufferI[350] = {0};
-    double buffer[350] = {0};
-    const char *fileNames[] = {
-        //"data/buffer_sim.dat",
-        "dataExample/buffer_MMCenter1_1000057.dat",
-        "dataExample/buffer_MMCenter1_10024.dat",
-        "dataExample/buffer_MMCenter1_10028.dat",
-        //"dataExample/buffer_MMCenter1_2010023.dat",
-        //"dataExample/buffer_MMCenter1_2011044.dat",
-        //"dataExample/buffer_MMCenter1_22003013.dat",
-        //"dataExample/buffer_MMCenter1_1002000.dat",
-        //"dataExample/buffer_MMCenter1_12038.dat",
-        //"dataExample/buffer_MMCenter1_2000054.dat",
-        //"dataExample/buffer_MMCenter1_20011054.dat",
-        //"dataExample/buffer_MMCenter1_22003013.dat",
-    };
-
-    auto anaP = new LKPulseAnalyzer("ana%d","data");
-
-    int iFile = 0;
-    for (auto fileName : fileNames)
-    {
-        iFile++;
-
-        ifstream file_buffer(fileName);
-        int iTb = 0;
-        double value;
-        while (file_buffer>>value) {
-            buffer[iTb] = value;
-            bufferI[iTb] = int(value);
-            ++iTb;
-        }
-        file_buffer.close();
-
-        auto hist = new TH1D(Form("histChannel_%d_s%d",iFile,scaleBeta100),Form("%s;tb;",fileName),350,0,350);
-        for (auto i=0; i<350; ++i)
-            hist -> SetBinContent(i+1,buffer[i]);
-
-        auto histSubtracted = new TH1D(Form("histSubtractedChannel_%d_s%d",iFile,scaleBeta100),Form("%s;tb;",fileName),350,0,350);
-
-        auto anaC = new LKChannelAnalyzer();
-        anaC -> SetPulse("dataExample/pulseReference_MMCenter1.root");
-        anaC -> SetTbMax(350);
-        anaC -> SetTbStart(1);
-        anaC -> SetTbStartCut(330);
-        anaC -> SetThreshold(100);
-        anaC -> SetThresholdOneStep(2);
-        anaC -> SetNumTbAcendingCut(5);
-        anaC -> SetDynamicRange(4096);
-        anaC -> SetIterMax(iterationMax);
-        anaC -> SetScaleTbStep(scaleBeta);
-        anaC -> SetTbStepCut(0.01);
-
-        auto pulse = anaC -> GetPulse();
-        auto ndfWL = int(pulse -> GetLeadingWidth()) + int(pulse->GetFWHM()/3);
-
-        int tbPulse;
-        int tbPeak;
-        if (1)
-        {
-            int tbPointer = 0;
-            anaC -> FindPeak(buffer, tbPointer, tbPulse);
-            tbPeak = tbPulse + pulse -> GetLeadingWidth();
-        }
-        if (0)
-        {
-            anaP -> AddChannel(bufferI);
-            tbPeak = anaP -> GetTbAtMaxValue();
-            tbPulse = int(tbPeak - pulse->GetLeadingWidth());
-        }
-
-        if (anaMode==0)
-        {
-            int tbPointer = 0;
-            anaC -> Analyze(buffer);
-            auto numHits = anaC -> GetNumHits();
-
-            //auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1500,1000);
-            //auto cvsDebug = e_cvs(Form("cvsAna0_%d_s%d",iFile,scaleBeta100),"",1200,700);
-            auto cvsDebug = e_cvs_full(Form("cvsAna0_%d_s%d",iFile,scaleBeta100));
-            hist -> SetMarkerStyle(24);
-            hist -> SetMarkerColor(kBlack);
-            hist -> Draw("");
-
-            for (auto iHit=0; iHit<numHits; ++iHit)
-            {
-                auto tbHit = anaC -> GetTbHit(iHit);
-                auto amplitude = anaC -> GetAmplitude(iHit);
-                //e_info << iHit << " " << tbHit << " " << amplitude << endl;
-                auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
-                graphFitted -> SetFillColor(kGreen);
-                //graphFitted -> Draw("samel3");
-                graphFitted -> Draw("samel");
-                //graphFitted -> Draw("samelz");
-            }
-
-            auto bufferSubtracted = anaC -> GetBuffer();
-            for (auto i=0; i<350; ++i)
-                histSubtracted -> SetBinContent(i+1,bufferSubtracted[i]);
-
-            histSubtracted -> SetLineColor(kBlack);
-            histSubtracted -> SetLineStyle(2);
-            histSubtracted -> Draw("same");
-
-#ifdef DEBUG_CHANA_FITPULSE
-            //auto cvs_chana_debug = e_cvs(Form("cvsChanaDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
-            auto cvs_chana_debug = e_cvs(Form("cvsChanaDebug_%d_s%d",iFile,scaleBeta100));
-            cvs_chana_debug -> Divide(3,2);
-            int iCvs = 1;
-            for (auto graph : {
-                    anaC->dGraph_tb_chi2,
-                    anaC->dGraph_tb_slope,
-                    anaC->dGraph_it_slope,
-                    anaC->dGraph_it_tbStep,
-                    anaC->dGraph_it_tb,
-                    }
-                )
-            {
-                iCvs++;
-                cvs_chana_debug -> cd(iCvs);
-                auto frame = e_hist(graph,Form("frame%d%d_s%d",iFile,scaleBeta100,iCvs),Form("ex%d) C = %.2f%s",iFile,scaleBeta,graph->GetTitle()));
-                frame -> Draw();
-                graph -> Draw("samepl");
-
-                continue;
-                if (graph==anaC->dGraph_tb_chi2) {
-                    cvs_chana_debug -> cd(iCvs);
-                    auto fit = new TF1(Form("fitTbC2_%d_s%d",iFile,scaleBeta100),"pol2",0,350);
-                    fit -> SetLineColor(kRed);
-                    fit -> SetLineStyle(2);
-                    graph -> Fit(fit,"QN0");
-                    fit -> Draw("samel");
-                }
-            }
-            cvs_chana_debug -> cd(1);
-            //hist -> GetXaxis() -> SetRangeUser(tbPulse-2,tbPulse+55);
-            //hist -> SetMarkerStyle(20);
-            //hist -> SetMarkerColor(kBlack);
-            //hist -> Draw("p");
-            //auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
-            //graphFitted -> SetFillColor(kGreen);
-            //graphFitted -> Draw("samelpz");
-            //hist -> Draw("samep");
-
-            cvs_chana_debug -> Modified();
-            cvs_chana_debug -> Update();
-#endif
-        }
-        else if (anaMode==1)
-        {
-            double tbHit;
-            double amplitude;
-
-            int ndf = ndfWL;
-            bool isSaturated;
-            double chi2Fitted;
-            anaC -> FitPulse(buffer, tbPulse, tbPeak, tbHit, amplitude, chi2Fitted, ndf, isSaturated);
-
-#ifdef DEBUG_CHANA_FITPULSE
-            //auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100),"",3500,2000,3,2);
-            auto cvsDebug = e_cvs(Form("cvsDebug_%d_s%d",iFile,scaleBeta100));//,"",3500,2000,3,2);
-            cvsDebug -> Divide(3,2);
-            int iCvs = 1;
-            for (auto graph : {
-                    anaC->dGraph_tb_chi2,
-                    anaC->dGraph_tb_slope,
-                    anaC->dGraph_it_slope,
-                    anaC->dGraph_it_tbStep,
-                    anaC->dGraph_it_tb,
-                    }
-                )
-            {
-                iCvs++;
-                cvsDebug -> cd(iCvs);
-                auto frame = e_hist(graph,Form("frame%d%d_s%d",iFile,scaleBeta100,iCvs),Form("ex%d) C = %.2f%s",iFile,scaleBeta,graph->GetTitle()));
-                frame -> Draw();
-                graph -> Draw("samepl");
-
-                continue;
-                if (graph==anaC->dGraph_tb_chi2) {
-                    cvsDebug -> cd(iCvs);
-                    auto fit = new TF1(Form("fitTbC2_%d_s%d",iFile,scaleBeta100),"pol2",0,350);
-                    fit -> SetLineColor(kRed);
-                    fit -> SetLineStyle(2);
-                    graph -> Fit(fit,"QN0");
-                    fit -> Draw("samel");
-                }
-            }
-            cvsDebug -> cd(1);
-            hist -> GetXaxis() -> SetRangeUser(tbPulse-2,tbPulse+55);
-            hist -> SetMarkerStyle(20);
-            hist -> SetMarkerColor(kBlack);
-            hist -> Draw("p");
-            auto graphFitted = pulse -> GetPulseGraph(tbHit, amplitude);
-            graphFitted -> SetFillColor(kGreen);
-            graphFitted -> Draw("samelpz");
-            hist -> Draw("samep");
-
-            cvsDebug -> Modified();
-            cvsDebug -> Update();
-#endif
-        }
-        else
-        {
-            auto graphChi2 = new TGraph();
-            double leastChi2 = DBL_MAX;
-            double tbAtLeastChi2 = -1;
-            double amplitudeAtLeastChi2 = -1;
-            double chi2 = 0;
-            double amplitude = 0;
-
-            for (double tbTest=tbPulse-2; tbTest<=tbPulse+10; tbTest+=0.50)
-            { 
-                int ndf = 30;
-                anaC -> FitAmplitude(buffer, tbTest, ndf, amplitude, chi2);
-                graphChi2 -> SetPoint(graphChi2->GetN(),tbTest,chi2);
-                if (chi2<leastChi2) {
-                    amplitudeAtLeastChi2 = amplitude;
-                    tbAtLeastChi2 = tbTest;
-                    leastChi2 = chi2;
-                }
-            }
-            auto cvsChannel = e_cvs(Form("channelFit_%d_s%d",iFile,scaleBeta100));
-            hist -> Draw();
-            auto graphFitted = pulse -> GetPulseGraph(tbAtLeastChi2, amplitudeAtLeastChi2);
-            graphFitted -> SetFillColor(kGreen);
-            graphFitted -> Draw("samel3");
-            hist -> Draw("same");
-
-            auto cvsChi2 = e_cvs(Form("chi2_%d_s%d",iFile,scaleBeta100));
-            graphChi2 -> SetMarkerStyle(20);
-            //graphChi2 -> SetMarkerSize(0.4);
-            graphChi2 -> Draw("apl");
-        }
+    //ifstream file_list_conv("/home/ejungwoo/data/texat/conv/list_conv");
+    ifstream file_list_conv("list_conv");
+    int countFiles = 0;
+    TString fileName;
+    while (file_list_conv>>fileName) {
+        if (countFiles>=fMaxInputFiles) break;
+        fRun -> AddInputFile(fileName);
+        countFiles++;
     }
 
-    //e_save_all();
+    auto detector = (TexAT2*) fRun -> GetDetector();
+
+    fRun -> SetTag("read");
+    fRun -> Init();
+    fChannelArray = fRun -> GetBranchA("RawData");
+
+    for (auto type : fSelTypes)
+    {
+        TString pulseFile = Form("data100/pulseReference_%s.root",fTypeNames[type]);
+        int anaThreshold = 150;
+
+        auto ana = new LKChannelAnalyzer();
+        ana -> SetPulse(pulseFile);
+        ana -> SetTbMax(350);
+        ana -> SetTbStart(1);
+        ana -> SetTbStartCut(330);
+        ana -> SetThreshold(anaThreshold);
+        ana -> SetThresholdOneStep(2);
+        ana -> SetNumTbAcendingCut(5);
+        ana -> SetDynamicRange(4096);
+        ana -> SetIterMax(15);
+        //ana -> SetIterMax(2);
+        ana -> SetScaleTbStep(0.2);
+        //ana -> SetTbStepCut(0.01);
+        ana -> SetTbStepCut(0.000001);
+        fChannelAnalyzer[type] = ana;
+    }
+
+#ifdef DEBUG_CHANA_FITPULSE
+    fCvsDebug = ejungwoo::Canvas("cvsd",0,0,3,2);
+    fCvs = (TCanvas *) fCvsDebug -> cd(1);
+#else
+    fCvs = e_cvs("cvs");
+#endif
+
+    NextChannel();
+    if (0) {
+        lk_logger("fit11");
+        NextChannel(11);
+        NextChannel();
+        NextChannel();
+        NextChannel();
+        NextChannel();
+        NextChannel();
+        NextChannel();
+        NextChannel();
+        NextChannel();
+        NextChannel();
+    }
+    if (0) {
+        lk_logger("fit20");
+        NextChannel(20);
+    }
+}
+
+void NextChannel(int pass)
+{
+    if (fIdxChannel==fNumChannels) {
+        fEndOfEvent = true;
+        fIdxChannel = 0;
+    }
+    if (fEndOfEvent) {
+        fRun -> GetNextEvent();
+        fEndOfEvent = false;
+        fNumChannels = fChannelArray -> GetEntries();
+    }
+
+    if (pass>0) {
+        pass--;
+        fIdxChannel++;
+        NextChannel(pass);
+        return;
+    }
+
+    if (pass<0) {
+        fIdxChannel = fIdxChannel + pass - 1;
+        if (fIdxChannel<0) {
+            e_warning << "Impossible job!" << endl;
+            return;
+        }
+        NextChannel();
+        return;
+    }
+
+    auto channel = (MMChannel *) fChannelArray -> At(fIdxChannel++);
+    auto cobo = channel -> GetCobo();
+    auto asad = channel -> GetAsad();
+    auto aget = channel -> GetAget();
+    auto chan = channel -> GetChan();
+    auto data = channel -> GetWaveformY();
+    auto type = GetType(cobo,asad,aget,chan);
+    auto caac = fRun->GetCurrentEventID()*1000000 + cobo*100000 + asad*10000 + aget*1000 + chan;
+    bool selected = false;
+    for (auto type0 : fSelTypes)
+        if (type==type0)
+            selected = true;
+    if (selected==false)
+        return;
+
+    auto ana = fChannelAnalyzer[type];
+    lk_debug << ana -> GetPulseFileName()  << endl;
+
+    double data2[350];
+    for (auto tb=0; tb<350; ++tb)
+        data2[tb] = double(data[tb]);
+
+    ana -> Analyze(data2);
+
+#ifdef DEBUG_CHANA_FITPULSE
+    {
+        int iCvs = 1;
+        for (auto graph : {ana->dGraph_tb_chi2, ana->dGraph_tb_slope, ana->dGraph_it_slope, ana->dGraph_it_tbStep, ana->dGraph_it_tb,})
+        //for (auto graph : {ana->dGraph_it_slope})
+        {
+            fCvsDebug -> cd(++iCvs);
+            TH2D* frame;
+            if (graph==ana->dGraph_it_slope) {
+                ejungwoo::Range rg0;
+                ejungwoo::Range ry1(0, 0, false);
+                ejungwoo::Range ry2(0, 0.01, true);
+                frame = ejungwoo::Frame(graph, Form("frame%lld%d",caac,iCvs), Form("ex%lld) %s",caac,graph->GetTitle()), rg0, rg0, ry1, ry2);
+            }
+            else
+                frame = e_frame(graph, Form("frame%lld%d",caac,iCvs), Form("ex%lld) %s",caac,graph->GetTitle()));
+            frame -> Draw();
+            graph -> Draw("samepl");
+
+            //continue;
+            if (graph==ana->dGraph_tb_chi2) {
+                fCvsDebug -> cd(iCvs);
+                auto fit = new TF1(Form("fitTbC2_%lld",caac),"pol2",0,350);
+                fit -> SetLineColor(kRed);
+                fit -> SetLineStyle(2);
+                graph -> Fit(fit,"QN0");
+                fit -> Draw("samel");
+            }
+        }
+        fCvsDebug -> Modified();
+        fCvsDebug -> Update();
+    }
+#endif
+
+    TString nameCvs = Form("cvs_%s_%lld",fTypeNames[type],caac);
+    TString nameHist = Form("hist_%s_%lld",fTypeNames[type],caac);
+    TString namePedestal = Form("hists_%s_%lld",fTypeNames[type],caac);
+
+    fCvs -> cd();
+    auto hist = ejungwoo::MakeChannelHist(data2,350,nameHist);
+    hist -> Draw();
+
+    auto numHits = ana -> GetNumHits();
+    e_test << numHits << endl;
+    for (auto iHit=0; iHit<numHits; ++iHit)
+    {
+        auto tbHit = ana -> GetTbHit(iHit);
+        auto amplitude = ana -> GetAmplitude(iHit);
+        auto graph = ana -> GetPulse() -> GetPulseGraph(tbHit,amplitude);
+        graph -> Draw("samelx");
+    }
+
+    auto histSubtracted = ejungwoo::MakeChannelHist(ana->GetBuffer(),350,namePedestal);
+    histSubtracted -> SetLineColor(kBlack);
+    histSubtracted -> SetLineStyle(2);
+    histSubtracted -> Draw("same");
+
+    fCvs -> Modified();
+    fCvs -> Update();
 }

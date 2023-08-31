@@ -117,7 +117,8 @@ void drawSimResult()
         hist5 -> SetTitle(Form("%s, MS=(%.2f, %.2f)", hist5->GetTitle(),mean5,sigm5));
         hist6 -> SetTitle(Form("%s, MS=(%.2f, %.2f)", hist6->GetTitle(),mean6,sigm6));
 
-        if (cutSelected!="") {
+        if (cutSelected!="")
+        {
             cutSelected = cutSelected&&cutGeneral;
             const char* fileName2 = Form("data/simulationSelection_%s.%s.root",nameSim,cutSelected.GetName());
             e_cout << fileName2 << endl;
