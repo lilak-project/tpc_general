@@ -490,12 +490,12 @@ TH2D *ejungwoo::Frame(TGraph *graph, const char* name, const char* title="", eju
     x2 = x2 + (x2-x1) * 0.05;
     y1 = y1 - (y2-y1) * 0.05;
     y2 = y2 + (y2-y1) * 0.05;
-    lk_debug << "x: " << x1 << " " << x2 << ", y:" << y1 << " " << y2 << endl;
+    //lk_debug << "x: " << x1 << " " << x2 << ", y:" << y1 << " " << y2 << endl;
     x1 = rx1.SetValue(x1);
     y1 = ry1.SetValue(y1);
     x2 = rx2.SetValue(x2);
     y2 = ry2.SetValue(y2);
-    lk_debug << "x: " << x1 << " " << x2 << ", y:" << y1 << " " << y2 << endl;
+    //lk_debug << "x: " << x1 << " " << x2 << ", y:" << y1 << " " << y2 << endl;
     auto hist = new TH2D(name,title,100,x1,x2,200,y1,y2);
     return hist;
 }

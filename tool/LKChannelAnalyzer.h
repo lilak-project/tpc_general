@@ -1,12 +1,12 @@
 #ifndef LKCHANNELANALYZER_HH
 #define LKCHANNELANALYZER_HH
 
-#define DEBUG_CHANA_FINDPED
-#define DEBUG_CHANA_FINDPEAK
-#define DEBUG_CHANA_ANALYZE
-#define DEBUG_CHANA_FITPULSE
-#define DEBUG_CHANA_FITAMPLITUDE
-#define DEBUG_CHANA_ANALYZE_NHIT 1
+//#define DEBUG_CHANA_FINDPED
+//#define DEBUG_CHANA_FINDPEAK
+//#define DEBUG_CHANA_ANALYZE
+//#define DEBUG_CHANA_FITPULSE
+//#define DEBUG_CHANA_FITAMPLITUDE
+//#define DEBUG_CHANA_ANALYZE_NHIT 1
 
 #include <vector>
 #include <cfloat>
@@ -48,7 +48,6 @@ class LKTbIterationParameters
 
         double TbStep() const {
             double tbStep = fScaleTbStep * Slope();
-            lk_debug << tbStep << " " << fScaleTbStep << " * " << Slope() << " ... " << fC1 << " " << fC2 << " " << fT1 << " " << fT2 << endl;
             return tbStep;
         }
 

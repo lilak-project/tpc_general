@@ -28,3 +28,22 @@ hostname e{lilak_hostuser}
 @bell.ejungwoo/CalibrationParameter/fX6J_CalPar   /home/ejungwoo/data/texat/txtfiles/X6J_calpar.txt
 @bell.ejungwoo/CalibrationParameter/fX6O_CalPar   /home/ejungwoo/data/texat/txtfiles/X6O_calpar.txt
 
+@bell.ejungwoo/general_data /home/ejungwoo/data/texat
+TexAT2/pulse/MMCenterSideA0    {general_data}/pulse/pulseReference_MMCenterSideA0.root
+TexAT2/pulse/MMCenterSideA1    {general_data}/pulse/pulseReference_MMCenterSideA1.root
+TexAT2/pulse/MMCenterSideA2    {general_data}/pulse/pulseReference_MMCenterSideA2.root
+TexAT2/pulse/MMCenterSideA3    {general_data}/pulse/pulseReference_MMCenterSideA3.root
+TexAT2/pulse/MMCenterCenterA0  {general_data}/pulse/pulseReference_MMCenterCenterA0.root
+TexAT2/pulse/MMCenterCenterA1  {general_data}/pulse/pulseReference_MMCenterCenterA1.root
+TexAT2/pulse/MMCenterCenterA2  {general_data}/pulse/pulseReference_MMCenterCenterA2.root
+TexAT2/pulse/MMCenterCenterA3  {general_data}/pulse/pulseReference_MMCenterCenterA3.root
+TexAT2/pulse/MMLeftSide        {general_data}/pulse/pulseReference_MMLeftSide.root
+TexAT2/pulse/MMLeftCenter      {general_data}/pulse/pulseReference_MMLeftCenter.root
+TexAT2/pulse/MMRightSide       {general_data}/pulse/pulseReference_MMRightSide.root
+TexAT2/pulse/MMRightCenter     {general_data}/pulse/pulseReference_MMRightCenter.root
+TexAT2/pulse/fSiJunction       {general_data}/pulse/pulseReference_fSiJunction.root
+TexAT2/pulse/fSiOhmic          {general_data}/pulse/pulseReference_fSiOhmic.root
+TexAT2/pulse/fCsI              {general_data}/pulse/pulseReference_fCsI.root
+TexAT2/pulse/X6Ohmic           {general_data}/pulse/pulseReference_X6Ohmic.root
+TexAT2/pulse/X6Junction        {general_data}/pulse/pulseReference_X6Junction.root
+TexAT2/pulse/CsICT             {general_data}/pulse/pulseReference_CsICT.root

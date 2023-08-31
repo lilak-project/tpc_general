@@ -107,37 +107,38 @@ void LKChannelAnalyzer::Analyze(double* data)
     double tbHitPrev = fTbStart;
     double amplitudePrev = 0;
 
-    while (FindPeak(fBuffer, tbPointer, tbStartOfPulse))
-    {
-#ifdef DEBUG_CHANA_ANALYZE
-        lk_debug << tbPointer << " " << tbStartOfPulse << endl;
-#endif
-        if (tbStartOfPulse > fTbStartCut-1)
-            break;
-
-        bool isSaturated = false;
-        if (FitPulse(fBuffer, tbStartOfPulse, tbPointer, tbHit, amplitude, chi2NDF, ndf, isSaturated) == false)
-            continue;
-
-        // Pulse is found!
-
-        if (TestPulse(fBuffer, tbHitPrev, amplitudePrev, tbHit, amplitude)) 
+    for (auto it : {0,1})
+        while (FindPeak(fBuffer, tbPointer, tbStartOfPulse))
         {
-            //fTbHitArray.push_back(tbHit);
-            //fAmplitudeArray.push_back(amplitude);
-            fFitParameterArray.push_back(LKPulseFitParameter(tbHit,amplitude,chi2NDF,ndf));
-#ifdef DEBUG_CHANA_ANALYZE_NHIT
-            if (fFitParameterArray.size()>=DEBUG_CHANA_ANALYZE_NHIT)
-                break;
+#ifdef DEBUG_CHANA_ANALYZE
+            lk_debug << tbPointer << " " << tbStartOfPulse << endl;
 #endif
-            tbHitPrev = tbHit;
-            amplitudePrev = amplitude;
-            if (isSaturated)
-                tbPointer = int(tbHit) + fTbStepIfSaturated;
-            else
-                tbPointer = int(tbHit) + fTbStepIfFoundHit;
+            if (tbStartOfPulse > fTbStartCut-1)
+                break;
+
+            bool isSaturated = false;
+            if (FitPulse(fBuffer, tbStartOfPulse, tbPointer, tbHit, amplitude, chi2NDF, ndf, isSaturated) == false)
+                continue;
+
+            // Pulse is found!
+
+            if (TestPulse(fBuffer, tbHitPrev, amplitudePrev, tbHit, amplitude))
+            {
+                //fTbHitArray.push_back(tbHit);
+                //fAmplitudeArray.push_back(amplitude);
+                fFitParameterArray.push_back(LKPulseFitParameter(tbHit,amplitude,chi2NDF,ndf));
+#ifdef DEBUG_CHANA_ANALYZE_NHIT
+                if (fFitParameterArray.size()>=DEBUG_CHANA_ANALYZE_NHIT)
+                    break;
+#endif
+                tbHitPrev = tbHit;
+                amplitudePrev = amplitude;
+                if (isSaturated)
+                    tbPointer = int(tbHit) + fTbStepIfSaturated;
+                else
+                    tbPointer = int(tbHit) + fTbStepIfFoundHit;
+            }
         }
-    }
 
     fNumHits = fFitParameterArray.size();
     //fNumHits = fTbHitArray.size();
@@ -471,12 +472,22 @@ void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse,
         double &amplitude,
         double &chi2NDF)
 {
+    if (isnan(tbStartOfPulse)) {
+#ifdef DEBUG_CHANA_FITAMPLITUDE
+        lk_debug << "return tb is nan" << endl;
+#endif
+        chi2NDF = 1.e10;
+        return;
+    }
 #ifdef DEBUG_CHANA_FITAMPLITUDE
     lk_debug << "pulse: "; for (auto i=0; i<20; ++i) e_cout << i << "/" << fPulse -> Eval(i) << ", "; e_cout << endl;
 #endif
     double refy = 0;
     double ref2 = 0;
     int tb0 = int(tbStartOfPulse); 
+#ifdef DEBUG_CHANA_FITAMPLITUDE
+    lk_debug << tb0 << " = abs(" << tbStartOfPulse << ")" << endl;
+#endif
     double tbOffset = tbStartOfPulse - tb0; 
 
     int ndfFit = 0;
@@ -484,6 +495,9 @@ void LKChannelAnalyzer::FitAmplitude(double *buffer, double tbStartOfPulse,
     for (; (ndfFit<ndf && iTbPulse<fNDFPulse); iTbPulse++)
     {
         int tbData = tb0 + iTbPulse;
+#ifdef DEBUG_CHANA_FITAMPLITUDE
+        lk_debug << tbData << " = " << tb0 << " " << iTbPulse << endl;
+#endif
         //if (tbData<0 || tbData>=350)
         //    lk_debug << tbData << endl;
         if (tbData>=fTbMax)

@@ -156,7 +156,7 @@ void NextChannel(int pass)
             TH2D* frame;
             if (graph==ana->dGraph_it_slope) {
                 ejungwoo::Range rg0;
-                ejungwoo::Range ry1(0, 0, false);
+                ejungwoo::Range ry1(0, 0.01, false);
                 ejungwoo::Range ry2(0, 0.01, true);
                 frame = ejungwoo::Frame(graph, Form("frame%lld%d",caac,iCvs), Form("ex%lld) %s",caac,graph->GetTitle()), rg0, rg0, ry1, ry2);
             }
