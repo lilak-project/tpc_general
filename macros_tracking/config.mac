@@ -11,39 +11,60 @@ hostname e{lilak_hostuser}
 @CENS-ALPHA-00.cens-alpha-00/TexAT2/mapX6FileName     /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/mapchantoX6_CRIB.txt
 @CENS-ALPHA-00.cens-alpha-00/TexAT2/mapX6dimFileName  /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/mapdimtoX6_CRIB.txt
 @CENS-ALPHA-00.cens-alpha-00/TexAT2/mapCsIFileName    /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/mapchantoCsI_CRIB.txt
-
 @CENS-ALPHA-00.cens-alpha-00/CalibrationParameter/fFSiJ_CalPar    /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/fSiJ_calpar_after.txt
 @CENS-ALPHA-00.cens-alpha-00/CalibrationParameter/fFCsI_CalPar    /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/fCsI_calpar_after.txt
 @CENS-ALPHA-00.cens-alpha-00/CalibrationParameter/fX6J_CalPar     /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/X6J_calpar.txt
 @CENS-ALPHA-00.cens-alpha-00/CalibrationParameter/fX6O_CalPar     /home/cens-alpha-00/chaen/TexAT_ana/txtfiles/X6O_calpar.txt
 
-@bell.ejungwoo/TTRootConversionTask/inputFileName  /home/ejungwoo/data/texat/run_0824.dat.19-03-23_23h42m36s.38.root
-@bell.ejungwoo/TexAT2/mapmmFileName  /home/ejungwoo/data/texat/txtfiles/mapchantomm.txt
-@bell.ejungwoo/TexAT2/mapsiFileName  /home/ejungwoo/data/texat/txtfiles/mapchantosi_CRIB.txt
-@bell.ejungwoo/TexAT2/mapX6FileName  /home/ejungwoo/data/texat/txtfiles/mapchantoX6_CRIB.txt
-@bell.ejungwoo/TexAT2/mapCsIFileName /home/ejungwoo/data/texat/txtfiles/mapchantoCsI_CRIB.txt
-@bell.ejungwoo/TexAT2/mapX6dimFileName /home/ejungwoo/data/texat/txtfiles/mapdimtoX6_CRIB.txt
-@bell.ejungwoo/CalibrationParameter/fFSiJ_CalPar  /home/ejungwoo/data/texat/txtfiles/fSiJ_calpar_after.txt
-@bell.ejungwoo/CalibrationParameter/fFCsI_CalPar  /home/ejungwoo/data/texat/txtfiles/fCsI_calpar_after.txt
-@bell.ejungwoo/CalibrationParameter/fX6J_CalPar   /home/ejungwoo/data/texat/txtfiles/X6J_calpar.txt
-@bell.ejungwoo/CalibrationParameter/fX6O_CalPar   /home/ejungwoo/data/texat/txtfiles/X6O_calpar.txt
+@bell.ejungwoo/common_data_path /home/ejungwoo/data/texat
 
-@bell.ejungwoo/general_data /home/ejungwoo/data/texat
-TexAT2/pulse/MMCenterSideA0    {general_data}/pulse/pulseReference_MMCenterSideA0.root
-TexAT2/pulse/MMCenterSideA1    {general_data}/pulse/pulseReference_MMCenterSideA1.root
-TexAT2/pulse/MMCenterSideA2    {general_data}/pulse/pulseReference_MMCenterSideA2.root
-TexAT2/pulse/MMCenterSideA3    {general_data}/pulse/pulseReference_MMCenterSideA3.root
-TexAT2/pulse/MMCenterCenterA0  {general_data}/pulse/pulseReference_MMCenterCenterA0.root
-TexAT2/pulse/MMCenterCenterA1  {general_data}/pulse/pulseReference_MMCenterCenterA1.root
-TexAT2/pulse/MMCenterCenterA2  {general_data}/pulse/pulseReference_MMCenterCenterA2.root
-TexAT2/pulse/MMCenterCenterA3  {general_data}/pulse/pulseReference_MMCenterCenterA3.root
-TexAT2/pulse/MMLeftSide        {general_data}/pulse/pulseReference_MMLeftSide.root
-TexAT2/pulse/MMLeftCenter      {general_data}/pulse/pulseReference_MMLeftCenter.root
-TexAT2/pulse/MMRightSide       {general_data}/pulse/pulseReference_MMRightSide.root
-TexAT2/pulse/MMRightCenter     {general_data}/pulse/pulseReference_MMRightCenter.root
-TexAT2/pulse/fSiJunction       {general_data}/pulse/pulseReference_fSiJunction.root
-TexAT2/pulse/fSiOhmic          {general_data}/pulse/pulseReference_fSiOhmic.root
-TexAT2/pulse/fCsI              {general_data}/pulse/pulseReference_fCsI.root
-TexAT2/pulse/X6Ohmic           {general_data}/pulse/pulseReference_X6Ohmic.root
-TexAT2/pulse/X6Junction        {general_data}/pulse/pulseReference_X6Junction.root
-TexAT2/pulse/CsICT             {general_data}/pulse/pulseReference_CsICT.root
+@bell.ejungwoo/TTRootConversionTask/inputFileName  {common_data_path}/run_0824.dat.19-03-23_23h42m36s.38.root
+@bell.ejungwoo/TexAT2/mapmmFileName                {common_data_path}/txtfiles/mapchantomm.txt
+@bell.ejungwoo/TexAT2/mapsiFileName                {common_data_path}/txtfiles/mapchantosi_CRIB.txt
+@bell.ejungwoo/TexAT2/mapX6FileName                {common_data_path}/txtfiles/mapchantoX6_CRIB.txt
+@bell.ejungwoo/TexAT2/mapCsIFileName               {common_data_path}/txtfiles/mapchantoCsI_CRIB.txt
+@bell.ejungwoo/TexAT2/mapX6dimFileName             {common_data_path}/txtfiles/mapdimtoX6_CRIB.txt
+@bell.ejungwoo/CalibrationParameter/fFSiJ_CalPar   {common_data_path}/txtfiles/fSiJ_calpar_after.txt
+@bell.ejungwoo/CalibrationParameter/fFCsI_CalPar   {common_data_path}/txtfiles/fCsI_calpar_after.txt
+@bell.ejungwoo/CalibrationParameter/fX6J_CalPar    {common_data_path}/txtfiles/X6J_calpar.txt
+@bell.ejungwoo/CalibrationParameter/fX6O_CalPar    {common_data_path}/txtfiles/X6O_calpar.txt
+
+TexAT2/pulseFile/MMCenterSideA0    {common_data_path}/pulse/pulseReference_MMCenterSideA0.root
+TexAT2/pulseFile/MMCenterSideA1    {common_data_path}/pulse/pulseReference_MMCenterSideA1.root
+TexAT2/pulseFile/MMCenterSideA2    {common_data_path}/pulse/pulseReference_MMCenterSideA2.root
+TexAT2/pulseFile/MMCenterSideA3    {common_data_path}/pulse/pulseReference_MMCenterSideA3.root
+TexAT2/pulseFile/MMCenterCenterA0  {common_data_path}/pulse/pulseReference_MMCenterCenterA0.root
+TexAT2/pulseFile/MMCenterCenterA1  {common_data_path}/pulse/pulseReference_MMCenterCenterA1.root
+TexAT2/pulseFile/MMCenterCenterA2  {common_data_path}/pulse/pulseReference_MMCenterCenterA2.root
+TexAT2/pulseFile/MMCenterCenterA3  {common_data_path}/pulse/pulseReference_MMCenterCenterA3.root
+TexAT2/pulseFile/MMLeftSide        {common_data_path}/pulse/pulseReference_MMLeftSide.root
+TexAT2/pulseFile/MMLeftCenter      {common_data_path}/pulse/pulseReference_MMLeftCenter.root
+TexAT2/pulseFile/MMRightSide       {common_data_path}/pulse/pulseReference_MMRightSide.root
+TexAT2/pulseFile/MMRightCenter     {common_data_path}/pulse/pulseReference_MMRightCenter.root
+TexAT2/pulseFile/fSiJunction       {common_data_path}/pulse/pulseReference_fSiJunction.root
+TexAT2/pulseFile/fSiOhmic          {common_data_path}/pulse/pulseReference_fSiOhmic.root
+TexAT2/pulseFile/fCsI              {common_data_path}/pulse/pulseReference_fCsI.root
+TexAT2/pulseFile/X6Ohmic           {common_data_path}/pulse/pulseReference_X6Ohmic.root
+TexAT2/pulseFile/X6Junction        {common_data_path}/pulse/pulseReference_X6Junction.root
+TexAT2/pulseFile/CsICT             {common_data_path}/pulse/pulseReference_CsICT.root
+
+# 10 parameters for each channel type used to set parameters of LKChannelArray
+# dynamicRange threshold tbStart tbMax, iterMax tbStepCut tbStartCut, scaleTbStep thresholdOneStep numTbAcendingCut
+TexAT2/analysis/MMCenterSideA0    4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMCenterSideA1    4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMCenterSideA2    4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMCenterSideA3    4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMCenterCenterA0  4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMCenterCenterA1  4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMCenterCenterA2  4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMCenterCenterA3  4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMLeftSide        4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMLeftCenter      4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMRightSide       4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/MMRightCenter     4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/fSiJunction       4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/fSiOhmic          4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/fCsI              4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/X6Ohmic           4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/X6Junction        4096  50  1  350     15  0.01  330     0.2  2  5
+TexAT2/analysis/CsICT             4096  50  1  350     15  0.01  330     0.2  2  5

@@ -32,6 +32,10 @@ class TTPulseAnalysisTask : public LKTask
         void Exec(Option_t *option="");
         bool EndOfRun();
 
+        void CAACtoRealDim(Int_t Cobo, Int_t Asad, Int_t Aget, Int_t Chan,
+                Double_t &posx, Double_t &posy, Double_t &posz,
+                Double_t &errx, Double_t &erry, Double_t &errz);
+
     private:
         TClonesArray *fChannelArray = nullptr;
         TClonesArray *fHitArray = nullptr;

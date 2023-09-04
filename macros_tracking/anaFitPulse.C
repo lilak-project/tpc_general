@@ -16,7 +16,8 @@ int fIdxChannel = 0;
 bool fEndOfEvent = true;
 TClonesArray* fChannelArray = nullptr;
 LKRun* fRun;
-LKChannelAnalyzer *fChannelAnalyzer[fNumTypes];
+TexAT2* fDetector;
+//LKChannelAnalyzer *fChannelAnalyzer[fNumTypes];
 TCanvas *fCvs;
 TCanvas *fCvsDebug;
 
@@ -38,10 +39,10 @@ void anaFitPulse(double scaleBeta = 0.7)
         countFiles++;
     }
 
-    auto detector = (TexAT2*) fRun -> GetDetector();
-
     fRun -> SetTag("read");
     fRun -> Init();
+    fDetector = (TexAT2*) fRun -> GetDetector();
+    fDetector -> InitChannelAnalyzer();
     fChannelArray = fRun -> GetBranchA("RawData");
 
     for (auto type : fSelTypes)
@@ -49,6 +50,7 @@ void anaFitPulse(double scaleBeta = 0.7)
         TString pulseFile = Form("data100/pulseReference_%s.root",fTypeNames[type]);
         int anaThreshold = 150;
 
+        /*
         auto ana = new LKChannelAnalyzer();
         ana -> SetPulse(pulseFile);
         ana -> SetTbMax(350);
@@ -63,7 +65,8 @@ void anaFitPulse(double scaleBeta = 0.7)
         ana -> SetScaleTbStep(0.2);
         //ana -> SetTbStepCut(0.01);
         ana -> SetTbStepCut(0.000001);
-        fChannelAnalyzer[type] = ana;
+        */
+        //fChannelAnalyzer[type] = ana;
     }
 
 #ifdef DEBUG_CHANA_FITPULSE
@@ -128,17 +131,18 @@ void NextChannel(int pass)
     auto aget = channel -> GetAget();
     auto chan = channel -> GetChan();
     auto data = channel -> GetWaveformY();
-    auto type = GetType(cobo,asad,aget,chan);
+    //auto type = GetType(cobo,asad,aget,chan);
     auto caac = fRun->GetCurrentEventID()*1000000 + cobo*100000 + asad*10000 + aget*1000 + chan;
     bool selected = false;
+    auto type = fDetector -> GetElectronicsID(cobo, asad, aget, chan);
     for (auto type0 : fSelTypes)
         if (type==type0)
             selected = true;
     if (selected==false)
         return;
 
-    auto ana = fChannelAnalyzer[type];
-    lk_debug << ana -> GetPulseFileName()  << endl;
+    //auto ana = fChannelAnalyzer[type];
+    auto ana = fDetector -> GetChannelAnalyzer(type);
 
     double data2[350];
     for (auto tb=0; tb<350; ++tb)

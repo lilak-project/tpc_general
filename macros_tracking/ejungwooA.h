@@ -275,6 +275,13 @@ namespace ejungwoo
     class Range
     {
         public:
+            int fNumRanges = 0;
+            double fRangeMaximum;
+            double fRangeMinimum;
+            vector<double> fRange1;
+            vector<double> fRange2;
+            bool fSetToMaximum = true;
+
             Range() {}
             Range(double range1, double range2, bool setToMaximum) {
                 AddRange(range1, range2, setToMaximum);
@@ -310,13 +317,133 @@ namespace ejungwoo
                     return fRangeMaximum;
                 return fRangeMinimum;
             }
-        private:
-            int fNumRanges = 0;
-            double fRangeMaximum;
-            double fRangeMinimum;
-            vector<double> fRange1;
-            vector<double> fRange2;
-            bool fSetToMaximum = true;
+    };
+
+    class Binning
+    {
+        public:
+            TString fName;
+            TString fSelection[3];
+            TString fMainTitle;
+            TString fAxisTitle[3];
+            int fNumBins[3] = {100,100,100};
+            double fMin[3] = {0,0,0};
+            double fMax[3] = {100,100,100};
+            TH1D* fHist = nullptr;
+            TH2D* fHist2 = nullptr;
+
+            Binning() {}
+            Binning(int numBins, double x1, double x2) { SetBinning(numBins, x1, x2); }
+            Binning(TString name, TString title, TString selection, int numBins, double x1, double x2) {
+                Set(name, title, selection, numBins, x1, x2);
+            }
+            Binning(Binning binning1, Binning binning2) {
+                Set(binning1,0);
+                Set(binning2,1);
+            }
+            Binning(Binning* binning1, Binning* binning2) {
+                Set(*binning1,0);
+                Set(*binning2,1);
+            }
+
+            void SetMainTitle(TString title) { fMainTitle = title; }
+            void SetNameMainTitle(TString name, TString title) { fName = name; fMainTitle = title; }
+            void Set(Binning binning, int iAxis=0) {
+                Set(binning.fName,binning.fAxisTitle[0],binning.fSelection[0],binning.fNumBins[0],binning.fMin[0],binning.fMax[0],iAxis);
+            }
+            void Set(TString name, TString title, TString selection, int numBins, double x1, double x2, int iAxis=0) {
+                SetNameTitleSelection(name,title,selection,iAxis);
+                SetBinning(numBins,x1,x2,iAxis);
+            }
+            void SetNameTitleSelection(TString name, TString title, TString selection, int iAxis=0) {
+                SetNameTitle(name,title,iAxis);
+                SetSelection(selection,iAxis);
+            }
+            void SetNameTitle(TString name, TString title, int iAxis=0) {
+                if (iAxis==0) fName = name;
+                else          fName = fName + "_x_" + name;
+                auto tokens = title.Tokenize(";");
+                if (tokens->GetEntries()>1) {
+                    if (title[0]==';')  {
+                        fAxisTitle[iAxis] = title;
+                    }
+                    else if (title.EndsWith(";"))  {
+                        fAxisTitle[iAxis] = title;
+                    }
+                    else {
+                        fMainTitle        = ((TObjString *) tokens->At(0))->GetString();
+                        fAxisTitle[iAxis] = ((TObjString *) tokens->At(1))->GetString();
+                    }
+                }
+                else
+                    fAxisTitle[iAxis] = title;
+            }
+            void SetSelection(TString selection, int iAxis=0) {
+                fSelection[iAxis] = selection;
+            }
+            void SetBinning(int numBins, double x1, double x2, int iAxis=0) {
+                fNumBins[iAxis] = numBins;
+                fMin[iAxis] = x1;
+                fMax[iAxis] = x2;
+            }
+
+            TString GetSelection(int dim=1) {
+                TString selection;
+                if (dim==1) selection = fSelection[0];
+                if (dim==2) selection = fSelection[1]+":"+fSelection[0];
+                if (dim==3) selection = fSelection[0]+":"+fSelection[1]+":"+fSelection[2];
+                return selection;
+            }
+
+            TH1D* NewHist(TString name="", TString title="")
+            {
+                if (name.IsNull()) name = fName;
+                if (name.IsNull()) name = "hist";
+                if (title.IsNull()) title = fMainTitle;
+                fHist = new TH1D(name,title+";"+fAxisTitle[0],fNumBins[0],fMin[0],fMax[0]);
+                fHist -> SetStats(0);
+                return fHist;
+            }
+
+            TH2D* NewHist2(TString name="", TString title="")
+            {
+                if (name.IsNull()) name = fName;
+                if (name.IsNull()) name = "hist2d";
+                if (title.IsNull()) title = fMainTitle;
+                fHist2 = new TH2D(name,title+";"+fAxisTitle[0]+";"+fAxisTitle[1], fNumBins[0],fMin[0],fMax[0], fNumBins[1],fMin[1],fMax[1]);
+                fHist2 -> SetStats(0);
+                return fHist2;
+            }
+
+            Binning* Add(Binning* binning2) {
+                return new Binning(this, binning2);
+            }
+
+            Binning* operator*(Binning binning2) {
+                return new Binning(Binning(fName,fAxisTitle[0],fSelection[0],fNumBins[0],fMin[0],fMax[0]), binning2);
+            }
+
+            Binning* operator()(TString name, TString title) {
+                fName = name;
+                fMainTitle = title;
+                return this;
+            }
+
+            Binning* operator*(TString nameTitle) {
+                auto tokens = nameTitle.Tokenize(";");
+                if (tokens->GetEntries()>1) {
+                    if (nameTitle[0]==';')  {
+                        fMainTitle = nameTitle;
+                    }
+                    else {
+                        fName = ((TObjString *) tokens->At(0))->GetString();
+                        fMainTitle = ((TObjString *) tokens->At(1))->GetString();
+                    }
+                }
+                else
+                    fMainTitle = nameTitle;
+                return this;
+            }
     };
 
     void     Batch();
@@ -331,6 +458,8 @@ namespace ejungwoo
     TH1D*    MakeChannelHist(int*    data, int nTb, TString name);
     TH1D*    MakeChannelHist(double* data, int nTb, TString name);
 
+    bool fAlwaysUseHttpServer = false;
+    void UseHttpServer(bool value=true) { fAlwaysUseHttpServer = value; }
 }
 
 
@@ -344,6 +473,9 @@ void ejungwoo::Batch()
 
 void ejungwoo::Add(TObject* object, const char *subfolder="")
 {
+    if (fAlwaysUseHttpServer==false)
+        return;
+
 #ifdef KUNPL_NEED_THIS
     THttpServer* eServer = (THttpServer*) gROOT->FindObject("http");
     TObjArray* eArray = (TObjArray*) gROOT->FindObject("ejObjArray");
@@ -351,8 +483,7 @@ void ejungwoo::Add(TObject* object, const char *subfolder="")
     if (eServer==nullptr) {
         eServer = new THttpServer("http:8080");
         gROOT -> Add(eServer);
-        //gROOT -> ls();
-        cout << "Http eServer : http://localhost:8080/" << endl;
+        cout << "Http server : http://localhost:8080/" << endl;
     }
 
     if (eArray==nullptr) {
@@ -370,9 +501,13 @@ TCanvas *ejungwoo::Canvas(const char* name="", int wx=800, int wy=680, int dx=1,
     const char* title = name;
     TCanvas* cvs0 = nullptr;
 #ifdef LKWINDOWMANAGER_HH
-         if (wx==0) cvs0 = LKWindowManager::GetWindowManager() -> CanvasFull(name);
-    else if (wx==1) cvs0 = LKWindowManager::GetWindowManager() -> Canvas(name);
-    else            cvs0 = LKWindowManager::GetWindowManager() -> CanvasR(name, wx, wy);
+    auto windowManager = LKWindowManager::GetWindowManager();
+         if (wx>=10&&wx<=100&&wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0.01*wx,0.01*wy);
+    else if (wx>=10&&wx<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0.01*wx,0);
+    else if (wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0,0.01*wy);
+    else if (wx==0) cvs0 = windowManager -> CanvasFull(name);
+    else if (wx==1) cvs0 = windowManager -> Canvas(name);
+    else            cvs0 = windowManager -> CanvasR(name, wx, wy);
 #else
          if (wx==0) cvs0 = new TCanvas(name,name,1250,720);
     else if (wx==1) cvs0 = new TCanvas(name,name,800,650);
