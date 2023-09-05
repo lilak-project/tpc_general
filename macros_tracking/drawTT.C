@@ -30,6 +30,14 @@ void drawTT()
     while (fileCAAC >> asad >> aget >> chan >> dumi >> dumi)
     {
         auto detType = fDetector -> GetType(cobo,asad,aget,chan);
+        if(cobo==0)
+        {
+            if(chan<11) chan = chan;
+            else if(chan<21) chan = chan +1;
+            else if(chan<43) chan = chan +2;
+            else if(chan<53) chan = chan +3;
+            else if(chan<64) chan = chan +4;
+        }
 
         TH2Poly *hist = nullptr;
 
@@ -61,7 +69,7 @@ void drawTT()
         else if (detType==TexAT2::eType::kHighCenter) { hist -> Fill(xPos,zPos); }
     }
 
-    gStyle -> SetPalette(kRainbow);
+    gStyle -> SetPalette(kBird);
 
     fCanvas -> cd(1);
     fHistXZ[0] -> SetTitle("eType == Strip and Center");

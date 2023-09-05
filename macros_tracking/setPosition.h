@@ -1,7 +1,16 @@
 void CAACtoRealDim(Int_t Cobo, Int_t Asad, Int_t Aget, Int_t Chan,
-        Double_t &posx, Double_t &posy, Double_t &posz,
-        Double_t &errx, Double_t &erry, Double_t &errz)
+                   Double_t &posx, Double_t &posy, Double_t &posz,
+                   Double_t &errx, Double_t &erry, Double_t &errz)
 {
+    //[mm]
+    posx = 0;
+    posy = 0;
+    posz = 0;
+    errx = 0;
+    erry = 0;
+    errz = 0;
+
+    if(Chan==11 || Chan==22 || Chan==45 || Chan==56) return;
     if(Cobo==0)
     {
         if(Chan<11) Chan = Chan;
@@ -12,14 +21,6 @@ void CAACtoRealDim(Int_t Cobo, Int_t Asad, Int_t Aget, Int_t Chan,
     }
     auto fDetector = ((TexAT2*) LKRun::GetRun() -> GetDetector());
     auto type = fDetector -> GetType(Cobo,Asad,Aget,Chan);
-
-    //[mm]
-    posx = 0;
-    posy = 0;
-    posz = 0;
-    errx = 0;
-    erry = 0;
-    errz = 0;
 
     Double_t MMAllX = 240;
     Double_t MMAllZ = 224;
@@ -43,11 +44,11 @@ void CAACtoRealDim(Int_t Cobo, Int_t Asad, Int_t Aget, Int_t Chan,
     Double_t X6ActShort = 40.3;
 
     if(type==TexAT2::eType::kLeftStrip ||
-            type==TexAT2::eType::kRightStrip ||
-            type==TexAT2::eType::kLeftChain ||
-            type==TexAT2::eType::kRightChain ||
-            type==TexAT2::eType::kLowCenter ||
-            type==TexAT2::eType::kHighCenter) //MM
+       type==TexAT2::eType::kRightStrip ||
+       type==TexAT2::eType::kLeftChain ||
+       type==TexAT2::eType::kRightChain ||
+       type==TexAT2::eType::kLowCenter ||
+       type==TexAT2::eType::kHighCenter) //MM
     {
         Int_t mmpx = fDetector -> Getmmpx(Asad,Aget,Chan);
         Int_t mmpy = fDetector -> Getmmpy(Asad,Aget,Chan);
@@ -219,9 +220,9 @@ void CAACtoRealDim(Int_t Cobo, Int_t Asad, Int_t Aget, Int_t Chan,
     }
     else //Forward CsI, CENS CsI
     {
-        posx = -300;
-        posy = -300;
-        posz = -300;
+        posx = 0;
+        posy = 0;
+        posz = 0;
         errx = 0;
         erry = 0;
         errz = 0;
