@@ -36,13 +36,16 @@ class LKHoughPointRT : public TObject
         double GetCenterR() const;
         double GetCenterT() const;
         void IsInside(double r, double t);
-        TGraph* GetLineInImageSpace(int i, double x1, double x2);
-        TGraphErrors* GetBandInImageSpace(double x1, double x2);
+        TGraph* GetLineInImageSpace(int i, double x1, double x2, double y1, double y2);
+        TGraphErrors* GetBandInImageSpace(double x1, double x2, double y1, double y2);
+
+        double DistanceToPoint(TVector3 point);
 
         double EvalX(double y) const { return EvalX(0,y); }
         double EvalX(int i, double y) const;
         double EvalY(double x) const { return EvalY(0,x); }
         double EvalY(int i, double x) const;
+        void GetImagePoints(int i, double &x1, double &x2, double &y1, double &y2);
         LKGeoLine GetGeoLine(int i, double x1, double x2, double y1, double y2);
 
         double       fXTransformCenter;

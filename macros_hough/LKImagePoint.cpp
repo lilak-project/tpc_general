@@ -50,7 +50,8 @@ void LKImagePoint::Copy(TObject &object) const
 
 TVector3 LKImagePoint::GetCorner(int i) const
 {
-         if (i==1) { return TVector3(fX1, fY1, 0); }
+         if (i==0) { return TVector3(fX0, fY0, 0); }
+    else if (i==1) { return TVector3(fX1, fY1, 0); }
     else if (i==2) { return TVector3(fX1, fY2, 0); }
     else if (i==3) { return TVector3(fX2, fY1, 0); }
     else if (i==4) { return TVector3(fX2, fY2, 0); }
