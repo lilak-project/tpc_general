@@ -31,11 +31,6 @@ class LKHoughTransformTracker : public TObject
         int GetNumImagePoints() const  { return fNumImagePoints; }
         int GetNumHoughPoints() const  { return fNumBinsHoughSpace[0]*fNumBinsHoughSpace[1]; }
 
-        //void SetNumBinsImageSpace(int ixy, int numBinsImageSpace) { fNumBinsImageSpace[ixy] = numBinsImageSpace; }
-        //void SetNumBinsHoughSpace(int ixy, int numBinsHoughSpace) { fNumBinsHoughSpace[ixy] = numBinsHoughSpace; }
-        //void SetRangeImageSpace(int ixy, int i, double rangeImageSpace) { fRangeImageSpace[ixy][i] = rangeImageSpace; }
-        //void SetRangeHoughSpace(int ixy, int i, double rangeHoughSpace) { fRangeHoughSpace[ixy][i] = rangeHoughSpace; }
-        //void SetHoughData(double** houghData);// { fHoughData = houghData; }
         void SetTransformCenter(TVector3 transformCenter) { fTransformCenter = transformCenter; }
         void SetImageSpaceRange(int nx, double x2, double x1, int ny, double y1, double y2);
         void SetHoughSpaceBins(int nr, int nt);
@@ -45,13 +40,12 @@ class LKHoughTransformTracker : public TObject
         void SetImageData(double** imageData);// { fImageData = imageData; }
 
         LKImagePoint GetImagePoint(int i);
-        //LKImagePoint FindImagePoint(double xImageSpace, double yImageSpace);
         LKHoughPointRT GetHoughPoint(int i);
         LKHoughPointRT GetHoughPoint(int iriXHoughSpace, int it);
-        LKHoughPointRT FindHoughPoint(double xHoughSpace, double yHoughSpace);
 
         void Transform();
-        double CorrelateImageToHough(LKImagePoint imagePoint, LKHoughPointRT houghPoint);
+        double CorrelateBoxLine(LKImagePoint imagePoint, LKHoughPointRT houghPoint);
+        double CorrelateBoxBand(LKImagePoint imagePoint, LKHoughPointRT houghPoint);
         LKHoughPointRT FindNextMaximumHoughPoint();
         void ClearLastMaximumHoughPoint(double rWidth=0, double tWidth=0);
 

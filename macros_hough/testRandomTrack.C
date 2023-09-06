@@ -16,14 +16,16 @@ void testRandomTrack()
     int numRandom = 100;
     int numBinsT = 200;
     int numBinsR = 200;
-    int numBinsT2 = 10;
-    int numBinsR2 = 10;
+    int numBinsT2 = 100;
+    int numBinsR2 = 100;
     int nx = 100;
     int ny = 100;
     double x1 = -120;
     double x2 = 120;
     double y1 = 150;
     double y2 = 450;
+    double wx = (x2-x1);
+    double wy = (y2-y1);
     double dx = (x2-x1)/nx;
     double dy = (y2-y1)/ny;
     double wMin = 100;
@@ -74,70 +76,46 @@ void testRandomTrack()
     tk -> Transform();
     tk2 -> Transform();
 
-    gStyle -> SetPalette(kBird);
+
+    auto FindAndDraw = [x1,x2,y1,y2](LKHoughTransformTracker* tk, Int_t numPoints, TVirtualPad* pad, Color_t color) {
+        gStyle -> SetPalette(kBird);
+        for (auto iTrack=0; iTrack<numPoints; ++iTrack) {
+            auto houghPoint = tk -> FindNextMaximumHoughPoint();
+            tk -> ClearLastMaximumHoughPoint();
+            if (houghPoint.fWeight<-1)
+                break;
+            houghPoint.Print();
+            pad -> cd();
+            auto line = houghPoint.GetGeoLine(0,x1,x2,y1,y2).DrawArrowXY(0);
+            line -> SetLineColor(color);
+            line -> Draw();
+        }
+    };
 
     auto cvs = ejungwoo::Canvas("cvs",90,100,3,2);
 
     cvs -> cd(1);
     tk -> GetHistImageSpace() -> Draw("colz");
-    auto x = transformCenter.X();
-    auto y = transformCenter.Y();
-    auto marker = new TMarker(x,y,42);
+    auto marker = new TMarker(transformCenter.X(),transformCenter.Y(),42);
     marker -> SetMarkerSize(5);
     marker -> Draw();
 
     cvs -> cd(2);
     tk -> GetHistHoughSpace("before") -> Draw("colz");
-    for (auto iTrack=0; iTrack<numTracks; ++iTrack) {
-        auto houghPoint = tk -> FindNextMaximumHoughPoint();
-        tk -> ClearLastMaximumHoughPoint();
-        if (houghPoint.fWeight<-1)
-            break;
-        houghPoint.Print();
-        cvs -> cd(1);
-        auto line = houghPoint.GetGeoLine(0,x1,x2,y1,y2).DrawArrowXY(0);
-        line -> Draw();
-    }
+    FindAndDraw(tk,numTracks,cvs -> cd(1),kBlack);
 
     cvs -> cd(3);
     tk -> GetHistHoughSpace("after") -> Draw("colz");
 
     cvs -> cd(4);
     tk2 -> GetHistHoughSpace("before2") -> Draw("colz");
-    {
-        auto houghPoint = tk2 -> FindNextMaximumHoughPoint();
-        tk2 -> ClearLastMaximumHoughPoint();
-        if (houghPoint.fWeight<-1)
-        houghPoint.Print();
-        cvs -> cd(1);
-        auto line = houghPoint.GetGeoLine(0,x1,x2,y1,y2).DrawArrowXY(0);
-        line -> SetLineColor(kRed);
-        line -> Draw();
-    }
+    FindAndDraw(tk2,1,cvs -> cd(1),kRed);
+
     cvs -> cd(5);
     tk2 -> GetHistHoughSpace("after2") -> Draw("colz");
-    {
-        auto houghPoint = tk2 -> FindNextMaximumHoughPoint();
-        tk2 -> ClearLastMaximumHoughPoint();
-        if (houghPoint.fWeight<-1)
-        houghPoint.Print();
-        cvs -> cd(1);
-        auto line = houghPoint.GetGeoLine(0,x1,x2,y1,y2).DrawArrowXY(0);
-        line -> SetLineColor(kRed);
-        line -> Draw();
-    }
+    FindAndDraw(tk2,1,cvs -> cd(1),kRed);
+
     cvs -> cd(6);
     tk2 -> GetHistHoughSpace("after3") -> Draw("colz");
-
-    for (auto iTrack=0; iTrack<10; ++iTrack) {
-        auto houghPoint = tk2 -> FindNextMaximumHoughPoint();
-        tk2 -> ClearLastMaximumHoughPoint();
-        if (houghPoint.fWeight<-1)
-            break;
-        houghPoint.Print();
-        cvs -> cd(1);
-        auto line = houghPoint.GetGeoLine(0,x1,x2,y1,y2).DrawArrowXY(0);
-        line -> SetLineColor(kGray);
-        line -> Draw();
-    }
+    FindAndDraw(tk2,10,cvs -> cd(1),kGray);
 }
