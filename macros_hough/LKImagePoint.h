@@ -29,6 +29,7 @@ class LKImagePoint : public TObject
         TVector3 GetCenter() const;
         TVector3 GetCorner(int i) const;
 
+        void SetPoint(double x1, double y1, double x2, double y2, double w=0) { SetX(x1,x2); SetY(y1,y2); fWeight = w; }
         void SetX(double x1, double x2) { fX0 = .5*(x1+x2); fX1 = x1; fX2 = x2; }
         void SetY(double y1, double y2) { fY0 = .5*(y1+y2); fY1 = y1; fY2 = y2; }
         void SetWeight(double weight) { fWeight = weight; }

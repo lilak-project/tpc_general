@@ -5,10 +5,10 @@
 #include "LKLogger.h"
 #include "LKGeoLine.h"
 
-#include "LKImagePoint.cpp"
-#include "LKHoughPointRT.cpp"
 #include "LKImagePoint.h"
 #include "LKHoughPointRT.h"
+#include "LKImagePoint.cpp"
+#include "LKHoughPointRT.cpp"
 
 class LKHoughTransformTracker : public TObject
 {
@@ -27,7 +27,6 @@ class LKHoughTransformTracker : public TObject
         double GetRangeHoughSpace(int ixy, int i) const  { return fRangeHoughSpace[ixy][i]; }
         double** GetHoughData() const  { return fHoughData; }
         double** GetImageData() const  { return fImageData; }
-        bool GetImageIsPoints() const  { return fImageIsPoints; }
         int GetNumImagePoints() const  { return fNumImagePoints; }
         int GetNumHoughPoints() const  { return fNumBinsHoughSpace[0]*fNumBinsHoughSpace[1]; }
 
@@ -43,17 +42,21 @@ class LKHoughTransformTracker : public TObject
         void SetCorrelateBoxBand()  { fCorrelateType = kCorrelateBoxBand; }
         void SetCorrelateDistance() { fCorrelateType = kCorrelateDistance; }
 
-        LKImagePoint GetImagePoint(int i);
-        LKHoughPointRT GetHoughPoint(int i);
-        LKHoughPointRT GetHoughPoint(int ir, int it);
+        void SetCutNumTrackHits(double value) { fCutNumTrackHits = value; }
+
+        LKImagePoint* GetImagePoint(int i);
+        LKHoughPointRT* GetHoughPoint(int i);
+        LKHoughPointRT* GetHoughPoint(int ir, int it);
 
         void Transform();
         double WeightingDistanceLinear(double distance, double imageWeight);
         double WeightingDistanceInvProp(double distance, double imageWeight);
-        double CorrelateBoxLine(LKImagePoint imagePoint, LKHoughPointRT houghPoint, double imageWeight);
-        double CorrelateBoxBand(LKImagePoint imagePoint, LKHoughPointRT houghPoint, double imageWeight);
-        double CorrelateDistance(LKImagePoint imagePoint, LKHoughPointRT houghPoint, double imageWeight);
-        LKHoughPointRT FindNextMaximumHoughPoint();
+        double CorrelateBoxLine(LKImagePoint* imagePoint, LKHoughPointRT* houghPoint, double imageWeight);
+        double CorrelateBoxBand(LKImagePoint* imagePoint, LKHoughPointRT* houghPoint, double imageWeight);
+        double CorrelateDistance(LKImagePoint* imagePoint, LKHoughPointRT* houghPoint, double imageWeight);
+
+        LKHoughPointRT* GetNextMaximumHoughPoint();
+        LKLinearTrack* FitTrackWithHoughPoint(LKHoughPointRT* houghPoint, double distCut=0);
         void CleanLastHoughPoint(double rWidth=-1, double tWidth=-1);
         void CleanAndRetransform();
 
@@ -80,11 +83,20 @@ class LKHoughTransformTracker : public TObject
         double       fRangeHoughSpace[2][2] = {{0}};
         double**     fHoughData;
         double**     fImageData;
-        bool         fImageIsPoints = true;
-        int          fNumImagePoints;
-        vector<LKImagePoint> fImagePointArray;
         int          fIdxSelectedR = -1;
         int          fIdxSelectedT = -1;
+
+        bool            fUsingImagePointArray = true;
+        int             fNumImagePoints = 0;
+        TClonesArray*   fImagePointArray = nullptr;
+        LKImagePoint*   fImagePoint = nullptr;
+        LKHoughPointRT* fHoughPoint = nullptr;
+
+        int           fNumLinearTracks = 0;
+        TClonesArray* fTrackArray = nullptr;
+
+        LKODRFitter* fLineFitter = nullptr;
+        int          fCutNumTrackHits = 5;
 
         const int    kCorrelateBoxLine = 0;
         const int    kCorrelateBoxBand = 1;

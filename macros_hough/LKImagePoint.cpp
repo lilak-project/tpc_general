@@ -10,9 +10,7 @@ LKImagePoint::LKImagePoint()
 LKImagePoint::LKImagePoint(double x1, double y1, double x2, double y2, double w)
 {
     Clear();
-    SetX(x1,x2);
-    SetY(y1,y2);
-    fWeight = w;
+    SetPoint(x1,y1,x2,y2,w);
 }
 
 void LKImagePoint::Clear(Option_t *option)

@@ -459,7 +459,7 @@ namespace ejungwoo
     TH1D*    MakeChannelHist(int*    data, int nTb, TString name);
     TH1D*    MakeChannelHist(double* data, int nTb, TString name);
 
-    bool fAlwaysUseHttpServer = false;
+    bool fAlwaysUseHttpServer = true;
     void UseHttpServer(bool value=true) { fAlwaysUseHttpServer = value; }
 }
 
@@ -532,6 +532,7 @@ TCanvas *ejungwoo::Canvas(const char* name="", int wx=800, int wy=680, int dx=1,
 
 void ejungwoo::Save(TObject *object, const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false)
 {
+    //std::cout << "Save " << object->GetName() << " " << fileType << endl;
     //if (TString(nameVersion).IsNull()) {
     if (strcmp(nameVersion,"")==0) {
         TTimeStamp timeStamp;
@@ -588,7 +589,7 @@ void ejungwoo::Save(TObject *object, const char* fileType="", const char* nameVe
         else if (object->InheritsFrom(TGraph::Class()))  nameWrite = "graph";
     }
     const char* fileName = Form("%s/%s.%s",pathToData,nameObject,fileType);
-    //std::cout << "Creating " << fileName << endl;
+    std::cout << "Creating " << fileName << endl;
     //if (TString(fileType)=="root")  {
     if (strcmp(fileType,"root")==0)  {
         auto fileOut = new TFile(fileName, "recreate");

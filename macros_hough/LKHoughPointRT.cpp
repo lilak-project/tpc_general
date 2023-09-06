@@ -10,10 +10,7 @@ LKHoughPointRT::LKHoughPointRT()
 LKHoughPointRT::LKHoughPointRT(double xc, double yc, double r1, double t1, double r2, double t2, double w)
 {
     Clear();
-    SetTransformCenter(xc,yc);
-    SetRadius(r1,r2);
-    SetTheta(t1,t2);
-    fWeight = w;
+    SetPoint(xc,yc,r1,t1,r2,t2,w);
 }
 
 void LKHoughPointRT::Clear(Option_t *option)

@@ -28,6 +28,7 @@ class LKHoughPointRT : public TObject
         double GetWeight() const  { return fWeight; }
         TVector3 GetCorner(int i) const;
 
+        void SetPoint(double xc, double yc, double r1, double t1, double r2, double t2, double w) { SetTransformCenter(xc,yc); SetRadius(r1,r2); SetTheta(t1,t2); fWeight = w; }
         void SetTransformCenter(double xc, double yc) { fXTransformCenter = xc; fYTransformCenter = yc; }
         void SetRadius(double r1, double r2) { fRadius0 = .5*(r1+r2); fRadius1 = r1; fRadius2 = r2; }
         void SetTheta(double t1, double t2) { fTheta0 = .5*(t1+t2); fTheta1 = t1; fTheta2 = t2; }
@@ -50,7 +51,6 @@ class LKHoughPointRT : public TObject
 
         double       fXTransformCenter;
         double       fYTransformCenter;
-
         double       fRadius0;
         double       fRadius1;
         double       fRadius2;

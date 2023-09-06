@@ -4,6 +4,11 @@ ClassImp(LKHoughTransformTracker);
 
 LKHoughTransformTracker::LKHoughTransformTracker()
 {
+    fLineFitter = LKODRFitter::GetFitter();
+    fImagePoint = new LKImagePoint();
+    fHoughPoint = new LKHoughPointRT();
+    fImagePointArray = new TClonesArray("LKImagePoint",100);
+    fTrackArray = new TClonesArray("LKLinearTrack",20);
     Clear();
 }
 
@@ -43,9 +48,13 @@ void LKHoughTransformTracker::Clear(Option_t *option)
         fRangeHoughSpace[0][1] = 0;
         fRangeHoughSpace[1][0] = 0;
         fRangeHoughSpace[1][1] = 0;
-        fImageIsPoints = false;
+        fUsingImagePointArray = false;
+
         fNumImagePoints = 0;
-        fImagePointArray.clear();
+        fImagePointArray -> Clear("C");
+
+        fNumLinearTracks = 0;
+        fTrackArray -> Clear("C");
 
         if (fInitializedImageData) {
             for(int i = 0; i < fNumBinsImageSpace[0]; ++i)
@@ -164,27 +173,30 @@ void LKHoughTransformTracker::SetHoughSpaceRange(int nr, double r1, double r2, i
 
 void LKHoughTransformTracker::AddImagePoint(double x, double xError, double y, double yError, double weight)
 {
-    fImageIsPoints = true;
+    fUsingImagePointArray = true;
     double x1 = x-xError;
     double x2 = x+xError;
     double y1 = y-yError;
     double y2 = y+yError;
-    //lk_debug << x1 << " " << x2 << " " << y1 << " " << y2 << endl;
-    fImagePointArray.push_back(LKImagePoint(x1,y1,x2,y2,weight));
-    fNumImagePoints = fImagePointArray.size();
+    auto imagePoint = (LKImagePoint*) fImagePointArray -> ConstructedAt(fNumImagePoints);
+    imagePoint -> SetPoint(x1,y1,x2,y2,weight);
+    ++fNumImagePoints;
 }
 
 void LKHoughTransformTracker::AddImagePointBox(double x1, double y1, double x2, double y2, double weight)
 {
-    fImageIsPoints = true;
-    fImagePointArray.push_back(LKImagePoint(x1,y1,x2,y2,weight));
-    fNumImagePoints = fImagePointArray.size();
+    fUsingImagePointArray = true;
+    auto imagePoint = (LKImagePoint*) fImagePointArray -> ConstructedAt(fNumImagePoints);
+    imagePoint -> SetPoint(x1,y1,x2,y2,weight);
+    ++fNumImagePoints;
 }
 
-LKImagePoint LKHoughTransformTracker::GetImagePoint(int i)
+LKImagePoint* LKHoughTransformTracker::GetImagePoint(int i)
 {
-    if (fImageIsPoints)
-        return fImagePointArray[i];
+    if (fUsingImagePointArray) {
+        auto imagePoint = (LKImagePoint*) fImagePointArray -> At(i);
+        return imagePoint;
+    }
     else {
         // TODO
         int count = 0;
@@ -195,16 +207,18 @@ LKImagePoint LKHoughTransformTracker::GetImagePoint(int i)
                     double x2 = fRangeImageSpace[0][0] + (ix+1)*fBinSizeImageSpace[0];
                     double y1 = fRangeImageSpace[1][0] + iy*fBinSizeImageSpace[1];
                     double y2 = fRangeImageSpace[1][0] + (iy+1)*fBinSizeImageSpace[1];
-                    return LKImagePoint(x1,y1,x2,y2,fImageData[ix][iy]);
+                    fImagePoint -> SetPoint(x1,y1,x2,y2,fImageData[ix][iy]);
+                    return fImagePoint;
                 }
                 ++count;
             }
         }
     }
-    return LKImagePoint();
+    fImagePoint -> Clear();
+    return fImagePoint;
 }
 
-LKHoughPointRT LKHoughTransformTracker::GetHoughPoint(int i)
+LKHoughPointRT* LKHoughTransformTracker::GetHoughPoint(int i)
 {
     // TODO
     double dr = (fRangeHoughSpace[0][0] + fRangeHoughSpace[0][1]) / fNumBinsHoughSpace[0];
@@ -217,26 +231,29 @@ LKHoughPointRT LKHoughTransformTracker::GetHoughPoint(int i)
                 double r2 = fRangeHoughSpace[0][0] + (ir+1)*fBinSizeImageSpace[0];
                 double t1 = fRangeHoughSpace[1][0] + it*fBinSizeImageSpace[1];
                 double t2 = fRangeHoughSpace[1][0] + (it+1)*fBinSizeImageSpace[1];
-                return LKHoughPointRT(fTransformCenter[0],fTransformCenter[1],r1,t1,r2,t2,fImageData[ir][it]);
+                fHoughPoint -> SetPoint(fTransformCenter[0],fTransformCenter[1],r1,t1,r2,t2,fImageData[ir][it]);
+                return fHoughPoint;
             }
             ++count;
         }
     }
-    return LKHoughPointRT();
+    fHoughPoint -> Clear();
+    return fHoughPoint;
 }
 
-LKHoughPointRT LKHoughTransformTracker::GetHoughPoint(int ir, int it)
+LKHoughPointRT* LKHoughTransformTracker::GetHoughPoint(int ir, int it)
 {
     double r1 = fRangeHoughSpace[0][0] + ir*fBinSizeHoughSpace[0];
     double r2 = fRangeHoughSpace[0][0] + (ir+1)*fBinSizeHoughSpace[0];
     double t1 = fRangeHoughSpace[1][0] + it*fBinSizeHoughSpace[1];
     double t2 = fRangeHoughSpace[1][0] + (it+1)*fBinSizeHoughSpace[1];
-    return LKHoughPointRT(fTransformCenter[0],fTransformCenter[1],r1,t1,r2,t2,fHoughData[ir][it]);
+    fHoughPoint -> SetPoint(fTransformCenter[0],fTransformCenter[1],r1,t1,r2,t2,fHoughData[ir][it]);
+    return fHoughPoint;
 }
 
 void LKHoughTransformTracker::Transform()
 {
-    if (fImageIsPoints) {
+    if (fUsingImagePointArray) {
         int iHough = 0;
         for (auto ir=0; ir<fNumBinsHoughSpace[0]; ++ir)
         {
@@ -248,9 +265,9 @@ void LKHoughTransformTracker::Transform()
                 {
                     auto imagePoint = GetImagePoint(iImage);
                     auto weight = 0;
-                         if (fCorrelateType==kCorrelateBoxLine) weight = CorrelateBoxLine(imagePoint, houghPoint, imagePoint.fWeight);
-                    else if (fCorrelateType==kCorrelateBoxBand) weight = CorrelateBoxBand(imagePoint, houghPoint, imagePoint.fWeight);
-                    else if (fCorrelateType==kCorrelateDistance) weight = CorrelateDistance(imagePoint, houghPoint, imagePoint.fWeight);
+                         if (fCorrelateType==kCorrelateBoxLine) weight = CorrelateBoxLine(imagePoint, houghPoint, imagePoint -> fWeight);
+                    else if (fCorrelateType==kCorrelateBoxBand) weight = CorrelateBoxBand(imagePoint, houghPoint, imagePoint -> fWeight);
+                    else if (fCorrelateType==kCorrelateDistance) weight = CorrelateDistance(imagePoint, houghPoint, imagePoint -> fWeight);
                     if (weight>0)
                         fHoughData[ir][it] = fHoughData[ir][it] + weight;
                 }
@@ -277,7 +294,7 @@ double LKHoughTransformTracker::WeightingDistanceLinear(double distance, double 
     //return weight * weightPoint;
 }
 
-double LKHoughTransformTracker::CorrelateBoxLine(LKImagePoint imagePoint, LKHoughPointRT houghPoint, double imageWeight)
+double LKHoughTransformTracker::CorrelateBoxLine(LKImagePoint* imagePoint, LKHoughPointRT* houghPoint, double imageWeight)
 {
     for (auto iHoughCorner : {0})
     {
@@ -285,13 +302,13 @@ double LKHoughTransformTracker::CorrelateBoxLine(LKImagePoint imagePoint, LKHoug
         bool existBelowLine = false;
         for (auto iImageCorner : {1,2,3,4})
         {
-            auto point = imagePoint.GetCorner(iImageCorner);
-            auto y = houghPoint.EvalY(iHoughCorner, point.X());
+            auto point = imagePoint -> GetCorner(iImageCorner);
+            auto y = houghPoint -> EvalY(iHoughCorner, point.X());
             if (y<point.Y()) existAboveLine = true;
             if (y>point.Y()) existBelowLine = true;
         }
         if (existAboveLine&&existBelowLine) {
-            auto distance = houghPoint.DistanceToPoint(imagePoint.GetCenter());
+            auto distance = houghPoint -> DistanceToPoint(imagePoint->GetCenter());
             auto weight = WeightingDistanceLinear(distance, imageWeight);
             return weight;
         }
@@ -299,7 +316,7 @@ double LKHoughTransformTracker::CorrelateBoxLine(LKImagePoint imagePoint, LKHoug
     return 0;
 }
 
-double LKHoughTransformTracker::CorrelateBoxBand(LKImagePoint imagePoint, LKHoughPointRT houghPoint, double imageWeight)
+double LKHoughTransformTracker::CorrelateBoxBand(LKImagePoint* imagePoint, LKHoughPointRT* houghPoint, double imageWeight)
 {
     auto weight = 0;
     int includedBelowOrAbove[4] = {0};
@@ -311,8 +328,8 @@ double LKHoughTransformTracker::CorrelateBoxBand(LKImagePoint imagePoint, LKHoug
 
         for (auto iImageCorner : {1,2,3,4})
         {
-            auto point = imagePoint.GetCorner(iImageCorner);
-            auto y = houghPoint.EvalY(iHoughCorner, point.X());
+            auto point = imagePoint -> GetCorner(iImageCorner);
+            auto y = houghPoint -> EvalY(iHoughCorner, point.X());
             if (y<point.Y()) existAboveLine = true;
             if (y>point.Y()) existBelowLine = true;
         }
@@ -336,7 +353,7 @@ double LKHoughTransformTracker::CorrelateBoxBand(LKImagePoint imagePoint, LKHoug
         crossOver = true;
 
     if (crossOver) {
-        auto distance = houghPoint.DistanceToPoint(imagePoint.GetCenter());
+        auto distance = houghPoint -> DistanceToPoint(imagePoint->GetCenter());
         auto weight = WeightingDistanceLinear(distance, imageWeight);
         return weight;
     }
@@ -344,14 +361,14 @@ double LKHoughTransformTracker::CorrelateBoxBand(LKImagePoint imagePoint, LKHoug
     return 0;
 }
 
-double LKHoughTransformTracker::CorrelateDistance(LKImagePoint imagePoint, LKHoughPointRT houghPoint, double imageWeight)
+double LKHoughTransformTracker::CorrelateDistance(LKImagePoint* imagePoint, LKHoughPointRT* houghPoint, double imageWeight)
 {
-    auto distance = houghPoint.DistanceToPoint(imagePoint.GetCenter());
+    auto distance = houghPoint -> DistanceToPoint(imagePoint->GetCenter());
     auto weight = WeightingDistanceInvProp(distance, imageWeight);
     return weight;
 }
 
-LKHoughPointRT LKHoughTransformTracker::FindNextMaximumHoughPoint()
+LKHoughPointRT* LKHoughTransformTracker::GetNextMaximumHoughPoint()
 {
     fIdxSelectedR = -1;
     fIdxSelectedT = -1;
@@ -366,8 +383,8 @@ LKHoughPointRT LKHoughTransformTracker::FindNextMaximumHoughPoint()
         }
     }
     if (fIdxSelectedR<0) {
-        LKHoughPointRT houghPoint(fTransformCenter[0],fTransformCenter[1],-1,0,-1,0,-1);
-        return houghPoint;
+        fHoughPoint -> SetPoint(fTransformCenter[0],fTransformCenter[1],-1,0,-1,0,-1);
+        return fHoughPoint;
     }
 
     auto houghPoint = GetHoughPoint(fIdxSelectedR,fIdxSelectedT);
@@ -396,20 +413,65 @@ void LKHoughTransformTracker::CleanLastHoughPoint(double rWidth, double tWidth)
     }
 }
 
+LKLinearTrack* LKHoughTransformTracker::FitTrackWithHoughPoint(LKHoughPointRT* houghPoint, double distCut)
+{
+    if (distCut==0) {
+        distCut = 2.5*fBinSizeMaxImageSpace;
+    }
+    auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fNumLinearTracks);
+    ++fNumLinearTracks;
+
+    fLineFitter -> Reset();
+
+    for (int iImage=0; iImage<fNumImagePoints; ++iImage) {
+        auto imagePoint = GetImagePoint(iImage);
+        auto distance = houghPoint -> DistanceToPoint(imagePoint->GetCenter());
+        if (distance < distCut) {
+            fLineFitter -> PreAddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
+        }
+    }
+    for (int iImage=0; iImage<fNumImagePoints; ++iImage) {
+        auto imagePoint = GetImagePoint(iImage);
+        auto distance = houghPoint -> DistanceToPoint(imagePoint->GetCenter());
+        if (distance < distCut) {
+            //lk_debug << imagePoint->fX0 << " " << imagePoint->fY0 << endl;
+            fLineFitter -> AddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
+        }
+    }
+    if (fLineFitter->GetNumPoints()<fCutNumTrackHits)
+        return track;
+
+    bool fitted = fLineFitter -> FitLine();
+    if (fitted==false)
+        return track;
+
+    auto centroid = fLineFitter -> GetCentroid();
+    centroid.Print();
+
+    auto dx = fRangeImageSpace[1][0] - fRangeImageSpace[0][0];
+    auto dy = fRangeImageSpace[1][0] - fRangeImageSpace[0][0];
+    auto size = sqrt(dx*dx + dy*dy)/2;
+
+    track -> SetLine(centroid - size*fLineFitter->GetDirection(), centroid + size*fLineFitter->GetDirection());
+    track -> SetRMS(fLineFitter->GetRMSLine());
+
+    return track;
+}
+
 void LKHoughTransformTracker::CleanAndRetransform()
 {
     //Clear("hough");
-
     //auto houghPoint = GetHoughPoint(ir,it);
     //for (int iImage=0; iImage<fNumImagePoints; ++iImage)
     //{
     //    auto imagePoint = GetImagePoint(iImage);
     //    auto weight = 0;
-    //         if (fCorrelateType==kCorrelateBoxLine) weight = CorrelateBoxLine(imagePoint, houghPoint, imagePoint.fWeight);
-    //    else if (fCorrelateType==kCorrelateBoxBand) weight = CorrelateBoxBand(imagePoint, houghPoint, imagePoint.fWeight);
-    //    else if (fCorrelateType==kCorrelateDistance) weight = CorrelateDistance(imagePoint, houghPoint, imagePoint.fWeight);
-    //    if (weight>0)
-    //        imagePoint
+    //         if (fCorrelateType==kCorrelateBoxLine) weight = CorrelateBoxLine(imagePoint, houghPoint, imagePoint->fWeight);
+    //    else if (fCorrelateType==kCorrelateBoxBand) weight = CorrelateBoxBand(imagePoint, houghPoint, imagePoint->fWeight);
+    //    else if (fCorrelateType==kCorrelateDistance) weight = CorrelateDistance(imagePoint, houghPoint, imagePoint->fWeight);
+    //    if (weight>0) {
+    //        fImagePoint -> Remove(imagePoint)
+    //    }
     //}
     //vector3
 }
@@ -417,6 +479,19 @@ void LKHoughTransformTracker::CleanAndRetransform()
 void LKHoughTransformTracker::Analyze(int i)
 {
     ;
+}
+
+void LKHoughTransformTracker::DrawAllHoughLines()
+{
+    for (auto ir=0; ir<fNumBinsHoughSpace[0]; ++ir)
+    {
+        for (auto it=0; it<fNumBinsHoughSpace[1]; ++it)
+        {
+            auto houghPoint = GetHoughPoint(ir,it);
+            auto graph = houghPoint -> GetLineInImageSpace(0,fRangeImageSpace[0][0],fRangeImageSpace[0][1],fRangeImageSpace[1][0],fRangeImageSpace[1][1]);
+            graph -> Draw("samel");
+        }
+    }
 }
 
 TH2D* LKHoughTransformTracker::GetHistImageSpace(TString name, TString title)
@@ -428,12 +503,14 @@ TH2D* LKHoughTransformTracker::GetHistImageSpace(TString name, TString title)
     else if (fCorrelateType==kCorrelateDistance) correlatorName = "Distance";
     if (title.IsNull()) title = Form("%s (%dx%d), TF-Point (x,y) = (%.2f, %.2f);x;y", correlatorName.Data(), fNumBinsImageSpace[0], fNumBinsImageSpace[1], fTransformCenter[0],fTransformCenter[1]);
     auto hist = new TH2D(name,title, fNumBinsImageSpace[0],fRangeImageSpace[0][0],fRangeImageSpace[0][1],fNumBinsImageSpace[1],fRangeImageSpace[1][0],fRangeImageSpace[1][1]);
-    if (fImageIsPoints) {
+    if (fUsingImagePointArray) {
         for (auto iPoint=0; iPoint<fNumImagePoints; ++iPoint) {
-            auto point = fImagePointArray[iPoint];
-            hist -> Fill(point.GetCenterX(), point.GetCenterY(), point.fWeight);
+            auto imagePoint = (LKImagePoint*) fImagePointArray -> At(iPoint);
+            hist -> Fill(imagePoint->GetCenterX(), imagePoint->GetCenterY(), imagePoint->fWeight);
         }
     }
+    hist -> GetXaxis() -> SetTitleOffset(1.25);
+    hist -> GetYaxis() -> SetTitleOffset(1.60);
     return hist;
 }
 
@@ -444,7 +521,7 @@ TH2D* LKHoughTransformTracker::GetHistHoughSpace(TString name, TString title)
          if (fCorrelateType==kCorrelateBoxLine)  correlatorName = "Box-Line";
     else if (fCorrelateType==kCorrelateBoxBand)  correlatorName = "Box-Band";
     else if (fCorrelateType==kCorrelateDistance) correlatorName = "Distance";
-    if (title.IsNull()) title = Form("%s (%dx%d), TF-Point (x,y) = (%.2f, %.2f);x;y", correlatorName.Data(), fNumBinsHoughSpace[0], fNumBinsHoughSpace[1], fTransformCenter[0],fTransformCenter[1]);
+    if (title.IsNull()) title = Form("%s (%dx%d), TF-Point (x,y) = (%.2f, %.2f);#theta (degrees);Radius", correlatorName.Data(), fNumBinsHoughSpace[0], fNumBinsHoughSpace[1], fTransformCenter[0],fTransformCenter[1]);
     auto hist = new TH2D(name,title, fNumBinsHoughSpace[1],fRangeHoughSpace[1][0],fRangeHoughSpace[1][1],fNumBinsHoughSpace[0],fRangeHoughSpace[0][0],fRangeHoughSpace[0][1]);
     for (auto ir=0; ir<fNumBinsHoughSpace[0]; ++ir) {
         for (auto it=0; it<fNumBinsHoughSpace[1]; ++it) {
@@ -453,19 +530,7 @@ TH2D* LKHoughTransformTracker::GetHistHoughSpace(TString name, TString title)
             }
         }
     }
+    hist -> GetXaxis() -> SetTitleOffset(1.25);
+    hist -> GetYaxis() -> SetTitleOffset(1.60);
     return hist;
-}
-
-
-void LKHoughTransformTracker::DrawAllHoughLines()
-{
-    for (auto ir=0; ir<fNumBinsHoughSpace[0]; ++ir)
-    {
-        for (auto it=0; it<fNumBinsHoughSpace[1]; ++it)
-        {
-            auto houghPoint = GetHoughPoint(ir,it);
-            auto geoLine = houghPoint.GetGeoLine(0,fRangeImageSpace[0][0],fRangeImageSpace[0][1],fRangeImageSpace[1][0],fRangeImageSpace[1][1]);
-            geoLine.DrawArrowXY(0) -> Draw();
-        }
-    }
 }
