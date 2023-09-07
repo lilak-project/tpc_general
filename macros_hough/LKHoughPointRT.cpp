@@ -1,3 +1,6 @@
+#ifndef LKHOUGHPOINTRT_HPP
+#define LKHOUGHPOINTRT_HPP
+
 #include "LKHoughPointRT.h"
 
 ClassImp(LKHoughPointRT);
@@ -132,7 +135,6 @@ TGraphErrors* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y
         auto yCrossMin = yCrossMinArray[iCross];
         graph -> SetPoint(graph->GetN(), xCross, yCrossMin);
     }
-    //for (int iCross=0; iCross<xCrossArray.size(); ++iCross) {
     for (int iCross=xCrossArray.size()-1; iCross>=0; --iCross) {
         //lk_debug << iCross << endl;
         auto xCross = xCrossArray[iCross];
@@ -238,3 +240,77 @@ double LKHoughPointRT::DistanceToPoint(TVector3 point)
     double distance = (point-poca).Mag();
     return distance;
 }
+
+double LKHoughPointRT::CorrelateLine(LKImagePoint* imagePoint)
+{
+    for (auto iHoughCorner : {0})
+    {
+        bool existAboveLine = false;
+        bool existBelowLine = false;
+        for (auto iImageCorner : {1,2,3,4})
+        {
+            auto point = imagePoint -> GetCorner(iImageCorner);
+            auto y = EvalY(iHoughCorner, point.X());
+            if (y<point.Y()) existAboveLine = true;
+            if (y>point.Y()) existBelowLine = true;
+        }
+        if (existAboveLine&&existBelowLine) {
+            auto distance = DistanceToPoint(imagePoint->GetCenter());
+            return distance;
+        }
+    }
+
+    return -1;
+}
+
+double LKHoughPointRT::CorrelateBand(LKImagePoint* imagePoint)
+{
+    auto weight = 0;
+    int includedBelowOrAbove[4] = {0};
+
+    for (auto iHoughCorner : {1,2,3,4})
+    {
+        bool existAboveLine = false;
+        bool existBelowLine = false;
+
+        for (auto iImageCorner : {1,2,3,4})
+        {
+            auto point = imagePoint -> GetCorner(iImageCorner);
+            auto y = EvalY(iHoughCorner, point.X());
+            if (y<point.Y()) existAboveLine = true;
+            if (y>point.Y()) existBelowLine = true;
+        }
+
+        if (existAboveLine&&existBelowLine)
+            includedBelowOrAbove[iHoughCorner-1] = 0;
+
+        if (existAboveLine) includedBelowOrAbove[iHoughCorner-1] = 1;
+        else                includedBelowOrAbove[iHoughCorner-1] = 2;
+    }
+
+    bool existAbove = false;
+    bool existBelow = false;
+    bool crossOver = false;
+    for (auto i : {0,1,2,3}) {
+        if (includedBelowOrAbove[i]==0) crossOver = true;
+        else if (includedBelowOrAbove[i]==1) existAbove = true;
+        else if (includedBelowOrAbove[i]==2) existBelow = true;
+    }
+    if (existAbove&&existBelow)
+        crossOver = true;
+
+    if (crossOver) {
+        auto distance = DistanceToPoint(imagePoint->GetCenter());
+        return distance;
+    }
+
+    return -1;
+}
+
+double LKHoughPointRT::CorrelateDistance(LKImagePoint* imagePoint)
+{
+    auto distance = DistanceToPoint(imagePoint->GetCenter());
+    return distance;
+}
+
+#endif

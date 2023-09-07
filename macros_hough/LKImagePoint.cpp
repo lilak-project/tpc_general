@@ -1,3 +1,6 @@
+#ifndef LKIMAGEPOINT_CPP
+#define LKIMAGEPOINT_CPP
+
 #include "LKImagePoint.h"
 
 ClassImp(LKImagePoint);
@@ -88,3 +91,5 @@ TGraphErrors* LKImagePoint::GetBand(double x1, double x2)
     // TODO
     return new TGraphErrors();
 }
+
+#endif

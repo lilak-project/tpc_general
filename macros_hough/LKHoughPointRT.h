@@ -7,6 +7,9 @@
 #include "LKLogger.h"
 #include "LKGeoLine.h"
 
+#include "LKImagePoint.cpp"
+//#include "LKImagePoint.h"
+
 //class LKHoughPointRT : public LKContainer
 class LKHoughPointRT : public TObject
 {
@@ -41,6 +44,10 @@ class LKHoughPointRT : public TObject
         TGraphErrors* GetBandInImageSpace(double x1, double x2, double y1, double y2);
 
         double DistanceToPoint(TVector3 point);
+
+        double CorrelateLine(LKImagePoint* imagePoint);
+        double CorrelateBand(LKImagePoint* imagePoint);
+        double CorrelateDistance(LKImagePoint* imagePoint);
 
         double EvalX(double y) const { return EvalX(0,y); }
         double EvalX(int i, double y) const;
