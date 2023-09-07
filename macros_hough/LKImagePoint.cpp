@@ -77,19 +77,18 @@ double LKImagePoint::GetCenterY() const
 bool LKImagePoint::IsInside(double x, double y)
 {
     // TODO
-    return true;
+    return false;
 }
 
-TGraph* LKImagePoint::GetLine(int i, double x1, double x2)
+double LKImagePoint::EvalR(int i, double theta, double xt, double yt)
 {
-    // TODO
-    return new TGraph();
-}
-
-TGraphErrors* LKImagePoint::GetBand(double x1, double x2)
-{
-    // TODO
-    return new TGraphErrors();
+    double radius = -1;
+         if (i==0) radius = abs((fX0-xt)*TMath::Cos(TMath::DegToRad()*theta)) + abs((fY0-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    else if (i==1) radius = abs((fX1-xt)*TMath::Cos(TMath::DegToRad()*theta)) + abs((fY1-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    else if (i==2) radius = abs((fX1-xt)*TMath::Cos(TMath::DegToRad()*theta)) + abs((fY2-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    else if (i==3) radius = abs((fX2-xt)*TMath::Cos(TMath::DegToRad()*theta)) + abs((fY1-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    else if (i==4) radius = abs((fX2-xt)*TMath::Cos(TMath::DegToRad()*theta)) + abs((fY2-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    return radius;
 }
 
 #endif

@@ -35,9 +35,10 @@
            It must be set using SetHoughSpaceBins(). In case user wants to set the full range of radius and theta, it can be set using SetHoughSpaceRange().
            For line fitting, the FitTrackWithHoughPoint() method can be used.
     @param Correlation-method Choose from the following options. More descriptions are given below paragraph.
+           1. Point-Band correlator : SetCorrelatePointBand()
            1. Box-Line correlator : SetCorrelateBoxLine()
-           2. Box-Band correlator : SetCorrelateBoxBand()
-           3. Distance correlator : SetCorrelateDistance()
+           3. Box-Band correlator : SetCorrelateBoxBand()
+           4. Distance correlator : SetCorrelateDistance()
 
     While the "hough line" represents the line defined from the central value of the selected pixel in Hough space,
     a "hough band" represents the range that includes all parameter values within the selected pixel range in Hough space.
@@ -45,16 +46,20 @@
     This definition will help understanding the correlator description below:
 
     There are three correlation methods to choose from:
-    1. Box-Line correlator : This correlator checks if the Hough line passes through the image pixel box.
+    1. Point-Band correlator : This correlator checks if the Hough band include the center point of the image pixel.
+                               This method doos not care of the point error and take care of hough point error.
+                               The speed of correlator is the fastest out of all.
+    2. Box-Line correlator : This correlator checks if the Hough line passes through the image pixel box.
                              By selecting this correlator, the Hough point will be filled up only when the line precisely intersects the image pixel.
-                             This approach is suitable when the spatial resolution of the detector is highly reliable.
-    2. Box-Band correlator : This correlator verifies whether there is an overlap between the Hough band and the image pixel box.
-                             The correlation condition is less strict compared to the Box-Line correlator,
+                             This method take care of the point error and do not take care of hough point error. And it is about 4 times slower than Point-Band correlator.
+                             It is not recommanded to use this method unless one understands what this actually does.
+    3. Box-Band correlator : This correlator verifies whether there is an overlap between the Hough band and the image pixel box.
+                             The correlation condition is less strict compared to the Point-Band and Box-Line correlators,
                              but it is more reasonable because both the image point and the hough point are represented as pixel boxes rather than single points.
                              This method provides a general explanation for Hough transform and is suitable for detectors with average spatial resolution.
-                             However this method is about 4 times slower thatn Box-Line correlator.
+                             However this method is about 4 times slower thatn Point-Band correlators.
                              This correlator is default option.
-    3. Distance correlator : This correlator calculate the perpendicular distance from image pixel center to the hough line.
+    4. Distance correlator : This correlator calculate the perpendicular distance from image pixel center to the hough line.
                              Therefore, user can choose the upper limit cut, of distance from the hough line, to weight the hough point using SetMaxWeightingDistance().
                              The speed of method depends on how large the cut value is.
 
@@ -74,7 +79,6 @@
          tracker -> SetTransformCenter(TVector3(0,0,0));
          tracker -> SetImageSpaceRange(120, -150, 150, 120, 0, 500);
          tracker -> SetHoughSpaceBins(numBinsR, numBinsT);
-         tracker -> SetCorrelateBoxLine();
          for (...) {
              tracker -> AddImagePoint(x, xerror, y, yerror, weight);
          }
@@ -115,6 +119,7 @@ class LKHoughTransformTracker : public TObject
         void AddImagePointBox(double x1, double y1, double x2, double y2, double weight);
         void SetImageData(double** imageData);
 
+        void SetCorrelatePointBand()  { fCorrelateType = kCorrelatePointBand; }
         void SetCorrelateBoxLine()  { fCorrelateType = kCorrelateBoxLine; }
         void SetCorrelateBoxBand()  { fCorrelateType = kCorrelateBoxBand; }
         void SetCorrelateDistance() { fCorrelateType = kCorrelateDistance; }
@@ -172,9 +177,10 @@ class LKHoughTransformTracker : public TObject
         int          fCutNumTrackHits = 5;
         LKODRFitter* fLineFitter = nullptr;
 
-        const int    kCorrelateBoxLine = 0;
-        const int    kCorrelateBoxBand = 1;
-        const int    kCorrelateDistance = 2;
+        const int    kCorrelatePointBand = 0;
+        const int    kCorrelateBoxLine = 1;
+        const int    kCorrelateBoxBand = 2;
+        const int    kCorrelateDistance = 3;
         int          fCorrelateType = kCorrelateBoxBand;
 
     ClassDef(LKHoughTransformTracker,1);

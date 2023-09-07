@@ -47,7 +47,7 @@ class LKHoughPointRT : public TObject
 
         double CorrelateLine(LKImagePoint* imagePoint);
         double CorrelateBand(LKImagePoint* imagePoint);
-        double CorrelateDistance(LKImagePoint* imagePoint);
+        double DistanceToImagePoint(LKImagePoint* imagePoint);
 
         double EvalX(double y) const { return EvalX(0,y); }
         double EvalX(int i, double y) const;

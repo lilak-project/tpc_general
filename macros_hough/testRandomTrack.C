@@ -12,11 +12,11 @@ void testRandomTrack()
     gRandom -> SetSeed(seed);
 
     int numTracks = 1;
-    int numRandom = 50;
-    int numBinsT = 60;
-    int numBinsR = 60;
-    int nx = 80;
-    int ny = 80;
+    int numRandom = 100;
+    int numBinsT = 100;
+    int numBinsR = 100;
+    int nx = 100;
+    int ny = 100;
     double x1 = -120;
     double x2 = 120;
     double y1 = 150;
@@ -27,7 +27,7 @@ void testRandomTrack()
     double dy = (y2-y1)/ny;
     double wMin = 100;
     double wMax = 1000;
-    double yErrMax = dy;
+    double yErrMax = 0.5*dy;
     double xt = (x1+x2)/2;
     double yt = y2;
 
@@ -50,9 +50,6 @@ void testRandomTrack()
     tk4 -> SetTransformCenter(xt, yt);
     tk4 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk4 -> SetHoughSpaceBins(numBinsR, numBinsT);
-    //tk4 -> SetHoughSpaceRange(1,0,200,1,-120,120);
-    //tk4 -> SetHoughSpaceRange(1,0,200,1,-10,10);
-    //tk4 -> SetHoughSpaceRange(1,80,100,1,170,180);
     tk4 -> SetCorrelateDistance();
     tk4 -> SetMaxWeightingDistance(0.5*sqrt(wx*wx+wy+wy));
 

@@ -307,7 +307,7 @@ double LKHoughPointRT::CorrelateBand(LKImagePoint* imagePoint)
     return -1;
 }
 
-double LKHoughPointRT::CorrelateDistance(LKImagePoint* imagePoint)
+double LKHoughPointRT::DistanceToImagePoint(LKImagePoint* imagePoint)
 {
     auto distance = DistanceToPoint(imagePoint->GetCenter());
     return distance;

@@ -37,8 +37,7 @@ class LKImagePoint : public TObject
         double GetCenterX() const;
         double GetCenterY() const;
         bool IsInside(double x, double y);
-        TGraph* GetLine(int i, double x1, double x2);
-        TGraphErrors* GetBand(double x1, double x2);
+        double EvalR(int i, double theta, double xt, double yt);
 
         double       fX0;
         double       fX1;
