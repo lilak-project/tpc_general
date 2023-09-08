@@ -12,11 +12,10 @@ void testRandomTrack()
     gRandom -> SetSeed(seed);
 
     int numTracks = 1;
-    int numRandom = 100;
-    int numBinsT = 100;
-    int numBinsR = 100;
-    int nx = 100;
-    int ny = 100;
+    int numBinsT = 10;
+    int numBinsR = 10;
+    int nx = numBinsT;
+    int ny = numBinsR;
     double x1 = -120;
     double x2 = 120;
     double y1 = 150;
@@ -30,6 +29,8 @@ void testRandomTrack()
     double yErrMax = 0.5*dy;
     double xt = (x1+x2)/2;
     double yt = y2;
+    //int numRandom = numBinsT;
+    int numRandom = 2;
 
     auto hist = new TH2D("hist",Form("%d",seed),nx,x1,x2,ny,y1,y2);
     hist -> SetStats(0);
@@ -43,7 +44,10 @@ void testRandomTrack()
     auto tk3 = new LKHoughTransformTracker();
     tk3 -> SetTransformCenter(xt, yt);
     tk3 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk3 -> SetHoughSpaceBins(numBinsR, numBinsT);
+    //tk3 -> SetHoughSpaceBins(numBinsR, numBinsT);
+    tk3 -> SetHoughSpaceRange(1, 140, 160, 2,-120,-100);
+    //tk3 -> SetHoughSpaceRange(1, 140, 160, 1,-120,-100);
+    //tk3 -> SetHoughSpaceRange(2, 0, 280, 2,-180,180);
     tk3 -> SetCorrelateBoxBand();
 
     auto tk4 = new LKHoughTransformTracker();
@@ -87,16 +91,19 @@ void testRandomTrack()
         hist2 -> Draw("same colz");
         hist -> SetTitle(hist2->GetTitle());
 
-        //double zmin = hist -> GetZaxis() -> GetXmin();
-        //double zmax = hist -> GetZaxis() -> GetXmax();
-        //hist -> Fill(x1-2.*wx,0.,zmax);
-        //hist -> GetZaxis() -> SetRangeUser(zmin, zmax);
-        //hist -> SetMinimum(zmin);
-        //hist -> SetMaximum(zmax);
-
-        //hist -> Draw("");
-        //hist2 -> Draw("same colz");
-        hist2 -> Draw("colz");
+        if (1)
+        {
+            double zmin = hist -> GetZaxis() -> GetXmin();
+            double zmax = hist -> GetZaxis() -> GetXmax();
+            hist -> Fill(x1-2.*wx,0.,zmax);
+            hist -> GetZaxis() -> SetRangeUser(zmin, zmax);
+            hist -> SetMinimum(zmin);
+            hist -> SetMaximum(zmax);
+            hist -> Draw("");
+            hist2 -> Draw("same colz");
+        }
+        else
+            hist2 -> Draw("colz");
     };
 
     auto DrawTransformCenter = [xt, yt]()
@@ -145,22 +152,21 @@ void testRandomTrack()
         }
     };
 
-    tk2 -> Transform();
+    //tk2 -> Transform();
     tk3 -> Transform();
-    tk4 -> Transform();
+    //tk4 -> Transform();
 
     auto cvs = ejungwoo::Canvas("cvs",90,100,3,2);
 
-    cvs -> cd(4); tk2 -> GetHistHoughSpace("b2") -> Draw("colz");
-    cvs -> cd(5); tk3 -> GetHistHoughSpace("b3") -> Draw("colz");
-    cvs -> cd(6); tk4 -> GetHistHoughSpace("b4") -> Draw("colz");
+    cvs -> cd(4); tk2 -> GetHistHoughSpace("b2") -> Draw("text colz");
+    cvs -> cd(5); tk3 -> GetHistHoughSpace("b3") -> Draw("text colz");
+    cvs -> cd(6); tk4 -> GetHistHoughSpace("b4") -> Draw("text colz");
 
     cvs -> cd(1); DrawImageSpace(tk2,2); DrawTransformCenter(); FindAndDraw(tk2,numTracks,cvs->cd(1),33);
     cvs -> cd(2); DrawImageSpace(tk3,3); DrawTransformCenter(); FindAndDraw(tk3,numTracks,cvs->cd(2),33);
+    //tk3 -> DrawAllHoughLines();
+    tk3 -> DrawAllHoughBands();
     cvs -> cd(3); DrawImageSpace(tk4,4); DrawTransformCenter(); FindAndDraw(tk4,numTracks,cvs->cd(3),33);
-
-    //tk4 -> DrawAllHoughLines();
-    //tk4 -> DrawAllHoughBands();
 
     //e_save_all();
 }

@@ -83,6 +83,11 @@ bool LKImagePoint::IsInside(double x, double y)
 double LKImagePoint::EvalR(int i, double theta, double xt, double yt)
 {
     double radius = -1;
+    //     if (i==0) radius = ((fX0-xt)*TMath::Cos(TMath::DegToRad()*theta)) + ((fY0-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    //else if (i==1) radius = ((fX1-xt)*TMath::Cos(TMath::DegToRad()*theta)) + ((fY1-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    //else if (i==2) radius = ((fX1-xt)*TMath::Cos(TMath::DegToRad()*theta)) + ((fY2-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    //else if (i==3) radius = ((fX2-xt)*TMath::Cos(TMath::DegToRad()*theta)) + ((fY1-yt)*TMath::Sin(TMath::DegToRad()*theta));
+    //else if (i==4) radius = ((fX2-xt)*TMath::Cos(TMath::DegToRad()*theta)) + ((fY2-yt)*TMath::Sin(TMath::DegToRad()*theta));
          if (i==0) radius = abs((fX0-xt)*TMath::Cos(TMath::DegToRad()*theta)) + abs((fY0-yt)*TMath::Sin(TMath::DegToRad()*theta));
     else if (i==1) radius = abs((fX1-xt)*TMath::Cos(TMath::DegToRad()*theta)) + abs((fY1-yt)*TMath::Sin(TMath::DegToRad()*theta));
     else if (i==2) radius = abs((fX1-xt)*TMath::Cos(TMath::DegToRad()*theta)) + abs((fY2-yt)*TMath::Sin(TMath::DegToRad()*theta));

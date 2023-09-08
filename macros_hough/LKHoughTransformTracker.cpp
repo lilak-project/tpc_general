@@ -122,7 +122,7 @@ void LKHoughTransformTracker::SetHoughSpaceBins(int nr, int nt)
     double r2 = -DBL_MAX;
     double t1 = DBL_MAX;
     double t2 = -DBL_MAX;
-    double x0, y0, r0, t0;
+    double x0, y0, r0;//, t0;
     TVector3 v3Diff;
     for (auto iCorner : {0,1,2,3})
     {
@@ -153,6 +153,10 @@ void LKHoughTransformTracker::SetHoughSpaceRange(int nr, double r1, double r2, i
         e_warning << "hough data is already initialized!" << endl;
         return;
     }
+
+    e_info << "Initializing hough space with "
+        << "r = (" << nr << " | " <<  r1 << ", " << r2 << ") "
+        << "t = (" << nt << " | " <<  t1 << ", " << t2 << ")" << endl;
 
     fNumBinsHoughSpace[0] = nr;
     fBinSizeHoughSpace[0] = (r2-r1)/nr;
@@ -256,7 +260,7 @@ LKHoughPointRT* LKHoughTransformTracker::GetHoughPoint(int ir, int it)
     return fHoughPoint;
 }
 
-//#define NEWITERATION
+#define NEWITERATION
 void LKHoughTransformTracker::Transform()
 {
     if (fUsingImagePointArray) {
@@ -271,14 +275,18 @@ void LKHoughTransformTracker::Transform()
 
                 if (fCorrelateType==kCorrelateBoxBand)
                 {
-                    vector<int> irArray;
+                    int irMax = -INT_MAX;
+                    int irMin = INT_MAX;
                     for (auto iImageCorner : {1,2,3,4}) {
                         auto radius = imagePoint -> EvalR(iImageCorner,theta,fTransformCenter[0],fTransformCenter[1]);
                         int ir = floor( (radius-fRangeHoughSpace[0][0])/fBinSizeHoughSpace[0] ) + 1;
-                        bool alreadyExist = false; for (auto iTemp : irArray) { if (iTemp==ir) { alreadyExist = true; break; } }
-                        if (!alreadyExist) irArray.push_back(ir);
+                        if (irMax<ir) irMax = ir;
+                        if (irMin>ir) irMin = ir;
                     }
-                    for (int ir : irArray) {
+                    if (irMax>=fNumBinsHoughSpace[0]) irMax = fNumBinsHoughSpace[0] - 1;
+                    if (irMin<0) irMin = 0;
+                    for (int ir=irMin; ir<=irMax; ++ir) {
+                        lk_debug << ir << " " << it << endl;
                         auto houghPoint = GetHoughPoint(ir,it);
                         auto distance = houghPoint -> DistanceToImagePoint(imagePoint);
                         if (distance>0) {
@@ -302,14 +310,15 @@ void LKHoughTransformTracker::Transform()
 
                 else if (fCorrelateType==kCorrelateBoxLine)
                 {
-                    vector<int> irArray;
+                    int irMax = -INT_MAX;
+                    int irMin = INT_MAX;
                     for (auto iImageCorner : {1,2,3,4}) {
                         auto radius = imagePoint -> EvalR(iImageCorner,theta,fTransformCenter[0],fTransformCenter[1]);
                         int ir = floor( (radius-fRangeHoughSpace[0][0])/fBinSizeHoughSpace[0] ) + 1;
-                        bool alreadyExist = false; for (auto iTemp : irArray) { if (iTemp==ir) { alreadyExist = true; break; } }
-                        if (!alreadyExist) irArray.push_back(ir);
+                        if (irMax<ir) irMax = ir;
+                        if (irMin>ir) irMin = ir;
                     }
-                    for (int ir : irArray) {
+                    for (int ir=irMin; ir<=irMax; ++ir) {
                         auto houghPoint = GetHoughPoint(ir,it);
                         auto distance = houghPoint -> CorrelateLine(imagePoint);
                         if (distance>0) {
