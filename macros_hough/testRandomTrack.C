@@ -7,15 +7,15 @@ void testRandomTrack()
     gStyle -> SetOptStat(0);
 
     int seed = time(0);
-    seed = 1693993116;
+    seed = 1694313874;
     cout << seed << endl;
     gRandom -> SetSeed(seed);
 
-    int numTracks = 1;
-    int numBinsT = 10;
-    int numBinsR = 10;
-    int nx = numBinsT;
-    int ny = numBinsR;
+    int numTracks = 2;
+    int numBinsT = 80;
+    int numBinsR = 80;
+    int nx = 20;
+    int ny = 20;
     double x1 = -120;
     double x2 = 120;
     double y1 = 150;
@@ -26,14 +26,20 @@ void testRandomTrack()
     double dy = (y2-y1)/ny;
     double wMin = 100;
     double wMax = 1000;
-    double yErrMax = 0.5*dy;
+    double yErrMax = 0.1*dy;
     double xt = (x1+x2)/2;
     double yt = y2;
-    //int numRandom = numBinsT;
-    int numRandom = 2;
+    int numRandom = numBinsT;
+    //int numRandom = 4;
 
     auto hist = new TH2D("hist",Form("%d",seed),nx,x1,x2,ny,y1,y2);
     hist -> SetStats(0);
+
+    auto tk1 = new LKHoughTransformTracker();
+    tk1 -> SetTransformCenter(xt, yt);
+    tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
+    tk1 -> SetHoughSpaceBins(numBinsR, numBinsT);
+    tk1 -> SetCorrelatePointBand();
 
     auto tk2 = new LKHoughTransformTracker();
     tk2 -> SetTransformCenter(xt, yt);
@@ -44,10 +50,7 @@ void testRandomTrack()
     auto tk3 = new LKHoughTransformTracker();
     tk3 -> SetTransformCenter(xt, yt);
     tk3 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    //tk3 -> SetHoughSpaceBins(numBinsR, numBinsT);
-    tk3 -> SetHoughSpaceRange(1, 140, 160, 2,-120,-100);
-    //tk3 -> SetHoughSpaceRange(1, 140, 160, 1,-120,-100);
-    //tk3 -> SetHoughSpaceRange(2, 0, 280, 2,-180,180);
+    tk3 -> SetHoughSpaceBins(numBinsR, numBinsT);
     tk3 -> SetCorrelateBoxBand();
 
     auto tk4 = new LKHoughTransformTracker();
@@ -55,7 +58,7 @@ void testRandomTrack()
     tk4 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk4 -> SetHoughSpaceBins(numBinsR, numBinsT);
     tk4 -> SetCorrelateDistance();
-    tk4 -> SetMaxWeightingDistance(0.5*sqrt(wx*wx+wy+wy));
+    tk4 -> SetMaxWeightingDistance(0.1*sqrt(wx*wx+wy+wy));
 
     auto func = new TF1("track",Form("[0]*(x-%f)+[1]+%f",(x1+x2)/2.,(y1+y2)/2.),x1,x2);
     for (auto iTrack=0; iTrack<numTracks; ++iTrack) {
@@ -71,12 +74,17 @@ void testRandomTrack()
         }
     }
 
+    int countImagePoints = 0;
     for (auto binx=1; binx<=nx; ++binx) {
         for (auto biny=1; biny<=ny; ++biny) {
             auto content = hist -> GetBinContent(binx,biny);
             if (content>0) {
+                ++countImagePoints;
+                //content = countImagePoints;
+                hist -> SetBinContent(binx,biny,content);
                 auto xCenter = hist->GetXaxis()->GetBinCenter(binx);
                 auto yCenter = hist->GetYaxis()->GetBinCenter(biny);
+                tk1 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
                 tk2 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
                 tk3 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
                 tk4 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
@@ -84,9 +92,15 @@ void testRandomTrack()
         }
     }
 
+    auto DraHoughSpace = [](LKHoughTransformTracker* tk, int idx)
+    {
+        auto hist = tk -> GetHistHoughSpace(Form("houghSpace%d",idx));
+        hist -> Draw("colz");
+    };
+    
     auto DrawImageSpace = [nx,x1,x2,wx,ny,y1,y2,wy](LKHoughTransformTracker *tk, int idx)
     {
-        auto hist = new TH2D(Form("frame%d",idx), "", nx, x1-wx, x2+wx, ny, y1-wy, y2+wy);
+        auto hist = new TH2D(Form("frame%d",idx), "", nx, -150, +150, ny, 150, 450);
         auto hist2 = tk -> GetHistImageSpace(Form("imageSpace%d",idx));
         hist2 -> Draw("same colz");
         hist -> SetTitle(hist2->GetTitle());
@@ -99,7 +113,7 @@ void testRandomTrack()
             hist -> GetZaxis() -> SetRangeUser(zmin, zmax);
             hist -> SetMinimum(zmin);
             hist -> SetMaximum(zmax);
-            hist -> Draw("");
+            //hist -> Draw("");
             hist2 -> Draw("same colz");
         }
         else
@@ -109,12 +123,12 @@ void testRandomTrack()
     auto DrawTransformCenter = [xt, yt]()
     {
         auto marker = new TMarker(xt,yt,20);
-        marker -> SetMarkerSize(2);
+        marker -> SetMarkerSize(1);
         marker -> SetMarkerColor(kBlack);
         marker -> Draw("same");
 
         marker = new TMarker(xt,yt,24);
-        marker -> SetMarkerSize(5);
+        marker -> SetMarkerSize(2);
         marker -> SetMarkerColor(kBlack);
         marker -> Draw("same");
     };
@@ -123,8 +137,8 @@ void testRandomTrack()
     {
         //gStyle -> SetPalette(kCandy);
         //gStyle -> SetPalette(kPastel);
-        gStyle -> SetPalette(kRainbow);
-        //gStyle -> SetPalette(kBird);
+        //gStyle -> SetPalette(kRainbow);
+        gStyle -> SetPalette(kBird);
         for (auto iTrack=0; iTrack<numPoints; ++iTrack) {
             auto houghPoint = tk -> GetNextMaximumHoughPoint();
             tk -> CleanLastHoughPoint(cleanRange,cleanRange);
@@ -140,6 +154,8 @@ void testRandomTrack()
             }
             if (1) {
                 auto graph = houghPoint -> GetBandInImageSpace(x1,x2,y1,y2);
+                if (iTrack==1)
+                    graph -> Print();
                 graph -> SetFillColor(color);
                 graph -> SetFillStyle(3344);
                 graph -> Draw("samelf");
@@ -152,21 +168,23 @@ void testRandomTrack()
         }
     };
 
-    //tk2 -> Transform();
-    tk3 -> Transform();
-    //tk4 -> Transform();
+    auto cvs = ejungwoo::Canvas("cvs",100,80,4,2);
 
-    auto cvs = ejungwoo::Canvas("cvs",90,100,3,2);
+    int iCvs = 0;
+    //for (auto tk : {tk1, tk2, tk3, tk4})
+    for (auto tk : {tk1})
+    {
+        tk -> Transform();
 
-    cvs -> cd(4); tk2 -> GetHistHoughSpace("b2") -> Draw("text colz");
-    cvs -> cd(5); tk3 -> GetHistHoughSpace("b3") -> Draw("text colz");
-    cvs -> cd(6); tk4 -> GetHistHoughSpace("b4") -> Draw("text colz");
+        ++iCvs;
 
-    cvs -> cd(1); DrawImageSpace(tk2,2); DrawTransformCenter(); FindAndDraw(tk2,numTracks,cvs->cd(1),33);
-    cvs -> cd(2); DrawImageSpace(tk3,3); DrawTransformCenter(); FindAndDraw(tk3,numTracks,cvs->cd(2),33);
-    //tk3 -> DrawAllHoughLines();
-    tk3 -> DrawAllHoughBands();
-    cvs -> cd(3); DrawImageSpace(tk4,4); DrawTransformCenter(); FindAndDraw(tk4,numTracks,cvs->cd(3),33);
+        cvs -> cd(iCvs+4);
+        DraHoughSpace(tk,iCvs);
 
+        cvs -> cd(iCvs);
+        DrawImageSpace(tk,iCvs);
+        DrawTransformCenter();
+        FindAndDraw(tk,numTracks,cvs->cd(iCvs),33);
+    }
     //e_save_all();
 }

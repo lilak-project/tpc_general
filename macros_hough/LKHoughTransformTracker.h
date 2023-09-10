@@ -51,17 +51,22 @@
                                The speed of correlator is the fastest out of all.
     2. Box-Line correlator : This correlator checks if the Hough line passes through the image pixel box.
                              By selecting this correlator, the Hough point will be filled up only when the line precisely intersects the image pixel.
-                             This method take care of the point error and do not take care of hough point error. And it is about 4 times slower than Point-Band correlator.
+                             This method take care of the point error and do not take care of hough point error. This method is slower than Point-Band correlator.
                              It is not recommanded to use this method unless one understands what this actually does.
     3. Box-Band correlator : This correlator verifies whether there is an overlap between the Hough band and the image pixel box.
                              The correlation condition is less strict compared to the Point-Band and Box-Line correlators,
                              but it is more reasonable because both the image point and the hough point are represented as pixel boxes rather than single points.
                              This method provides a general explanation for Hough transform and is suitable for detectors with average spatial resolution.
-                             However this method is about 4 times slower thatn Point-Band correlators.
+                             However this method is slower than Point-Band and Box-Line correlators.
                              This correlator is default option.
     4. Distance correlator : This correlator calculate the perpendicular distance from image pixel center to the hough line.
-                             Therefore, user can choose the upper limit cut, of distance from the hough line, to weight the hough point using SetMaxWeightingDistance().
-                             The speed of method depends on how large the cut value is.
+                             User should choose the cut fMaxWeightingDistance,
+                             the maximum distance from the hough line to weight the hough point using SetMaxWeightingDistance().
+                             The speed of this method depend on cut value. For most of the cases, this is the most slowest out of all.
+
+    The weighting function is linearly decreasing  function as a function of distance from image pixel center point to the hough line.
+    The function give weight=1 at distance=0 and weight=0 at distance=fMaxWeightingDistance.
+    The default value of fMaxWeightingDistance is diagonal length of image space pixel chosen from GetRangeImageSpace() method.
 
     The author of this method does not recommend the use of the Hough transform method as a track fitter.
     The Hough transform tool is efficient when it comes to grouping, But its performance as a fitter is limited by various factors.
@@ -141,7 +146,7 @@ class LKHoughTransformTracker : public TObject
 
         TH2D* GetHistImageSpace(TString name="", TString title="");
         TH2D* GetHistHoughSpace(TString name="", TString title="");
-        void DrawAllHoughLines(int i=-1);
+        void DrawAllHoughLines(int i=-1, bool drawRadialLine=true);
         void DrawAllHoughBands();
 
         double EvalFromHoughParameter(double x, double radius, double theta);

@@ -29,7 +29,7 @@ class LKHoughPointRT : public TObject
         double GetT1() const  { return fTheta1; }
         double GetT2() const  { return fTheta2; }
         double GetWeight() const  { return fWeight; }
-        TVector3 GetCorner(int i) const;
+        TVector3 GetCorner(int iHoughCorner) const;
 
         void SetPoint(double xc, double yc, double r1, double t1, double r2, double t2, double w) { SetTransformCenter(xc,yc); SetRadius(r1,r2); SetTheta(t1,t2); fWeight = w; }
         void SetTransformCenter(double xc, double yc) { fXTransformCenter = xc; fYTransformCenter = yc; }
@@ -40,21 +40,22 @@ class LKHoughPointRT : public TObject
         double GetCenterR() const;
         double GetCenterT() const;
         void IsInside(double r, double t);
-        TGraph* GetLineInImageSpace(int i, double x1, double x2, double y1, double y2);
-        TGraphErrors* GetBandInImageSpace(double x1, double x2, double y1, double y2);
+        TGraph* GetLineInImageSpace(int iHoughCorner, double x1, double x2, double y1, double y2);
+        TGraph* GetRadialLineInImageSpace(int iHoughCorner, double angleSize);
+        TGraph* GetBandInImageSpace(double x1, double x2, double y1, double y2);
 
         double DistanceToPoint(TVector3 point);
-
-        double CorrelateLine(LKImagePoint* imagePoint);
-        double CorrelateBand(LKImagePoint* imagePoint);
+        double CorrelateBoxLine(LKImagePoint* imagePoint);
+        double CorrelateBoxBand(LKImagePoint* imagePoint);
         double DistanceToImagePoint(LKImagePoint* imagePoint);
 
+        TVector3 GetPOCA(int iHoughCorner);
+        double EvalX(int iHoughCorner, double y) const;
+        double EvalY(int iHoughCorner, double x) const;
         double EvalX(double y) const { return EvalX(0,y); }
-        double EvalX(int i, double y) const;
         double EvalY(double x) const { return EvalY(0,x); }
-        double EvalY(int i, double x) const;
-        void GetImagePoints(int i, double &x1, double &x2, double &y1, double &y2);
-        LKGeoLine GetGeoLine(int i, double x1, double x2, double y1, double y2);
+        void GetImagePoints(int iHoughCorner, double &x1, double &x2, double &y1, double &y2);
+        LKGeoLine GetGeoLine(int iHoughCorner, double x1, double x2, double y1, double y2);
 
         double       fXTransformCenter;
         double       fYTransformCenter;

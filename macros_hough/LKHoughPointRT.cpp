@@ -32,8 +32,8 @@ void LKHoughPointRT::Clear(Option_t *option)
 
 void LKHoughPointRT::Print(Option_t *option) const
 {
-    e_info << "R/T/Y = " << fRadius0 << "(" << fRadius1 << ", " << fRadius2 << "), " << fTheta0 << "(" << fTheta1 << ", " << fTheta2 << "), " 
-        << "y = " << (fRadius0) /TMath::Sin(TMath::DegToRad()*fTheta0) << " + " <<  -TMath::Cos(TMath::DegToRad()*fTheta0) / TMath::Sin(TMath::DegToRad()*fTheta0)  << " * x " << endl;;
+    e_info << "R = " << fRadius0 << "(" << fRadius1 << ", " << fRadius2 << "), T = " << fTheta0 << "(" << fTheta1 << ", " << fTheta2 << "), " 
+        << "equation: y = " <<  -TMath::Cos(TMath::DegToRad()*fTheta0) / TMath::Sin(TMath::DegToRad()*fTheta0)  << " * x + " << (fRadius0) /TMath::Sin(TMath::DegToRad()*fTheta0) << endl;;
 }
 
 void LKHoughPointRT::Copy(TObject &object) const
@@ -46,12 +46,13 @@ void LKHoughPointRT::Copy(TObject &object) const
     objCopy.SetWeight(fWeight);
 }
 
-TVector3 LKHoughPointRT::GetCorner(int i) const
+TVector3 LKHoughPointRT::GetCorner(int iHoughCorner) const
 {
-         if (i==1) { return TVector3(fRadius0, fTheta0, 0); }
-    else if (i==2) { return TVector3(fRadius0, fTheta0, 0); }
-    else if (i==3) { return TVector3(fRadius0, fTheta0, 0); }
-    else if (i==4) { return TVector3(fRadius0, fTheta0, 0); }
+         if (iHoughCorner==0) { return TVector3(fRadius0, fTheta0, 0); }
+    else if (iHoughCorner==1) { return TVector3(fRadius1, fTheta1, 0); }
+    else if (iHoughCorner==2) { return TVector3(fRadius1, fTheta2, 0); }
+    else if (iHoughCorner==3) { return TVector3(fRadius2, fTheta1, 0); }
+    else if (iHoughCorner==4) { return TVector3(fRadius2, fTheta2, 0); }
     return TVector3(-999,-999,-999);
 }
 
@@ -61,45 +62,138 @@ void LKHoughPointRT::IsInside(double r, double t)
     return true;
 }
 
-TGraph* LKHoughPointRT::GetLineInImageSpace(int i, double x1, double x2, double y1, double y2)
+TGraph* LKHoughPointRT::GetLineInImageSpace(int iHoughCorner, double x1, double x2, double y1, double y2)
 {
     // TODO
-    GetImagePoints(i,x1,x2,y1,y2);
+    GetImagePoints(iHoughCorner,x1,x2,y1,y2);
     auto graph = new TGraph();
     graph -> SetPoint(0,x1,y1);
     graph -> SetPoint(1,x2,y2);
     return graph;
 }
 
-TGraphErrors* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y1, double y2)
+TGraph* LKHoughPointRT::GetRadialLineInImageSpace(int iHoughCorner, double angleSize)
+{
+    double xi = 0;
+    double xf = 0;
+    double yi = 0;
+    double yf = 0;
+    GetImagePoints(iHoughCorner,xi,xf,yi,yf);
+    TVector3 pointOnLine(xf-xi,yf-yi,0);
+
+    TVector3 poca = GetPOCA(iHoughCorner);
+    TVector3 dirCenter = (TVector3(fXTransformCenter,fYTransformCenter,0) - poca).Unit();
+    TVector3 dirLine = pointOnLine.Unit();
+
+    if (angleSize==0)
+        angleSize = 0.1*(TVector3(fXTransformCenter,fYTransformCenter,0) - poca).Mag();
+
+    TVector3 point1 = poca   + dirLine   * angleSize;
+    TVector3 point2 = point1 + dirCenter * angleSize;
+    TVector3 point3 = point2 - dirLine   * angleSize;
+
+    TVector3 extra1 = point1 - dirLine   * 0.5*angleSize;
+    TVector3 extra2 = point2;
+    TVector3 extra3 = point1;
+    TVector3 extra4 = point2 - dirLine * 0.5*angleSize;
+    TVector3 extra5 = poca;
+
+    auto graph = new TGraph();
+    graph -> SetLineColor(kBlue);
+    graph -> SetPoint(0,fXTransformCenter,fYTransformCenter);
+    graph -> SetPoint(1,poca.X(),poca.Y());
+    graph -> SetPoint(2,point1.X(),point1.Y());
+    graph -> SetPoint(3,point2.X(),point2.Y());
+    graph -> SetPoint(4,point3.X(),point3.Y());
+
+    if (iHoughCorner>=1) graph -> SetPoint(5,extra1.X(),extra1.Y());
+    if (iHoughCorner>=2) graph -> SetPoint(6,extra2.X(),extra2.Y());
+    if (iHoughCorner>=2) graph -> SetPoint(7,extra3.X(),extra3.Y());
+    if (iHoughCorner>=3) graph -> SetPoint(8,extra4.X(),extra4.Y());
+    if (iHoughCorner>=4) graph -> SetPoint(9,extra5.X(),extra5.Y());
+    return graph;
+}
+
+TGraph* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y1, double y2)
 {
     vector<double> xCrossArray;
 
-    for (auto i : {1,2,3,4}) {
+    double combination[4][2] = {{1,2}, {1,4}, {2,3}, {3,4}};
+    for (auto iCombination : {0,1,2,3})
+    {
+        auto iHoughCorner = combination[iCombination][0];
+        auto jHoughCorner = combination[iCombination][1];
+        if (iHoughCorner==jHoughCorner)
+            continue;
+
         double x1i = x1;
         double x2i = x2;
         double y1i = y1;
         double y2i = y2;
-        GetImagePoints(i,x1i,x2i,y1i,y2i);
-        double si = (y2i - y1i) / (x2i - x1i);
-        for (auto j : {1,2,3,4}) {
+        GetImagePoints(iHoughCorner,x1i,x2i,y1i,y2i);
+        double si = (y2i - y1i) / (x2i - x1i); // slope
+        double bi = y1i - si * x1i; // interception
+
+        double x1j = x1;
+        double x2j = x2;
+        double y1j = y1;
+        double y2j = y2;
+        GetImagePoints(jHoughCorner,x1j,x2j,y1j,y2j);
+        double sj = (y2j - y1j) / (x2j - x1j); // slope
+        double bj = y1j - sj * x1j; // interception
+
+        if (abs(si-sj)<1.e-10)
+            continue;
+        else {
+            double xCross = (bj - bi) / (si - sj);
+            //lk_debug << iHoughCorner << " (" << x1i << ", " << y1i << ") -> (" << x2i << ", " << y2i << "), s = " << si << ", b = " << bi << endl;
+            //lk_debug << jHoughCorner << " (" << x1j << ", " << y1j << ") -> (" << x2j << ", " << y2j << "), s = " << sj << ", b = " << bj << endl;
+            //lk_debug << xCross << " = (" << bj << " - " << bi << ") / (" << si << " - " << sj << ")" << endl;
+            if (xCross>x1 && xCross<x2) {
+                xCrossArray.push_back(xCross);
+            }
+        }
+    }
+
+    /*
+    for (auto iHoughCorner : {1,2,3,4}) {
+        double x1i = x1;
+        double x2i = x2;
+        double y1i = y1;
+        double y2i = y2;
+        GetImagePoints(iHoughCorner,x1i,x2i,y1i,y2i);
+        double si = (y2i - y1i) / (x2i - x1i); // slope
+        double bi = y1 - si * x1; // interception
+        for (auto jHoughCorner : {1,2,3,4})
+        {
+            if (iHoughCorner==jHoughCorner)
+                continue;
+
             double x1j = x1;
             double x2j = x2;
             double y1j = y1;
             double y2j = y2;
-            GetImagePoints(j,x1j,x2j,y1j,y2j);
-            double sj = (y2j - y1j) / (x2j - x1j);
+            GetImagePoints(jHoughCorner,x1j,x2j,y1j,y2j);
+            double sj = (y2j - y1j) / (x2j - x1j); // slope
+            double bj = y1 - sj * x1; // interception
 
-            if ((si-sj)<1.e-10)
+            lk_debug << endl;
+            lk_debug << iHoughCorner << " " << jHoughCorner << endl;
+            lk_debug << (si-sj) << endl;
+            if (abs(si-sj)<1.e-10)
                 continue;
             else {
-                double xCross = (si*x1i - sj*x1j - y2i + y2j) / (si - sj);
+                double xCross = (bj - bi) / (si - sj);
+                lk_debug << iHoughCorner << " (" << x1i << ", " << y1i << ") -> (" << x2i << ", " << y2i << ")" << endl;
+                lk_debug << jHoughCorner << " (" << x1j << ", " << y1j << ") -> (" << x2j << ", " << y2j << ")" << endl;
+                lk_debug << xCross << " = (" << bj << " - " << bi << ") / (" << si << " - " << sj << ")" << endl;
                 if (xCross>x1 && xCross<x2) {
                     xCrossArray.push_back(xCross);
                 }
             }
         }
     }
+    */
 
     xCrossArray.push_back(x1);
     xCrossArray.push_back(x2);
@@ -112,12 +206,12 @@ TGraphErrors* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y
         yCrossMaxArray.push_back(-DBL_MAX);
     }
 
-    for (auto i : {1,2,3,4}) {
+    for (auto iHoughCorner : {1,2,3,4}) {
         double x1i = x1;
         double x2i = x2;
         double y1i = y1;
         double y2i = y2;
-        GetImagePoints(i,x1i,x2i,y1i,y2i);
+        GetImagePoints(iHoughCorner,x1i,x2i,y1i,y2i);
         for (auto iCross=0; iCross<xCrossArray.size(); ++iCross) {
             auto xCross = xCrossArray[iCross];
             auto yCross = (xCross - x1i) * (y2i - y1i) / (x2i - x1i) + y1i;
@@ -125,18 +219,17 @@ TGraphErrors* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y
             auto yCrossMax = yCrossMaxArray[iCross];
             if (yCrossMin>yCross) yCrossMinArray[iCross] = yCross;
             if (yCrossMax<yCross) yCrossMaxArray[iCross] = yCross;
+            //lk_debug << iCross << " " << xCross << " " << yCross << " " << yCrossMin << " " << yCrossMax << endl;
         }
     }
 
-    auto graph = new TGraphErrors();
+    auto graph = new TGraph();
     for (int iCross=0; iCross<xCrossArray.size(); ++iCross) {
-        //lk_debug << iCross << endl;
         auto xCross = xCrossArray[iCross];
         auto yCrossMin = yCrossMinArray[iCross];
         graph -> SetPoint(graph->GetN(), xCross, yCrossMin);
     }
     for (int iCross=xCrossArray.size()-1; iCross>=0; --iCross) {
-        //lk_debug << iCross << endl;
         auto xCross = xCrossArray[iCross];
         auto yCrossMax = yCrossMaxArray[iCross];
         graph -> SetPoint(graph->GetN(), xCross, yCrossMax);
@@ -147,39 +240,57 @@ TGraphErrors* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y
     return graph;
 }
 
-double LKHoughPointRT::EvalY(int i, double x) const
+TVector3 LKHoughPointRT::GetPOCA(int iHoughCorner)
 {
     double radius, theta;
-         if (i==0) { radius = fRadius0, theta = fTheta0; }
-    else if (i==1) { radius = fRadius1, theta = fTheta1; }
-    else if (i==2) { radius = fRadius1, theta = fTheta2; }
-    else if (i==3) { radius = fRadius2, theta = fTheta1; }
-    else if (i==4) { radius = fRadius2, theta = fTheta2; }
+         if (iHoughCorner==0) { radius = fRadius0, theta = fTheta0; }
+    else if (iHoughCorner==1) { radius = fRadius1, theta = fTheta1; }
+    else if (iHoughCorner==2) { radius = fRadius1, theta = fTheta2; }
+    else if (iHoughCorner==3) { radius = fRadius2, theta = fTheta1; }
+    else if (iHoughCorner==4) { radius = fRadius2, theta = fTheta2; }
+    return TVector3(radius*TMath::Cos(TMath::DegToRad()*theta)+fXTransformCenter,radius*TMath::Sin(TMath::DegToRad()*theta)+fYTransformCenter,0);
+}
+
+double LKHoughPointRT::EvalY(int iHoughCorner, double x) const
+{
+    double radius, theta;
+         if (iHoughCorner==0) { radius = fRadius0, theta = fTheta0; }
+    else if (iHoughCorner==1) { radius = fRadius1, theta = fTheta1; }
+    else if (iHoughCorner==2) { radius = fRadius1, theta = fTheta2; }
+    else if (iHoughCorner==3) { radius = fRadius2, theta = fTheta1; }
+    else if (iHoughCorner==4) { radius = fRadius2, theta = fTheta2; }
     double y = (radius - (x-fXTransformCenter)*TMath::Cos(TMath::DegToRad()*theta)) / TMath::Sin(TMath::DegToRad()*theta) + fYTransformCenter;
 
     return y;
 }
 
-double LKHoughPointRT::EvalX(int i, double y) const
+double LKHoughPointRT::EvalX(int iHoughCorner, double y) const
 {
     double radius, theta;
-         if (i==0) { radius = fRadius0, theta = fTheta0; }
-    else if (i==1) { radius = fRadius1, theta = fTheta1; }
-    else if (i==2) { radius = fRadius1, theta = fTheta2; }
-    else if (i==3) { radius = fRadius2, theta = fTheta1; }
-    else if (i==4) { radius = fRadius2, theta = fTheta2; }
+         if (iHoughCorner==0) { radius = fRadius0, theta = fTheta0; }
+    else if (iHoughCorner==1) { radius = fRadius1, theta = fTheta1; }
+    else if (iHoughCorner==2) { radius = fRadius1, theta = fTheta2; }
+    else if (iHoughCorner==3) { radius = fRadius2, theta = fTheta1; }
+    else if (iHoughCorner==4) { radius = fRadius2, theta = fTheta2; }
     double x = (radius - (y-fYTransformCenter)*TMath::Sin(TMath::DegToRad()*theta)) / TMath::Cos(TMath::DegToRad()*theta) + fXTransformCenter;
 
     return x;
 }
 
-void LKHoughPointRT::GetImagePoints(int i, double &x1, double &x2, double &y1, double &y2)
+void LKHoughPointRT::GetImagePoints(int iHoughCorner, double &x1, double &x2, double &y1, double &y2)
 {
+    if (x1==0&&x2==0&&y1==0&&y2==0) {
+        x1 = ((fXTransformCenter==0) ? 1. : 0.);
+        y1 = ((fYTransformCenter==0) ? 1. : 0.);
+        x2 = fXTransformCenter;
+        y2 = fYTransformCenter;
+    }
+
     if ((fTheta0>45&&fTheta0<135)||(fTheta0<-45&&fTheta0>-135)) {
         double xi = x1;
         double xf = x2;
-        double yi = EvalY(i,xi);
-        double yf = EvalY(i,xf);
+        double yi = EvalY(iHoughCorner,xi);
+        double yf = EvalY(iHoughCorner,xf);
         x1 = xi;
         x2 = xf;
         y1 = yi;
@@ -188,8 +299,8 @@ void LKHoughPointRT::GetImagePoints(int i, double &x1, double &x2, double &y1, d
     else {
         double yi = y1;
         double yf = y2;
-        double xi = EvalX(i,yi);
-        double xf = EvalX(i,yf);
+        double xi = EvalX(iHoughCorner,yi);
+        double xf = EvalX(iHoughCorner,yf);
         x1 = xi;
         x2 = xf;
         y1 = yi;
@@ -197,43 +308,21 @@ void LKHoughPointRT::GetImagePoints(int i, double &x1, double &x2, double &y1, d
     }
 }
 
-LKGeoLine LKHoughPointRT::GetGeoLine(int i, double x1, double x2, double y1, double y2)
+LKGeoLine LKHoughPointRT::GetGeoLine(int iHoughCorner, double x1, double x2, double y1, double y2)
 {
-    LKGeoLine line;
-    if ((fTheta0>45&&fTheta0<135)||(fTheta0<-45&&fTheta0>-135)) {
-        double xi = x1;
-        double xf = x2;
-        double yi = EvalY(i,xi);
-        double yf = EvalY(i,xf);
-        line.SetLine(xi,yi,0,xf,yf,0);
-    }
-    else {
-        double yi = y1;
-        double yf = y2;
-        double xi = EvalX(i,yi);
-        double xf = EvalX(i,yf);
-        line.SetLine(xi,yi,0,xf,yf,0);
-    }
+    GetImagePoints(iHoughCorner,x1,x2,y1,y2);
+    LKGeoLine line(x1,y1,0,x2,y2,0);
     return line;
 }
 
 double LKHoughPointRT::DistanceToPoint(TVector3 point)
 {
-    double xi, xf, yi, yf;
-    if ((fTheta0>45&&fTheta0<135)||(fTheta0<-45&&fTheta0>-135)) {
-        xi = 0;
-        if (fXTransformCenter==0) xi = 1;
-        xf = fXTransformCenter;
-        yi = EvalY(xi);
-        yf = EvalY(xf);
-    }
-    else {
-        yi = 0;
-        if (fYTransformCenter==0) yi = 1;
-        yf = fYTransformCenter;
-        xi = EvalX(yi);
-        xf = EvalX(yf);
-    }
+    double xi = 0;
+    double xf = 0;
+    double yi = 0;
+    double yf = 0;
+    GetImagePoints(0,xi,xf,yi,yf);
+
     TVector3 refi = TVector3(xi,yi,0);
     TVector3 ldir = TVector3(xf-xi,yf-yi,0).Unit();
     TVector3 poca = refi + ldir.Dot((point-refi)) * ldir;
@@ -241,29 +330,26 @@ double LKHoughPointRT::DistanceToPoint(TVector3 point)
     return distance;
 }
 
-double LKHoughPointRT::CorrelateLine(LKImagePoint* imagePoint)
+double LKHoughPointRT::CorrelateBoxLine(LKImagePoint* imagePoint)
 {
-    for (auto iHoughCorner : {0})
+    bool existAboveLine = false;
+    bool existBelowLine = false;
+    for (auto iImageCorner : {1,2,3,4})
     {
-        bool existAboveLine = false;
-        bool existBelowLine = false;
-        for (auto iImageCorner : {1,2,3,4})
-        {
-            auto point = imagePoint -> GetCorner(iImageCorner);
-            auto y = EvalY(iHoughCorner, point.X());
-            if (y<point.Y()) existAboveLine = true;
-            if (y>point.Y()) existBelowLine = true;
-        }
-        if (existAboveLine&&existBelowLine) {
-            auto distance = DistanceToPoint(imagePoint->GetCenter());
-            return distance;
-        }
+        auto point = imagePoint -> GetCorner(iImageCorner);
+        auto y = EvalY(point.X());
+        if (y<point.Y()) existAboveLine = true;
+        if (y>point.Y()) existBelowLine = true;
+    }
+    if (existAboveLine&&existBelowLine) {
+        auto distance = DistanceToPoint(imagePoint->GetCenter());
+        return distance;
     }
 
     return -1;
 }
 
-double LKHoughPointRT::CorrelateBand(LKImagePoint* imagePoint)
+double LKHoughPointRT::CorrelateBoxBand(LKImagePoint* imagePoint)
 {
     auto weight = 0;
     int includedBelowOrAbove[4] = {0};
@@ -276,25 +362,30 @@ double LKHoughPointRT::CorrelateBand(LKImagePoint* imagePoint)
         for (auto iImageCorner : {1,2,3,4})
         {
             auto point = imagePoint -> GetCorner(iImageCorner);
-            auto y = EvalY(iHoughCorner, point.X());
-            if (y<point.Y()) existAboveLine = true;
-            if (y>point.Y()) existBelowLine = true;
+            auto yHoughLine = EvalY(iHoughCorner, point.X());
+            if (yHoughLine<=point.Y()) existAboveLine = true;
+            if (yHoughLine> point.Y()) existBelowLine = true;
+            //lk_debug << "yHoughLine(" << iHoughCorner << ") = " << yHoughLine << ", yImagePoint(" << iImageCorner << ") = " << point.Y() << endl;
         }
 
         if (existAboveLine&&existBelowLine)
             includedBelowOrAbove[iHoughCorner-1] = 0;
-
-        if (existAboveLine) includedBelowOrAbove[iHoughCorner-1] = 1;
-        else                includedBelowOrAbove[iHoughCorner-1] = 2;
+        else if (existAboveLine)
+            includedBelowOrAbove[iHoughCorner-1] = 1;
+        else
+            includedBelowOrAbove[iHoughCorner-1] = 2;
     }
 
     bool existAbove = false;
     bool existBelow = false;
     bool crossOver = false;
-    for (auto i : {0,1,2,3}) {
-        if (includedBelowOrAbove[i]==0) crossOver = true;
-        else if (includedBelowOrAbove[i]==1) existAbove = true;
-        else if (includedBelowOrAbove[i]==2) existBelow = true;
+    for (auto iHoughCorner : {1,2,3,4}) {
+             if (includedBelowOrAbove[iHoughCorner-1]==0) { crossOver = true;  }
+        else if (includedBelowOrAbove[iHoughCorner-1]==1) { existAbove = true; }
+        else if (includedBelowOrAbove[iHoughCorner-1]==2) { existBelow = true; }
+        //     if (includedBelowOrAbove[iHoughCorner-1]==0) lk_debug << "hough line-" << iHoughCorner << " cross over " << endl;
+        //else if (includedBelowOrAbove[iHoughCorner-1]==1) lk_debug << "hough line-" << iHoughCorner << " is above line " << endl;
+        //else if (includedBelowOrAbove[iHoughCorner-1]==2) lk_debug << "hough line-" << iHoughCorner << " is below line " << endl;
     }
     if (existAbove&&existBelow)
         crossOver = true;
