@@ -10,9 +10,13 @@ void drawDefinition()
     double y1 = 0;
     double y2 = 10;
 
-    auto cvs = ejungwoo::CanvasR("cvs",100,80,2,1);
+    auto cvs = ejungwoo::Canvas("cvs",1,1);
+    auto hist = new TH2D("hist","",nx,x1,x2,ny,y1,y2);
+    hist -> Draw();
 
-    for (auto i : {1,2,3,4}) {
+    auto houghPoint = new LKHoughPointRT(0,0,5,30,5,45);
+    //for (auto i : {1,2,3,4}) {
+    for (auto i : {1}) {
         auto hline = houghPoint -> GetLineInImageSpace(i,x1,x2,y1,y2);
         hline -> Draw("samel");
         auto rline = houghPoint -> GetRadialLineInImageSpace(i,0.5);

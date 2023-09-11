@@ -39,6 +39,10 @@ class LKImagePoint : public TObject
         bool IsInside(double x, double y);
         double EvalR(int i, double theta, double xt, double yt);
 
+        double GetError() const  { return sqrt((fX1-fX0)*(fX1-fX0) + (fY1-fY0)*(fY1-fY0)); }
+        double GetXError() const { return (fX1-fX0); }
+        double GetYError() const { return (fY1-fY0); }
+
         double       fX0;
         double       fX1;
         double       fX2;

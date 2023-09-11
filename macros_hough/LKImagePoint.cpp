@@ -89,6 +89,7 @@ double LKImagePoint::EvalR(int i, double theta, double xt, double yt)
     else if (i==3) { x = (fX2-xt); y = (fY1-yt); }
     else if (i==4) { x = (fX2-xt); y = (fY2-yt); }
     double radius = sqrt(x*x + y*y) * TMath::Cos(TMath::DegToRad()*theta - TMath::ATan2(y,x)); 
+    //double radius = x*TMath::Cos(TMath::DegToRad()*theta) + y*TMath::Sin(TMath::DegToRad()*theta);
     return radius;
 }
 

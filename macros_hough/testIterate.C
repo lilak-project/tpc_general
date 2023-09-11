@@ -2,20 +2,20 @@
 
 #include "LKHoughTransformTracker.cpp"
 
-void testRandomTrack()
+void testIterate()
 {
     gStyle -> SetOptStat(0);
 
     int seed = time(0);
-    seed = 1694313874;
+    seed = 1694408477;
     cout << seed << endl;
     gRandom -> SetSeed(seed);
 
-    int numTracks = 2;
-    int numBinsT = 80;
-    int numBinsR = 80;
-    int nx = 20;
-    int ny = 20;
+    int numTracks = 1;
+    int numBinsT = 25;
+    int numBinsR = 25;
+    int nx = 100;
+    int ny = 100;
     double x1 = -120;
     double x2 = 120;
     double y1 = 150;
@@ -26,11 +26,10 @@ void testRandomTrack()
     double dy = (y2-y1)/ny;
     double wMin = 100;
     double wMax = 1000;
-    double yErrMax = 0.1*dy;
+    double yErrMax = 1*dy;
     double xt = (x1+x2)/2;
     double yt = y2;
     int numRandom = numBinsT;
-    //int numRandom = 4;
 
     auto hist = new TH2D("hist",Form("%d",seed),nx,x1,x2,ny,y1,y2);
     hist -> SetStats(0);
@@ -39,26 +38,7 @@ void testRandomTrack()
     tk1 -> SetTransformCenter(xt, yt);
     tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk1 -> SetHoughSpaceBins(numBinsR, numBinsT);
-    tk1 -> SetCorrelatePointBand();
-
-    auto tk2 = new LKHoughTransformTracker();
-    tk2 -> SetTransformCenter(xt, yt);
-    tk2 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk2 -> SetHoughSpaceBins(numBinsR, numBinsT);
-    tk2 -> SetCorrelateBoxLine();
-
-    auto tk3 = new LKHoughTransformTracker();
-    tk3 -> SetTransformCenter(xt, yt);
-    tk3 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk3 -> SetHoughSpaceBins(numBinsR, numBinsT);
-    tk3 -> SetCorrelateBoxBand();
-
-    auto tk4 = new LKHoughTransformTracker();
-    tk4 -> SetTransformCenter(xt, yt);
-    tk4 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk4 -> SetHoughSpaceBins(numBinsR, numBinsT);
-    tk4 -> SetCorrelateDistance();
-    tk4 -> SetMaxWeightingDistance(0.1*sqrt(wx*wx+wy+wy));
+    tk1 -> SetCorrelateBoxBand();
 
     auto func = new TF1("track",Form("[0]*(x-%f)+[1]+%f",(x1+x2)/2.,(y1+y2)/2.),x1,x2);
     for (auto iTrack=0; iTrack<numTracks; ++iTrack) {
@@ -85,17 +65,16 @@ void testRandomTrack()
                 auto xCenter = hist->GetXaxis()->GetBinCenter(binx);
                 auto yCenter = hist->GetYaxis()->GetBinCenter(biny);
                 tk1 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
-                tk2 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
-                tk3 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
-                tk4 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
             }
         }
     }
 
-    auto DraHoughSpace = [](LKHoughTransformTracker* tk, int idx)
+    auto DrawHoughSpace = [](LKHoughTransformTracker* tk, int idx)
     {
         auto hist = tk -> GetHistHoughSpace(Form("houghSpace%d",idx));
         hist -> Draw("colz");
+        //hist -> Draw("lego2z");
+        //hist -> Draw("arr");
     };
     
     auto DrawImageSpace = [nx,x1,x2,wx,ny,y1,y2,wy](LKHoughTransformTracker *tk, int idx)
@@ -135,13 +114,11 @@ void testRandomTrack()
 
     auto FindAndDraw = [x1,x2,y1,y2](LKHoughTransformTracker* tk, Int_t numPoints, TVirtualPad* pad, Color_t color, double cleanRange=-1)
     {
-        //gStyle -> SetPalette(kCandy);
-        //gStyle -> SetPalette(kPastel);
-        //gStyle -> SetPalette(kRainbow);
         gStyle -> SetPalette(kBird);
-        for (auto iTrack=0; iTrack<numPoints; ++iTrack) {
-            auto houghPoint = tk -> GetNextMaximumHoughPoint();
-            tk -> CleanLastHoughPoint(cleanRange,cleanRange);
+        for (auto iTrack=0; iTrack<numPoints; ++iTrack)
+        {
+            auto houghPoint = tk -> FindNextMaximumHoughPoint();
+            tk -> CleanLastHoughPoint(0,cleanRange);
             if (houghPoint -> fWeight<-1)
                 break;
             pad -> cd();
@@ -154,13 +131,11 @@ void testRandomTrack()
             }
             if (1) {
                 auto graph = houghPoint -> GetBandInImageSpace(x1,x2,y1,y2);
-                if (iTrack==1)
-                    graph -> Print();
                 graph -> SetFillColor(color);
                 graph -> SetFillStyle(3344);
                 graph -> Draw("samelf");
             }
-            if (1) {
+            if (0) {
                 auto track = tk -> FitTrackWithHoughPoint(houghPoint);
                 auto graph = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
                 graph -> Draw("samel");
@@ -168,23 +143,37 @@ void testRandomTrack()
         }
     };
 
-    auto cvs = ejungwoo::Canvas("cvs",100,80,4,2);
+    auto cvs = ejungwoo::Canvas("cvs",80,90,3,2);
 
     int iCvs = 0;
-    //for (auto tk : {tk1, tk2, tk3, tk4})
-    for (auto tk : {tk1})
+    for (auto i : {0,1,2})
     {
-        tk -> Transform();
+        tk1 -> Transform();
 
         ++iCvs;
 
-        cvs -> cd(iCvs+4);
-        DraHoughSpace(tk,iCvs);
+        auto houghPointAtMax = tk1 -> FindNextMaximumHoughPoint();
+        auto graphHoughAtMax = houghPointAtMax -> GetRangeGraphInHoughSpace(1);
+        auto graphImageAtMax = houghPointAtMax -> GetBandInImageSpace(x1,x2,y1,y2);
+        graphImageAtMax -> SetFillColor(kRed);
+        graphImageAtMax -> SetFillStyle(3354);
 
         cvs -> cd(iCvs);
-        DrawImageSpace(tk,iCvs);
-        DrawTransformCenter();
-        FindAndDraw(tk,numTracks,cvs->cd(iCvs),33);
+        DrawHoughSpace(tk1,iCvs);
+
+        auto houghPointRange = tk1 -> ReinitializeFromLastHoughPoint();
+        auto graphHoughReinit = houghPointRange -> GetRangeGraphInHoughSpace(1);
+        auto graphImageReinit = houghPointRange -> GetBandInImageSpace(x1,x2,y1,y2);
+        graphImageReinit -> SetFillColor(33);
+        graphImageReinit -> SetFillStyle(3345);
+
+        cvs -> cd(iCvs);
+        graphHoughAtMax -> Draw("samel");
+        graphHoughReinit -> Draw("samel");
+
+        cvs -> cd(iCvs+3);
+        DrawImageSpace(tk1,iCvs);
+        graphImageAtMax -> Draw("samelf");
+        graphImageReinit -> Draw("samelf");
     }
-    //e_save_all();
 }

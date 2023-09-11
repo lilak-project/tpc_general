@@ -240,6 +240,21 @@ TGraph* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y1, dou
     return graph;
 }
 
+TGraph* LKHoughPointRT::GetRangeGraphInHoughSpace(bool drawYX)
+{
+    auto graph = new TGraph();
+    graph -> SetLineColor(kRed);
+    graph -> SetLineWidth(3);
+    for (auto iHoughCorner : {1,2,4,3,1}) {
+        auto pos = GetCorner(iHoughCorner);
+        if (drawYX)
+            graph -> SetPoint(graph->GetN(),pos.Y(),pos.X());
+        else
+            graph -> SetPoint(graph->GetN(),pos.X(),pos.Y());
+    }
+    return graph;
+}
+
 TVector3 LKHoughPointRT::GetPOCA(int iHoughCorner)
 {
     double radius, theta;
@@ -260,6 +275,7 @@ double LKHoughPointRT::EvalY(int iHoughCorner, double x) const
     else if (iHoughCorner==3) { radius = fRadius2, theta = fTheta1; }
     else if (iHoughCorner==4) { radius = fRadius2, theta = fTheta2; }
     double y = (radius - (x-fXTransformCenter)*TMath::Cos(TMath::DegToRad()*theta)) / TMath::Sin(TMath::DegToRad()*theta) + fYTransformCenter;
+    //lk_debug << radius << " " << theta << " >> " << x << " " << y << endl;
 
     return y;
 }
@@ -273,6 +289,7 @@ double LKHoughPointRT::EvalX(int iHoughCorner, double y) const
     else if (iHoughCorner==3) { radius = fRadius2, theta = fTheta1; }
     else if (iHoughCorner==4) { radius = fRadius2, theta = fTheta2; }
     double x = (radius - (y-fYTransformCenter)*TMath::Sin(TMath::DegToRad()*theta)) / TMath::Cos(TMath::DegToRad()*theta) + fXTransformCenter;
+    //lk_debug << radius << " " << theta << " >> " << x << " " << y << endl;
 
     return x;
 }
@@ -322,6 +339,21 @@ double LKHoughPointRT::DistanceToPoint(TVector3 point)
     double yi = 0;
     double yf = 0;
     GetImagePoints(0,xi,xf,yi,yf);
+
+    TVector3 refi = TVector3(xi,yi,0);
+    TVector3 ldir = TVector3(xf-xi,yf-yi,0).Unit();
+    TVector3 poca = refi + ldir.Dot((point-refi)) * ldir;
+    double distance = (point-poca).Mag();
+    return distance;
+}
+
+double LKHoughPointRT::DistanceToPoint(int iCorner, TVector3 point)
+{
+    double xi = 0;
+    double xf = 0;
+    double yi = 0;
+    double yf = 0;
+    GetImagePoints(iCorner,xi,xf,yi,yf);
 
     TVector3 refi = TVector3(xi,yi,0);
     TVector3 ldir = TVector3(xf-xi,yf-yi,0).Unit();
@@ -401,6 +433,12 @@ double LKHoughPointRT::CorrelateBoxBand(LKImagePoint* imagePoint)
 double LKHoughPointRT::DistanceToImagePoint(LKImagePoint* imagePoint)
 {
     auto distance = DistanceToPoint(imagePoint->GetCenter());
+    return distance;
+}
+
+double LKHoughPointRT::DistanceToImagePoint(int iHoughCorner, LKImagePoint* imagePoint)
+{
+    auto distance = DistanceToPoint(iHoughCorner, imagePoint->GetCenter());
     return distance;
 }
 

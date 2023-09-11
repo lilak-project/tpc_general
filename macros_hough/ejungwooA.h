@@ -146,7 +146,7 @@ LKWindowManager::LKWindowManager()
 bool LKWindowManager::Init()
 {
     // Put intialization todos here which are not iterative job though event
-    cout << "Initializing LKWindowManager" << std::endl;
+    //cout << "Initializing LKWindowManager" << std::endl;
 
     ConfigureDisplay();
 
@@ -206,7 +206,7 @@ void LKWindowManager::ConfigureDisplay()
     fWCurrent = fDWFull*0.05;
     fHCurrent = fDHFull*0.1;
 
-    cout << "Display position = (" << fWDisplay << ", " << fHDisplay << "), size = (" << fDWFull << ", " << fDHFull << ")" << endl;
+    //cout << "Display position = (" << fWDisplay << ", " << fHDisplay << "), size = (" << fDWFull << ", " << fDHFull << ")" << endl;
 }
 
 TCanvas *LKWindowManager::CanvasR(const char *name, Int_t w, Int_t h, Int_t ww, Int_t wh, Double_t rw, Double_t rh)
@@ -226,9 +226,10 @@ TCanvas *LKWindowManager::CanvasR(const char *name, Int_t w, Int_t h, Int_t ww, 
 
     if (rw>1) rw = 0.01*rw;
     if (rh>1) rh = 0.01*rh;
-    if (rw>0 && rw<=1 && rh>0 && rh<=1) {
-        dwFinal = rw * fDWFull;
-        dhFinal = rh * fDHFull;
+
+    if ((rw>0 && rw<=1) && (rh>0 && rh<=1)) {
+        dwFinal = rw * ww;
+        dhFinal = rh * wh;
     }
     else if (rw>0 && rw<=1) {
         dwFinal = rw * fDWFull;
@@ -242,7 +243,7 @@ TCanvas *LKWindowManager::CanvasR(const char *name, Int_t w, Int_t h, Int_t ww, 
     dwFinal = dwFinal * fWGlobalScale;
     dhFinal = dhFinal * fHGlobalScale;
 
-    //cout << dwFinal << " " << dhFinal << endl;
+    e_info << "Creating canvas " << name << " (" << dwFinal << "x" << dhFinal << ") at (" << w << ", " << h << ")" << endl;
     auto cvs = new TCanvas(name, name, w, h, dwFinal, dhFinal);
 
     fWCurrent = fWCurrent + fDWSpacing; 
@@ -450,7 +451,7 @@ namespace ejungwoo
     void     Batch();
     void     Add    (TObject* object, const char *subfolder="");
     void     Save   (TObject *object, const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false);
-    TCanvas* Canvas (const char* name="", int wx=800, int wy=680, int dx=1, int dy=1);
+    TCanvas* Canvas (const char* name="", double wx=800, double wy=680, int dx=1, int dy=1);
     void     SaveAll(const char* fileType="", const char* nameVersion="", bool savePrimitives=false, bool simplifyNames=false);
     TH2D*    Frame  (TGraph *graph, const char* name, const char* title="",
                      ejungwoo::Range rx1=ejungwoo::Range(), ejungwoo::Range rx2=ejungwoo::Range(),
@@ -458,6 +459,7 @@ namespace ejungwoo
     TF1*     FitG   (TH1D* hist, double sigmaWidth, Option_t *opt="RQ0");
     TH1D*    MakeChannelHist(int*    data, int nTb, TString name);
     TH1D*    MakeChannelHist(double* data, int nTb, TString name);
+    void     SetHist(TH1 *hist);
 
     bool fAlwaysUseHttpServer = true;
     void UseHttpServer(bool value=true) { fAlwaysUseHttpServer = value; }
@@ -497,24 +499,30 @@ void ejungwoo::Add(TObject* object, const char *subfolder="")
     eArray -> Add(object);
 }
 
-TCanvas *ejungwoo::Canvas(const char* name="", int wx=800, int wy=680, int dx=1, int dy=1)
+TCanvas *ejungwoo::Canvas(const char* name="", double dwx=800, double dwy=680, int dx=1, int dy=1)
 {
     const char* title = name;
     TCanvas* cvs0 = nullptr;
+    int wx = int(dwx);
+    int wy = int(dwy);
 #ifdef LKWINDOWMANAGER_HH
     auto windowManager = LKWindowManager::GetWindowManager();
-         if (wx>=10&&wx<=100&&wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0.01*wx,0.01*wy);
+    int wwFull = windowManager -> GetDWFull();
+    int whFull = windowManager -> GetDHFull();
+    if (dwx>0&&dwx<=1) {
+        cvs0 = windowManager -> CanvasR(name, 0, 0, whFull, whFull, dwx, dwy);
+    }
+    else if (wx>=10&&wx<=100&&wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,wwFull,whFull,0.01*wx,0.01*wy);
     else if (wx>=10&&wx<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0.01*wx,0);
     else if (wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0,0.01*wy);
     else if (wx==0) cvs0 = windowManager -> CanvasFull(name);
-    else if (wx==1) cvs0 = windowManager -> Canvas(name);
+    else if (wx==2) cvs0 = windowManager -> Canvas(name);
     else            cvs0 = windowManager -> CanvasR(name, wx, wy);
 #else
          if (wx==0) cvs0 = new TCanvas(name,name,1250,720);
-    else if (wx==1) cvs0 = new TCanvas(name,name,800,650);
+    else if (wx==2) cvs0 = new TCanvas(name,name,800,650);
     else            cvs0 = new TCanvas(name,name,wx,wy);
 #endif
-    //auto cvs0 = new TCanvas(name, title, wx, wy);
     if (dx>1||dy>1) {
         cvs0 -> Divide(dx,dy);
         for (auto ix=0; ix<dx; ++ix)
@@ -672,6 +680,16 @@ TH1D* ejungwoo::MakeChannelHist(double* data, int nTb, TString name)
         hist -> SetBinContent(tb+1,data[tb]);
     }
     return hist;
+}
+
+void ejungwoo::SetHist(TH1* hist)
+{
+    //auto statsbox = dynamic_cast<TPaveStats*>(hist->FindObject("stats"));
+    //statsbox -> SetX1NDC(x1_stat + fXOffStatsbox*unit_x);
+    //statsbox -> SetX2NDC(x2_stat + fXOffStatsbox*unit_x);
+
+    //statsbox -> SetY1NDC(y1_stat + fYOffStatsbox*unit_y);
+    //statsbox -> SetY2NDC(y2_stat + fYOffStatsbox*unit_y);
 }
 
 //using namespace ejungwoo;

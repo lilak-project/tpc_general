@@ -10,6 +10,8 @@
 #include "LKImagePoint.cpp"
 #include "LKHoughPointRT.cpp"
 
+#include "LKHoughWeightingFunction.h"
+
 /**
     @brief The KHoughTransformTracker is tool for finding and fitting a straight line track from a provided list of hits.
 
@@ -61,12 +63,11 @@
                              This correlator is default option.
     4. Distance correlator : This correlator calculate the perpendicular distance from image pixel center to the hough line.
                              User should choose the cut fMaxWeightingDistance,
+                             The default value of fMaxWeightingDistance is diagonal length of image space pixel chosen from GetRangeImageSpace() method.
                              the maximum distance from the hough line to weight the hough point using SetMaxWeightingDistance().
                              The speed of this method depend on cut value. For most of the cases, this is the most slowest out of all.
 
-    The weighting function is linearly decreasing  function as a function of distance from image pixel center point to the hough line.
-    The function give weight=1 at distance=0 and weight=0 at distance=fMaxWeightingDistance.
-    The default value of fMaxWeightingDistance is diagonal length of image space pixel chosen from GetRangeImageSpace() method.
+    Weighting function...
 
     The author of this method does not recommend the use of the Hough transform method as a track fitter.
     The Hough transform tool is efficient when it comes to grouping, But its performance as a fitter is limited by various factors.
@@ -88,7 +89,7 @@
              tracker -> AddImagePoint(x, xerror, y, yerror, weight);
          }
          tracker -> Transform();
-         auto houghPoint = tracker -> GetNextMaximumHoughPoint();
+         auto houghPoint = tracker -> FindNextMaximumHoughPoint();
     }
     @endcode
 
@@ -124,25 +125,28 @@ class LKHoughTransformTracker : public TObject
         void AddImagePointBox(double x1, double y1, double x2, double y2, double weight);
         void SetImageData(double** imageData);
 
-        void SetCorrelatePointBand()  { fCorrelateType = kCorrelatePointBand; }
-        void SetCorrelateBoxLine()  { fCorrelateType = kCorrelateBoxLine; }
-        void SetCorrelateBoxBand()  { fCorrelateType = kCorrelateBoxBand; }
-        void SetCorrelateDistance() { fCorrelateType = kCorrelateDistance; }
+        void SetCorrelatePointBand();
+        void SetCorrelateBoxLine();
+        void SetCorrelateBoxBand();
+        void SetCorrelateDistance();
         void SetMaxWeightingDistance(double distance) { fMaxWeightingDistance = distance; }
         void SetCutNumTrackHits(double value) { fCutNumTrackHits = value; }
+
+        void SetWFConst()   { fWeightingFunction = new LKHoughWFConst(); }
+        void SetWFLinear()  { fWeightingFunction = new LKHoughWFLinear(); }
+        void SetWFInverse() { fWeightingFunction = new LKHoughWFInverse(); }
+        void SetWeightingFunction(LKHoughWeightingFunction* wf) { fWeightingFunction = wf; }
 
         LKImagePoint* GetImagePoint(int i);
         LKHoughPointRT* GetHoughPoint(int i);
         LKHoughPointRT* GetHoughPoint(int ir, int it);
 
         void Transform();
-        double WeightingFunction(double distance, double imageWeight);
-        double WeightingDistanceInvProp(double distance, double imageWeight);
-
-        LKHoughPointRT* GetNextMaximumHoughPoint();
-        LKLinearTrack* FitTrackWithHoughPoint(LKHoughPointRT* houghPoint, double distCut=0);
+        LKHoughPointRT* FindNextMaximumHoughPoint();
+        LKLinearTrack* FitTrackWithHoughPoint(LKHoughPointRT* houghPoint, double weightCut=-1);
         void CleanLastHoughPoint(double rWidth=-1, double tWidth=-1);
-        void CleanAndRetransform();
+        LKHoughPointRT* ReinitializeFromLastHoughPoint();
+        void RetransformFromLastHoughPoint();
 
         TH2D* GetHistImageSpace(TString name="", TString title="");
         TH2D* GetHistHoughSpace(TString name="", TString title="");
@@ -164,6 +168,7 @@ class LKHoughTransformTracker : public TObject
         double       fBinSizeMaxHoughSpace = 0;
         double       fRangeImageSpace[2][2] = {{0}};
         double       fRangeHoughSpace[2][2] = {{0}};
+        double       fRangeHoughSpaceInit[2][2] = {{0}};
         double**     fHoughData;
         double**     fImageData;
         int          fIdxSelectedR = -1;
@@ -187,6 +192,8 @@ class LKHoughTransformTracker : public TObject
         const int    kCorrelateBoxBand = 2;
         const int    kCorrelateDistance = 3;
         int          fCorrelateType = kCorrelateBoxBand;
+
+        LKHoughWeightingFunction* fWeightingFunction = nullptr;
 
     ClassDef(LKHoughTransformTracker,1);
 };

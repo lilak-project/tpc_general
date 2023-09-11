@@ -43,11 +43,15 @@ class LKHoughPointRT : public TObject
         TGraph* GetLineInImageSpace(int iHoughCorner, double x1, double x2, double y1, double y2);
         TGraph* GetRadialLineInImageSpace(int iHoughCorner, double angleSize);
         TGraph* GetBandInImageSpace(double x1, double x2, double y1, double y2);
+        TGraph* GetRangeGraphInHoughSpace(bool drawYX);
 
         double DistanceToPoint(TVector3 point);
+        double DistanceToPoint(int iHoughCorner, TVector3 point);
+
+        double DistanceToImagePoint(LKImagePoint* imagePoint);
+        double DistanceToImagePoint(int iHoughCorner, LKImagePoint* imagePoint);
         double CorrelateBoxLine(LKImagePoint* imagePoint);
         double CorrelateBoxBand(LKImagePoint* imagePoint);
-        double DistanceToImagePoint(LKImagePoint* imagePoint);
 
         TVector3 GetPOCA(int iHoughCorner);
         double EvalX(int iHoughCorner, double y) const;
