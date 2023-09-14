@@ -12,11 +12,11 @@ void testCorrelators()
     cout << seed << endl;
     gRandom -> SetSeed(seed);
 
-    int numTracks = 2;
-    int numBinsT = 50;
-    int numBinsR = 50;
-    int nx = 50;
-    int ny = 50;
+    int numTracks = 1;
+    int numBinsT = 30;
+    int numBinsR = 30;
+    int nx = 30;
+    int ny = 30;
     double x1 = -120;
     double x2 = 120;
     double y1 = 150;

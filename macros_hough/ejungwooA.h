@@ -515,7 +515,7 @@ TCanvas *ejungwoo::Canvas(const char* name="", double dwx=800, double dwy=680, i
     else if (wx>=10&&wx<=100&&wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,wwFull,whFull,0.01*wx,0.01*wy);
     else if (wx>=10&&wx<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0.01*wx,0);
     else if (wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0,0.01*wy);
-    else if (wx==0) cvs0 = windowManager -> CanvasFull(name);
+    else if (wx==0) { cvs0 = windowManager -> CanvasFull(name); }
     else if (wx==2) cvs0 = windowManager -> Canvas(name);
     else            cvs0 = windowManager -> CanvasR(name, wx, wy);
 #else

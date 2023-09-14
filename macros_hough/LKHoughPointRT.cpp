@@ -118,8 +118,12 @@ TGraph* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y1, dou
 {
     vector<double> xCrossArray;
 
-    double combination[4][2] = {{1,2}, {1,4}, {2,3}, {3,4}};
-    for (auto iCombination : {0,1,2,3})
+    double combination[12][2] = {
+        {1,2}, {1,4}, {2,3}, {3,4},
+        {1,5}, {2,5}, {3,5}, {4,5},
+        {1,6}, {2,6}, {3,6}, {4,6},
+    };
+    for (auto iCombination=0; iCombination<12; ++iCombination)
     {
         auto iHoughCorner = combination[iCombination][0];
         auto jHoughCorner = combination[iCombination][1];
@@ -138,7 +142,9 @@ TGraph* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y1, dou
         double x2j = x2;
         double y1j = y1;
         double y2j = y2;
-        GetImagePoints(jHoughCorner,x1j,x2j,y1j,y2j);
+        if (jHoughCorner==5) y2j = y1;
+        else if (jHoughCorner==6) y1j = y2;
+        else GetImagePoints(jHoughCorner,x1j,x2j,y1j,y2j);
         double sj = (y2j - y1j) / (x2j - x1j); // slope
         double bj = y1j - sj * x1j; // interception
 
@@ -146,54 +152,11 @@ TGraph* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y1, dou
             continue;
         else {
             double xCross = (bj - bi) / (si - sj);
-            //lk_debug << iHoughCorner << " (" << x1i << ", " << y1i << ") -> (" << x2i << ", " << y2i << "), s = " << si << ", b = " << bi << endl;
-            //lk_debug << jHoughCorner << " (" << x1j << ", " << y1j << ") -> (" << x2j << ", " << y2j << "), s = " << sj << ", b = " << bj << endl;
-            //lk_debug << xCross << " = (" << bj << " - " << bi << ") / (" << si << " - " << sj << ")" << endl;
             if (xCross>x1 && xCross<x2) {
                 xCrossArray.push_back(xCross);
             }
         }
     }
-
-    /*
-    for (auto iHoughCorner : {1,2,3,4}) {
-        double x1i = x1;
-        double x2i = x2;
-        double y1i = y1;
-        double y2i = y2;
-        GetImagePoints(iHoughCorner,x1i,x2i,y1i,y2i);
-        double si = (y2i - y1i) / (x2i - x1i); // slope
-        double bi = y1 - si * x1; // interception
-        for (auto jHoughCorner : {1,2,3,4})
-        {
-            if (iHoughCorner==jHoughCorner)
-                continue;
-
-            double x1j = x1;
-            double x2j = x2;
-            double y1j = y1;
-            double y2j = y2;
-            GetImagePoints(jHoughCorner,x1j,x2j,y1j,y2j);
-            double sj = (y2j - y1j) / (x2j - x1j); // slope
-            double bj = y1 - sj * x1; // interception
-
-            lk_debug << endl;
-            lk_debug << iHoughCorner << " " << jHoughCorner << endl;
-            lk_debug << (si-sj) << endl;
-            if (abs(si-sj)<1.e-10)
-                continue;
-            else {
-                double xCross = (bj - bi) / (si - sj);
-                lk_debug << iHoughCorner << " (" << x1i << ", " << y1i << ") -> (" << x2i << ", " << y2i << ")" << endl;
-                lk_debug << jHoughCorner << " (" << x1j << ", " << y1j << ") -> (" << x2j << ", " << y2j << ")" << endl;
-                lk_debug << xCross << " = (" << bj << " - " << bi << ") / (" << si << " - " << sj << ")" << endl;
-                if (xCross>x1 && xCross<x2) {
-                    xCrossArray.push_back(xCross);
-                }
-            }
-        }
-    }
-    */
 
     xCrossArray.push_back(x1);
     xCrossArray.push_back(x2);
@@ -219,20 +182,23 @@ TGraph* LKHoughPointRT::GetBandInImageSpace(double x1, double x2, double y1, dou
             auto yCrossMax = yCrossMaxArray[iCross];
             if (yCrossMin>yCross) yCrossMinArray[iCross] = yCross;
             if (yCrossMax<yCross) yCrossMaxArray[iCross] = yCross;
-            //lk_debug << iCross << " " << xCross << " " << yCross << " " << yCrossMin << " " << yCrossMax << endl;
         }
     }
 
     auto graph = new TGraph();
     for (int iCross=0; iCross<xCrossArray.size(); ++iCross) {
         auto xCross = xCrossArray[iCross];
-        auto yCrossMin = yCrossMinArray[iCross];
-        graph -> SetPoint(graph->GetN(), xCross, yCrossMin);
+        auto yCross = yCrossMinArray[iCross];
+        if (yCross<y1) yCross = y1;
+        if (yCross>y2) yCross = y2;
+        graph -> SetPoint(graph->GetN(), xCross, yCross);
     }
     for (int iCross=xCrossArray.size()-1; iCross>=0; --iCross) {
         auto xCross = xCrossArray[iCross];
-        auto yCrossMax = yCrossMaxArray[iCross];
-        graph -> SetPoint(graph->GetN(), xCross, yCrossMax);
+        auto yCross = yCrossMaxArray[iCross];
+        if (yCross<y1) yCross = y1;
+        if (yCross>y2) yCross = y2;
+        graph -> SetPoint(graph->GetN(), xCross, yCross);
     }
     auto xCross = xCrossArray[0];
     auto yCrossMin = yCrossMinArray[0];

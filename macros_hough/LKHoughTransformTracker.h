@@ -42,40 +42,55 @@
            3. Box-Band correlator : SetCorrelateBoxBand()
            4. Distance correlator : SetCorrelateDistance()
 
-    While the "hough line" represents the line defined from the central value of the selected pixel in Hough space,
-    a "hough band" represents the range that includes all parameter values within the selected pixel range in Hough space.
-    It needs to be noted that each image point also has its error represented by the pixel in image space.
+    While the "hough line" represents the line defined from the central value of the selected bin in Hough space,
+    a "hough band" represents the range that includes all parameter values within the selected bin range in Hough space.
+    It needs to be noted that each image point also has its error represented by the bin in image space.
     This definition will help understanding the correlator description below:
 
     There are three correlation methods to choose from:
-    1. Point-Band correlator : This correlator checks if the Hough band include the center point of the image pixel.
+    1. Point-Band correlator : This correlator checks if the Hough band include the center point of the image-bin.
                                This method doos not care of the point error and take care of hough point error.
                                The speed of correlator is the fastest out of all.
-    2. Box-Line correlator : This correlator checks if the Hough line passes through the image pixel box.
-                             By selecting this correlator, the Hough point will be filled up only when the line precisely intersects the image pixel.
-                             This method take care of the point error and do not take care of hough point error. This method is slower than Point-Band correlator.
+    2. Box-Line correlator : This correlator checks if the Hough line passes through the image-bin-box.
+                             By selecting this correlator, the Hough point will be filled up only when the line precisely intersects the image-bin.
+                             This method take care of the point error and do not take care of hough point error.
+                             This method is slower than Point-Band correlator.
                              It is not recommanded to use this method unless one understands what this actually does.
-    3. Box-Band correlator : This correlator verifies whether there is an overlap between the Hough band and the image pixel box.
+    3. Box-Band correlator : This correlator verifies whether there is an overlap between the Hough band and the image-bin-box.
                              The correlation condition is less strict compared to the Point-Band and Box-Line correlators,
-                             but it is more reasonable because both the image point and the hough point are represented as pixel boxes rather than single points.
-                             This method provides a general explanation for Hough transform and is suitable for detectors with average spatial resolution.
+                             but it is more reasonable because both the image point and the hough point are represented as bin boxes
+                             rather than single points.
+                             This method provides a general explanation for Hough transform
+                             and is suitable for detectors with average spatial resolution.
                              However this method is slower than Point-Band and Box-Line correlators.
                              This correlator is default option.
-    4. Distance correlator : This correlator calculate the perpendicular distance from image pixel center to the hough line.
+    4. Distance correlator : This correlator calculate the perpendicular distance from image-bin center to the hough line.
                              User should choose the cut fMaxWeightingDistance,
-                             The default value of fMaxWeightingDistance is diagonal length of image space pixel chosen from GetRangeImageSpace() method.
+                             The default value of fMaxWeightingDistance is diagonal length of image space bin chosen from GetRangeImageSpace() method.
                              the maximum distance from the hough line to weight the hough point using SetMaxWeightingDistance().
                              The speed of this method depend on cut value. For most of the cases, this is the most slowest out of all.
 
-    Weighting function...
+    ## Weighting function
+    Weighting function is a function that gives weight value to fill up the hough space bin by correlating with image-bin.
+    Defualt weighting function is LKHoughWFInverse. The weight in this class is defined by:
+        weight = [distance from image point to hough line] .....
+    Other weighting functions can be found in LKHoughTransformTracker.h, or one could create one by inheriting LKHoughTransformTracker class.
 
     The author of this method does not recommend the use of the Hough transform method as a track fitter.
     The Hough transform tool is efficient when it comes to grouping, But its performance as a fitter is limited by various factors.
-    Instead, The author recommand to find the group of hits, then use FitTrackWithHoughPoint() method which employ the least chi-squared method to fit straight line.
+    Instead, The author recommand to find the group of hits,
+    then use FitTrackWithHoughPoint() method which employ the least chi-squared method to fit straight line.
 
-    If one intends to employ hough transform for the fitter, it's needed to use the smallest possible Hough space binning to meet the user's desired resolution.
+    If one intends to employ hough transform for the fitter,
+    it's needed to use the smallest possible Hough space binning to meet the user's desired resolution.
     If the spatial resolution is not impressive, the Box-Band correlator should be used. However, these adjustments will increase computation time.
     Even if good track parameters are identified, there's no assurance that the fit result will be superior to the least chi-squared method.
+    In case of situation where only a single track exist in the event,
+    small number of bins for hough space can be used along with RetransformFromLastHoughPoint() method.
+    RetransformFromLastHoughPoint() method find the maximum hough space bin,
+    and recalculate Hough transform parameters to range hough space within the selected bin.
+    After, the Transform() method will be called which is equalivant to dividing hough space in to n^2 x m^2 bins,
+    where nxm is the binning chosen by the user.
 
     Example of using LKHoughTransformTracker:
 
@@ -90,6 +105,7 @@
          }
          tracker -> Transform();
          auto houghPoint = tracker -> FindNextMaximumHoughPoint();
+         track = tracker -> FitTrackWithHoughPoint(houghPoint);
     }
     @endcode
 
