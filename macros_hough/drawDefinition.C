@@ -14,7 +14,7 @@ void drawDefinition()
     auto hist = new TH2D("hist","",nx,x1,x2,ny,y1,y2);
     hist -> Draw();
 
-    auto houghPoint = new LKHoughPointRT(0,0,40,30,60,45);
+    auto houghPoint = new LKParamPointRT(0,0,40,30,60,45);
     auto band = houghPoint -> GetBandInImageSpace(x1,x2,y1,y2);
     band -> SetFillColor(33);
     band -> SetFillStyle(3344);

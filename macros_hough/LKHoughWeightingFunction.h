@@ -2,10 +2,10 @@
 #define LKHOUGHWEIGHTINGFUNCTION_HH
 
 #include "LKImagePoint.h"
-#include "LKHoughPointRT.h"
+#include "LKParamPointRT.h"
 
 #include "LKImagePoint.cpp"
-#include "LKHoughPointRT.cpp"
+#include "LKParamPointRT.cpp"
 
 class LKHoughWeightingFunction
 {
@@ -13,8 +13,8 @@ class LKHoughWeightingFunction
         LKHoughWeightingFunction() {}
         ~LKHoughWeightingFunction() {}
 
-        virtual double EvalFromPoints(LKImagePoint* imagePoint, LKHoughPointRT* houghPoint) {
-            auto distance = houghPoint -> DistanceToImagePoint(0, imagePoint);
+        virtual double EvalFromPoints(LKImagePoint* imagePoint, LKParamPointRT* paramPoint) {
+            auto distance = paramPoint -> DistanceToImagePoint(0, imagePoint);
             auto error = imagePoint -> GetError();
             return EvalFromDistance(distance,error,imagePoint->fWeight);
         }
@@ -30,7 +30,7 @@ class LKHoughWFConst : public LKHoughWeightingFunction
         LKHoughWFConst() {}
         ~LKHoughWFConst() {}
 
-        double EvalFromPoints(LKImagePoint* imagePoint, LKHoughPointRT* houghPoint) { return 1; }
+        double EvalFromPoints(LKImagePoint* imagePoint, LKParamPointRT* paramPoint) { return 1; }
         double EvalFromDistance(double distance, double error, double pointWeight) { return 1; }
 };
 

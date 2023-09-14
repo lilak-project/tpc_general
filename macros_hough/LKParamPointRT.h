@@ -10,13 +10,13 @@
 #include "LKImagePoint.cpp"
 //#include "LKImagePoint.h"
 
-//class LKHoughPointRT : public LKContainer
-class LKHoughPointRT : public TObject
+//class LKParamPointRT : public LKContainer
+class LKParamPointRT : public TObject
 {
     public:
-        LKHoughPointRT();
-        LKHoughPointRT(double xc, double yc, double r1, double t1, double r2, double t2, double w=0);
-        virtual ~LKHoughPointRT() { ; }
+        LKParamPointRT();
+        LKParamPointRT(double xc, double yc, double r1, double t1, double r2, double t2, double w=0);
+        virtual ~LKParamPointRT() { ; }
 
         void Clear(Option_t *option="");
         void Print(Option_t *option="") const;
@@ -29,7 +29,7 @@ class LKHoughPointRT : public TObject
         double GetT1() const  { return fTheta1; }
         double GetT2() const  { return fTheta2; }
         double GetWeight() const  { return fWeight; }
-        TVector3 GetCorner(int iHoughCorner) const;
+        TVector3 GetCorner(int iParamCorner) const;
 
         void SetPoint(double xc, double yc, double r1, double t1, double r2, double t2, double w) { SetTransformCenter(xc,yc); SetRadius(r1,r2); SetTheta(t1,t2); fWeight = w; }
         void SetTransformCenter(double xc, double yc) { fXTransformCenter = xc; fYTransformCenter = yc; }
@@ -40,26 +40,26 @@ class LKHoughPointRT : public TObject
         double GetCenterR() const;
         double GetCenterT() const;
         void IsInside(double r, double t);
-        TGraph* GetLineInImageSpace(int iHoughCorner, double x1, double x2, double y1, double y2);
-        TGraph* GetRadialLineInImageSpace(int iHoughCorner, double angleSize);
+        TGraph* GetLineInImageSpace(int iParamCorner, double x1, double x2, double y1, double y2);
+        TGraph* GetRadialLineInImageSpace(int iParamCorner, double angleSize);
         TGraph* GetBandInImageSpace(double x1, double x2, double y1, double y2);
-        TGraph* GetRangeGraphInHoughSpace(bool drawYX);
+        TGraph* GetRangeGraphInParamSpace(bool drawYX);
 
         double DistanceToPoint(TVector3 point);
-        double DistanceToPoint(int iHoughCorner, TVector3 point);
+        double DistanceToPoint(int iParamCorner, TVector3 point);
 
         double DistanceToImagePoint(LKImagePoint* imagePoint);
-        double DistanceToImagePoint(int iHoughCorner, LKImagePoint* imagePoint);
+        double DistanceToImagePoint(int iParamCorner, LKImagePoint* imagePoint);
         double CorrelateBoxLine(LKImagePoint* imagePoint);
         double CorrelateBoxBand(LKImagePoint* imagePoint);
 
-        TVector3 GetPOCA(int iHoughCorner);
-        double EvalX(int iHoughCorner, double y) const;
-        double EvalY(int iHoughCorner, double x) const;
+        TVector3 GetPOCA(int iParamCorner);
+        double EvalX(int iParamCorner, double y) const;
+        double EvalY(int iParamCorner, double x) const;
         double EvalX(double y) const { return EvalX(0,y); }
         double EvalY(double x) const { return EvalY(0,x); }
-        void GetImagePoints(int iHoughCorner, double &x1, double &x2, double &y1, double &y2);
-        LKGeoLine GetGeoLine(int iHoughCorner, double x1, double x2, double y1, double y2);
+        void GetImagePoints(int iParamCorner, double &x1, double &x2, double &y1, double &y2);
+        LKGeoLine GetGeoLine(int iParamCorner, double x1, double x2, double y1, double y2);
 
         double       fXTransformCenter;
         double       fYTransformCenter;
@@ -71,7 +71,7 @@ class LKHoughPointRT : public TObject
         double       fTheta2;
         double       fWeight;
 
-    ClassDef(LKHoughPointRT,1);
+    ClassDef(LKParamPointRT,1);
 };
 
 #endif

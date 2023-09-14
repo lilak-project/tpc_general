@@ -38,25 +38,25 @@ void testCorrelators()
     auto tk1 = new LKHoughTransformTracker();
     tk1 -> SetTransformCenter(xt, yt);
     tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk1 -> SetHoughSpaceBins(numBinsR, numBinsT);
+    tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk1 -> SetCorrelatePointBand();
 
     auto tk2 = new LKHoughTransformTracker();
     tk2 -> SetTransformCenter(xt, yt);
     tk2 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk2 -> SetHoughSpaceBins(numBinsR, numBinsT);
+    tk2 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk2 -> SetCorrelateBoxLine();
 
     auto tk3 = new LKHoughTransformTracker();
     tk3 -> SetTransformCenter(xt, yt);
     tk3 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk3 -> SetHoughSpaceBins(numBinsR, numBinsT);
+    tk3 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk3 -> SetCorrelateBoxBand();
 
     auto tk4 = new LKHoughTransformTracker();
     tk4 -> SetTransformCenter(xt, yt);
     tk4 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk4 -> SetHoughSpaceBins(numBinsR, numBinsT);
+    tk4 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk4 -> SetCorrelateDistance();
     tk4 -> SetMaxWeightingDistance(0.1*sqrt(wx*wx+wy+wy));
 
@@ -92,9 +92,9 @@ void testCorrelators()
         }
     }
 
-    auto DrawHoughSpace = [](LKHoughTransformTracker* tk, int idx)
+    auto DrawParamSpace = [](LKHoughTransformTracker* tk, int idx)
     {
-        auto hist = tk -> GetHistHoughSpace(Form("houghSpace%d",idx));
+        auto hist = tk -> GetHistParamSpace(Form("paramSpace%d",idx));
         hist -> Draw("colz");
     };
     
@@ -138,27 +138,27 @@ void testCorrelators()
         gStyle -> SetPalette(kBird);
         for (auto iTrack=0; iTrack<numPoints; ++iTrack)
         {
-            auto houghPoint = tk -> FindNextMaximumHoughPoint();
-            tk -> CleanLastHoughPoint(cleanRange,cleanRange);
-            //tk -> CleanLastHoughPoint(0,cleanRange);
-            if (houghPoint -> fWeight<-1)
+            auto paramPoint = tk -> FindNextMaximumParamPoint();
+            tk -> CleanLastParamPoint(cleanRange,cleanRange);
+            //tk -> CleanLastParamPoint(0,cleanRange);
+            if (paramPoint -> fWeight<-1)
                 break;
             pad -> cd();
             if (0) {
                 for (auto i : {0,1,2,3,4}) {
-                    auto graph = houghPoint -> GetLineInImageSpace(i,x1,x2,y1,y2);
+                    auto graph = paramPoint -> GetLineInImageSpace(i,x1,x2,y1,y2);
                     graph -> SetLineColor(color);
                     graph -> Draw("samel");
                 }
             }
             if (1) {
-                auto graph = houghPoint -> GetBandInImageSpace(x1,x2,y1,y2);
+                auto graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
                 graph -> SetFillColor(color);
                 graph -> SetFillStyle(3344);
                 graph -> Draw("samelf");
             }
             if (1) {
-                auto track = tk -> FitTrackWithHoughPoint(houghPoint);
+                auto track = tk -> FitTrackWithParamPoint(paramPoint);
                 auto graph = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
                 graph -> Draw("samel");
             }
@@ -175,7 +175,7 @@ void testCorrelators()
         ++iCvs;
 
         cvs -> cd(iCvs+4);
-        DrawHoughSpace(tk,iCvs);
+        DrawParamSpace(tk,iCvs);
 
         cvs -> cd(iCvs);
         DrawImageSpace(tk,iCvs);

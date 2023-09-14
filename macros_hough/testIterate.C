@@ -37,7 +37,7 @@ void testIterate()
     auto tk1 = new LKHoughTransformTracker();
     tk1 -> SetTransformCenter(xt, yt);
     tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk1 -> SetHoughSpaceBins(numBinsR, numBinsT);
+    tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk1 -> SetCorrelateBoxBand();
 
     auto func = new TF1("track",Form("[0]*(x-%f)+[1]+%f",(x1+x2)/2.,(y1+y2)/2.),x1,x2);
@@ -69,9 +69,9 @@ void testIterate()
         }
     }
 
-    auto DrawHoughSpace = [](LKHoughTransformTracker* tk, int idx)
+    auto DrawParamSpace = [](LKHoughTransformTracker* tk, int idx)
     {
-        auto hist = tk -> GetHistHoughSpace(Form("houghSpace%d",idx));
+        auto hist = tk -> GetHistParamSpace(Form("paramSpace%d",idx));
         hist -> Draw("colz");
         //hist -> Draw("lego2z");
         //hist -> Draw("arr");
@@ -117,26 +117,26 @@ void testIterate()
         gStyle -> SetPalette(kBird);
         for (auto iTrack=0; iTrack<numPoints; ++iTrack)
         {
-            auto houghPoint = tk -> FindNextMaximumHoughPoint();
-            tk -> CleanLastHoughPoint(0,cleanRange);
-            if (houghPoint -> fWeight<-1)
+            auto paramPoint = tk -> FindNextMaximumParamPoint();
+            tk -> CleanLastParamPoint(0,cleanRange);
+            if (paramPoint -> fWeight<-1)
                 break;
             pad -> cd();
             if (0) {
                 for (auto i : {0,1,2,3,4}) {
-                    auto graph = houghPoint -> GetLineInImageSpace(i,x1,x2,y1,y2);
+                    auto graph = paramPoint -> GetLineInImageSpace(i,x1,x2,y1,y2);
                     graph -> SetLineColor(color);
                     graph -> Draw("samel");
                 }
             }
             if (1) {
-                auto graph = houghPoint -> GetBandInImageSpace(x1,x2,y1,y2);
+                auto graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
                 graph -> SetFillColor(color);
                 graph -> SetFillStyle(3344);
                 graph -> Draw("samelf");
             }
             if (0) {
-                auto track = tk -> FitTrackWithHoughPoint(houghPoint);
+                auto track = tk -> FitTrackWithParamPoint(paramPoint);
                 auto graph = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
                 graph -> Draw("samel");
             }
@@ -152,18 +152,18 @@ void testIterate()
 
         ++iCvs;
 
-        auto houghPointAtMax = tk1 -> FindNextMaximumHoughPoint();
-        auto graphHoughAtMax = houghPointAtMax -> GetRangeGraphInHoughSpace(1);
-        auto graphImageAtMax = houghPointAtMax -> GetBandInImageSpace(x1,x2,y1,y2);
+        auto paramPointAtMax = tk1 -> FindNextMaximumParamPoint();
+        auto graphHoughAtMax = paramPointAtMax -> GetRangeGraphInParamSpace(1);
+        auto graphImageAtMax = paramPointAtMax -> GetBandInImageSpace(x1,x2,y1,y2);
         graphImageAtMax -> SetFillColor(kRed);
         graphImageAtMax -> SetFillStyle(3354);
 
         cvs -> cd(iCvs);
-        DrawHoughSpace(tk1,iCvs);
+        DrawParamSpace(tk1,iCvs);
 
-        auto houghPointRange = tk1 -> ReinitializeFromLastHoughPoint();
-        auto graphHoughReinit = houghPointRange -> GetRangeGraphInHoughSpace(1);
-        auto graphImageReinit = houghPointRange -> GetBandInImageSpace(x1,x2,y1,y2);
+        auto paramPointRange = tk1 -> ReinitializeFromLastParamPoint();
+        auto graphHoughReinit = paramPointRange -> GetRangeGraphInParamSpace(1);
+        auto graphImageReinit = paramPointRange -> GetBandInImageSpace(x1,x2,y1,y2);
         graphImageReinit -> SetFillColor(33);
         graphImageReinit -> SetFillStyle(3345);
 
