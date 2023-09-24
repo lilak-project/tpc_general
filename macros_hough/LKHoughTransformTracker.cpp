@@ -678,12 +678,7 @@ void LKHoughTransformTracker::DrawAllParamBands()
 TH2D* LKHoughTransformTracker::GetHistImageSpace(TString name, TString title)
 {
     if (name.IsNull()) name = "histImageSpace";
-    TString correlatorName;
-         if (fCorrelateType==kCorrelatePointBand)  correlatorName = "Point-Band";
-    else if (fCorrelateType==kCorrelateBoxLine)  correlatorName = "Box-Line";
-    else if (fCorrelateType==kCorrelateBoxBand)  correlatorName = "Box-Band";
-    else if (fCorrelateType==kCorrelateBoxRBand)  correlatorName = "Box-RBand";
-    else if (fCorrelateType==kCorrelateDistance) correlatorName = "Distance";
+    TString correlatorName = GetCorrelatorName();
     if (title.IsNull()) title = Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);x;y", correlatorName.Data(), fNumBinsImageSpace[0], fNumBinsImageSpace[1], fTransformCenter[0],fTransformCenter[1]);
     auto hist = new TH2D(name,title, fNumBinsImageSpace[0],fRangeImageSpace[0][0],fRangeImageSpace[0][1],fNumBinsImageSpace[1],fRangeImageSpace[1][0],fRangeImageSpace[1][1]);
     if (fUsingImagePointArray) {
@@ -711,12 +706,7 @@ TGraphErrors* LKHoughTransformTracker::GetGraphImageSapce()
 TH2D* LKHoughTransformTracker::GetHistParamSpace(TString name, TString title)
 {
     if (name.IsNull()) name = "histParamSpace";
-    TString correlatorName;
-         if (fCorrelateType==kCorrelatePointBand)  correlatorName = "Point-Band";
-    else if (fCorrelateType==kCorrelateBoxLine)  correlatorName = "Box-Line";
-    else if (fCorrelateType==kCorrelateBoxBand)  correlatorName = "Box-Band";
-    else if (fCorrelateType==kCorrelateBoxRBand)  correlatorName = "Box-RBand";
-    else if (fCorrelateType==kCorrelateDistance) correlatorName = "Distance";
+    TString correlatorName = GetCorrelatorName();
     if (title.IsNull()) title = Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);#theta (degrees);Radius", correlatorName.Data(), fNumBinsParamSpace[0], fNumBinsParamSpace[1], fTransformCenter[0],fTransformCenter[1]);
     auto hist = new TH2D(name,title, fNumBinsParamSpace[1],fRangeParamSpace[1][0],fRangeParamSpace[1][1],fNumBinsParamSpace[0],fRangeParamSpace[0][0],fRangeParamSpace[0][1]);
     for (auto ir=0; ir<fNumBinsParamSpace[0]; ++ir) {

@@ -177,6 +177,7 @@ void testIterate()
 
         cvs -> cd(iCvs+3);
         auto histImage = new TH2D(Form("frame%d",iCvs), "", nx, x1, x2, ny, y1, y2);
+        histImage -> SetTitle(Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);#theta (degrees);Radius", tk1->GetCorrelatorName().Data(), nx, ny, xt, yt));
         auto marker = new TMarker(xt,yt,20);
         marker -> SetMarkerSize(1);
         marker -> SetMarkerColor(kBlack);

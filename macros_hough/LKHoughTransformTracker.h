@@ -162,6 +162,16 @@ class LKHoughTransformTracker : public TObject
         void AddImagePointBox(double x1, double y1, double x2, double y2, double weight);
         void SetImageData(double** imageData);
 
+        TString GetCorrelatorName() {
+            TString correlatorName;
+            if (fCorrelateType==kCorrelatePointBand)  correlatorName = "Point-Band";
+            else if (fCorrelateType==kCorrelateBoxLine)  correlatorName = "Box-Line";
+            else if (fCorrelateType==kCorrelateBoxBand)  correlatorName = "Box-Band";
+            else if (fCorrelateType==kCorrelateBoxRBand)  correlatorName = "Box-RBand";
+            else if (fCorrelateType==kCorrelateDistance) correlatorName = "Distance";
+            return correlatorName;
+        }
+
         bool IsCorrelatePointBand() { if (fCorrelateType==kCorrelatePointBand) return true; return false; }
         bool IsCorrelateBoxLine()   { if (fCorrelateType==kCorrelateBoxLine)   return true; return false; }
         bool IsCorrelateBoxBand()   { if (fCorrelateType==kCorrelateBoxBand)   return true; return false; }
