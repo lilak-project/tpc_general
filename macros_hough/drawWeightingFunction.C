@@ -7,11 +7,13 @@ void drawWeightingFunction()
     double xmin = 0.;
     double xmax = 4.;
     double dx = (xmax - xmin) / nx;
-    LKHoughWeightingFunction *weightingFunction[3];
+    LKHoughWeightingFunction *weightingFunction[4];
+    //weightingFunction[0] = new LKHoughWeightingFunction();
     weightingFunction[0] = new LKHoughWFConst();
     weightingFunction[1] = new LKHoughWFLinear();
     weightingFunction[2] = new LKHoughWFInverse();
     TString names[] = {
+        //"LKHoughWeightingFunction",
         "LKHoughWFConst",
         "LKHoughWFLinear",
         "LKHoughWFInverse",

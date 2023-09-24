@@ -4,6 +4,7 @@
 #include "TObject.h"
 #include "LKLogger.h"
 #include "LKGeoLine.h"
+#include "TGraphErrors.h"
 
 #include "LKImagePoint.h"
 #include "LKParamPointRT.h"
@@ -13,8 +14,9 @@
 #include "LKHoughWeightingFunction.h"
 
 /**
-    @brief The KHoughTransformTracker is tool for finding and fitting a straight line track from a provided list of hits.
+    @brief LKHoughTransformTracker is tool for finding and fitting a straight line track from a provided list of hits.
 
+    ## Abriviations for this document
     @param HT Hough Transform
     @param IMS Image Space
     @param IMP Image Point
@@ -27,6 +29,7 @@
     @param TC Transform Center : A origin point of Hough transform
     @param WF Weighting Function
 
+    ## Definitions
     The Hough transform (HT) introduces parameter space (PMS) to find the appropriate parameters for the given model,
     which, in this case, is a straight line. The space describing the real dimensions (x, y) is referred to as image space (IMS),
     while the space describing the parameters of a model, (a straight line for this case,) (radius and theta) is referred to as PMS.
@@ -39,7 +42,7 @@
     Thus, the angle between the x-axis and the PML is theta + 90 degrees.
     Note that the unit of angles used within this method is degrees.
 
-    @param Transform-center (TC) The transform center is the position in IMS where the HT will be performed.
+    @param Transform-Center (TC) The transform center is the position in IMS where the HT will be performed.
            The choice of the transform center will affect the results. It must be set using SetTransformCenter().
     @param Image-space-range The number of bins, minimum and maximum ranges for x and y, must be set. It must be set using SetImageSpaceRange().
     @param Param-space-range The number of bins for radius and theta parameters should be set.
@@ -48,35 +51,40 @@
            if the HT is employed only for the purpose of collecting hits and not for fitting tracks.
            It must be set using SetParamSpaceBins(). In case user wants to set the full range of radius and theta, it can be set using SetParamSpaceRange().
            For line fitting, the FitTrackWithParamPoint() method can be used.
-    @param Correlation-method Choose from the following options. More descriptions are given below paragraph.
+    @param Correlator Choose from the following options. More descriptions are given below paragraph.
            1. Point-Band correlator : SetCorrelatePointBand()
-           1. Box-Line correlator : SetCorrelateBoxLine()
+           2. Box-Line correlator : SetCorrelateBoxLine()
            3. Box-Band correlator : SetCorrelateBoxBand()
-           4. Distance correlator : SetCorrelateDistance()
+           4. Box-Band correlator : SetCorrelateBoxRBand()
+           5. Distance correlator : SetCorrelateDistance()
 
+    ## Correlators
     While the PML represents the line defined from the central value of the selected bin in PMS,
     a band; Parameter presented as a Band (PMB), represents the range that includes all parameter values within the selected bin range in PMS.
     It needs to be noted that each image point (IMP) also has its error represented by the bin in IMS.
     This definition will help understanding the correlator description below:
 
-    There are three correlation methods to choose from:
-    1. Point-Band correlator : This correlator checks if the Hough band include the center point of the image point box (IMB).
+    There are four correlation methods to choose from:
+    1. Point-Band correlator : This correlator checks if the PMB include the center point of the image point box (IMB).
                                This method doos not care of the point error and take care of parameter point (PMP) error.
                                The speed of correlator is the fastest out of all.
-    2. Box-Line correlator : This correlator checks if the Hough line passes through the IMB.
-                             By selecting this correlator, the Hough point will be filled up only when the line precisely intersects the IMB.
+    2. Box-Line correlator : This correlator checks if the PML passes through the IMB.
+                             By selecting this correlator, the PMP will be filled up only when the line precisely intersects the IMB.
                              This method take care of the point error and do not take care of PMP error.
                              This method is slower than Point-Band correlator.
                              It is not recommanded to use this method unless one understands what this actually does.
-    3. Box-Band correlator : This correlator verifies whether there is an overlap between the Hough band and the IMB.
+    3. Box-Band correlator : This correlator verifies whether there is an overlap between the PMB and the IMB.
                              The correlation condition is less strict compared to the Point-Band and Box-Line correlators,
                              but it is more reasonable because both the PMP and the PMP are represented as bin boxes
                              rather than single points.
                              This method provides a general explanation for 
                              and is suitable for detectors with average spatial resolution.
                              However this method is slower than Point-Band and Box-Line correlators.
-                             This correlator is default option.
-    4. Distance correlator : This correlator calculate the perpendicular distance from IMB center to the PML.
+    4. Box-RBand correlator : This correlator is similar to Box-Band correlator.
+                              However, r-band is defined only using the center theta value.
+                              This means that r-band do not overlap with the other neighboring parameter bins with same theta range.
+                              This correlator is default option.
+    5. Distance correlator : This correlator calculate the perpendicular distance from IMB center to the PML.
                              User should choose the cut fMaxWeightingDistance,
                              The default value of fMaxWeightingDistance is diagonal length of IMS bin chosen from GetRangeImageSpace() method.
                              the maximum distance from the PML to weight the PMP using SetMaxWeightingDistance().
@@ -84,9 +92,12 @@
 
     ## Weighting function
     Weighting function is a function that gives weight value to fill up the PMS bin by correlating with IMB.
-    Defualt weighting function is LKHoughWFInverse. The weight in this class is defined by: weight = [IMP weight] * [IMP error] / ([distance from IMP to PML] + [IMP error])
-    Other weighting functions can be found in LKHoughTransformTracker.h, or one could create one by inheriting LKHoughTransformTracker class.
+    Defualt weighting function is LKHoughWFInverse. The weight in LKHoughWFInverse is defined by:
+    weight = [IMP weight] * [IMP error] / ([distance from IMP to PML] + [IMP error])
+    Other weighting functions can be found in LKHoughTransformTracker.h.
+    It is also possible to create an user defined weighting function by inheriting LKHoughTransformTracker class.
 
+    ## Usage of HT
     The author of this method does not recommend the use of the HT method as a track fitter.
     The HT tool is efficient when it comes to grouping, But its performance as a fitter is limited by various factors.
     Instead, The author recommand to find the group of hits,
@@ -102,7 +113,7 @@
     After, the Transform() method will be called which is equalivant to dividing PMS in to n^2 x m^2 bins,
     where nxm is the binning chosen by the user.
 
-    Example of using LKHoughTransformTracker:
+    ## Example macro
 
     @code{.cpp}
     {
@@ -119,7 +130,7 @@
     }
     @endcode
 
-    @todo The effect coming from choosing transform center in different positions should be added.
+    @todo performance & parameters guide
  */
 
 class LKHoughTransformTracker : public TObject
@@ -151,9 +162,16 @@ class LKHoughTransformTracker : public TObject
         void AddImagePointBox(double x1, double y1, double x2, double y2, double weight);
         void SetImageData(double** imageData);
 
+        bool IsCorrelatePointBand() { if (fCorrelateType==kCorrelatePointBand) return true; return false; }
+        bool IsCorrelateBoxLine()   { if (fCorrelateType==kCorrelateBoxLine)   return true; return false; }
+        bool IsCorrelateBoxBand()   { if (fCorrelateType==kCorrelateBoxBand)   return true; return false; }
+        bool IsCorrelateBoxRBand()  { if (fCorrelateType==kCorrelateBoxRBand)  return true; return false; }
+        bool IsCorrelateDistance()  { if (fCorrelateType==kCorrelateDistance)  return true; return false; }
+
         void SetCorrelatePointBand();
         void SetCorrelateBoxLine();
         void SetCorrelateBoxBand();
+        void SetCorrelateBoxRBand();
         void SetCorrelateDistance();
         void SetMaxWeightingDistance(double distance) { fMaxWeightingDistance = distance; }
         void SetCutNumTrackHits(double value) { fCutNumTrackHits = value; }
@@ -169,15 +187,19 @@ class LKHoughTransformTracker : public TObject
 
         void Transform();
         LKParamPointRT* FindNextMaximumParamPoint();
+        LKParamPointRT* FindNextMaximumParamPoint2();
         LKLinearTrack* FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut=-1);
         void CleanLastParamPoint(double rWidth=-1, double tWidth=-1);
         LKParamPointRT* ReinitializeFromLastParamPoint();
         void RetransformFromLastParamPoint();
 
+        TGraphErrors *GetGraphImageSapce();
         TH2D* GetHistImageSpace(TString name="", TString title="");
         TH2D* GetHistParamSpace(TString name="", TString title="");
         void DrawAllParamLines(int i=-1, bool drawRadialLine=true);
         void DrawAllParamBands();
+
+        TGraph* GetGraphPathToMaxWeight() { return fGraphPathToMaxWeight; }
 
     private:
 
@@ -214,10 +236,13 @@ class LKHoughTransformTracker : public TObject
         const int    kCorrelatePointBand = 0;
         const int    kCorrelateBoxLine = 1;
         const int    kCorrelateBoxBand = 2;
-        const int    kCorrelateDistance = 3;
-        int          fCorrelateType = kCorrelateBoxBand;
+        const int    kCorrelateBoxRBand = 3;
+        const int    kCorrelateDistance = 4;
+        int          fCorrelateType = kCorrelateBoxRBand;
 
         LKHoughWeightingFunction* fWeightingFunction = nullptr;
+
+        TGraph* fGraphPathToMaxWeight = nullptr;
 
     ClassDef(LKHoughTransformTracker,1);
 };

@@ -114,6 +114,56 @@ TGraph* LKParamPointRT::GetRadialLineInImageSpace(int iParamCorner, double angle
     return graph;
 }
 
+TGraph* LKParamPointRT::GetRBandInImageSpace(double x1, double x2, double y1, double y2)
+{
+    vector<double> xCrossArray;
+    xCrossArray.push_back(x1);
+    xCrossArray.push_back(x2);
+
+    vector<double> yCrossMaxArray;
+    vector<double> yCrossMinArray;
+    for (auto x : xCrossArray) {
+        yCrossMinArray.push_back(DBL_MAX);
+        yCrossMaxArray.push_back(-DBL_MAX);
+    }
+
+    for (auto iParamCorner : {1,2,3,4}) {
+        double x1i = x1;
+        double x2i = x2;
+        double y1i = y1;
+        double y2i = y2;
+        GetImagePoints(iParamCorner,x1i,x2i,y1i,y2i);
+        for (auto iCross=0; iCross<xCrossArray.size(); ++iCross) {
+            auto xCross = xCrossArray[iCross];
+            auto yCross = (xCross - x1i) * (y2i - y1i) / (x2i - x1i) + y1i;
+            auto yCrossMin = yCrossMinArray[iCross];
+            auto yCrossMax = yCrossMaxArray[iCross];
+            if (yCrossMin>yCross) yCrossMinArray[iCross] = yCross;
+            if (yCrossMax<yCross) yCrossMaxArray[iCross] = yCross;
+        }
+    }
+
+    auto graph = new TGraph();
+    for (int iCross=0; iCross<xCrossArray.size(); ++iCross) {
+        auto xCross = xCrossArray[iCross];
+        auto yCross = yCrossMinArray[iCross];
+        if (yCross<y1) yCross = y1;
+        if (yCross>y2) yCross = y2;
+        graph -> SetPoint(graph->GetN(), xCross, yCross);
+    }
+    for (int iCross=xCrossArray.size()-1; iCross>=0; --iCross) {
+        auto xCross = xCrossArray[iCross];
+        auto yCross = yCrossMaxArray[iCross];
+        if (yCross<y1) yCross = y1;
+        if (yCross>y2) yCross = y2;
+        graph -> SetPoint(graph->GetN(), xCross, yCross);
+    }
+    auto xCross = xCrossArray[0];
+    auto yCrossMin = yCrossMinArray[0];
+    graph -> SetPoint(graph->GetN(), xCross, yCrossMin);
+    return graph;
+}
+
 TGraph* LKParamPointRT::GetBandInImageSpace(double x1, double x2, double y1, double y2)
 {
     vector<double> xCrossArray;

@@ -12,10 +12,10 @@ void testIterate()
     gRandom -> SetSeed(seed);
 
     int numTracks = 1;
-    int numBinsT = 25;
-    int numBinsR = 25;
-    int nx = 100;
-    int ny = 100;
+    int numBinsT = 20;
+    int numBinsR = 20;
+    int nx = 40;
+    int ny = 40;
     double x1 = -120;
     double x2 = 120;
     double y1 = 150;
@@ -150,21 +150,25 @@ void testIterate()
     {
         tk1 -> Transform();
 
-        ++iCvs;
+        iCvs++;
 
         auto paramPointAtMax = tk1 -> FindNextMaximumParamPoint();
         auto graphHoughAtMax = paramPointAtMax -> GetRangeGraphInParamSpace(1);
-        auto graphImageAtMax = paramPointAtMax -> GetBandInImageSpace(x1,x2,y1,y2);
+        auto graphImageAtMax = paramPointAtMax -> GetRBandInImageSpace(x1,x2,y1,y2);
         graphImageAtMax -> SetFillColor(kRed);
-        graphImageAtMax -> SetFillStyle(3354);
+        graphImageAtMax -> SetLineColor(kRed);
+        graphImageAtMax -> SetLineStyle(1);
+        //graphImageAtMax -> SetFillStyle(3354);
+        graphImageAtMax -> SetFillStyle(3395);
 
         cvs -> cd(iCvs);
-        DrawParamSpace(tk1,iCvs);
+        auto histParam = tk1 -> GetHistParamSpace(Form("paramSpace%d",iCvs));
+        histParam -> Draw("colz");
 
         auto paramPointRange = tk1 -> ReinitializeFromLastParamPoint();
         auto graphHoughReinit = paramPointRange -> GetRangeGraphInParamSpace(1);
-        auto graphImageReinit = paramPointRange -> GetBandInImageSpace(x1,x2,y1,y2);
-        graphImageReinit -> SetFillColor(33);
+        auto graphImageReinit = paramPointRange -> GetRBandInImageSpace(x1,x2,y1,y2);
+        graphImageReinit -> SetFillColor(kYellow);
         graphImageReinit -> SetFillStyle(3345);
 
         cvs -> cd(iCvs);
@@ -172,8 +176,25 @@ void testIterate()
         graphHoughReinit -> Draw("samel");
 
         cvs -> cd(iCvs+3);
-        DrawImageSpace(tk1,iCvs);
+        auto histImage = new TH2D(Form("frame%d",iCvs), "", nx, x1, x2, ny, y1, y2);
+        auto marker = new TMarker(xt,yt,20);
+        marker -> SetMarkerSize(1);
+        marker -> SetMarkerColor(kBlack);
+        marker -> Draw("same");
+        marker = new TMarker(xt,yt,24);
+        marker -> SetMarkerSize(2);
+        marker -> SetMarkerColor(kBlack);
+        marker -> Draw("same");
+        histImage -> Draw("colz");
         graphImageAtMax -> Draw("samelf");
         graphImageReinit -> Draw("samelf");
+        auto graph = tk1 -> GetGraphImageSapce();
+        graph -> SetMarkerStyle(20);
+        graph -> SetMarkerSize(0.3);
+        if (tk1 -> IsCorrelatePointBand()) graph -> Draw("samepx");
+        if (tk1 -> IsCorrelateBoxLine()) graph -> Draw("samepz");
+        if (tk1 -> IsCorrelateBoxBand()) graph -> Draw("samepz");
+        if (tk1 -> IsCorrelateBoxRBand()) graph -> Draw("samepz");
+        if (tk1 -> IsCorrelateDistance()) graph -> Draw("samepx");
     }
 }

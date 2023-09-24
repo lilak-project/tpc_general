@@ -41,7 +41,8 @@ class LKHoughWFLinear : public LKHoughWeightingFunction
         ~LKHoughWFLinear() {}
 
         double EvalFromDistance(double distance, double error, double pointWeight) {
-            double weight = pointWeight * (1 - distance/error/2);
+            //double weight = pointWeight * (1 - distance/error/2);
+            double weight = (1 - distance/error/2);
             if (weight<0)
                 return 0;
             return weight;
@@ -55,8 +56,28 @@ class LKHoughWFInverse : public LKHoughWeightingFunction
         ~LKHoughWFInverse() {}
 
         double EvalFromDistance(double distance, double error, double pointWeight) {
+            //double weight = pointWeight * (error)/(distance+error);
+            double weight = (error)/(distance+error);
+            return weight;
+        }
+};
+
+/*
+class LKHoughWFInversePP : public LKHoughWeightingFunction
+{
+    public:
+        LKHoughWFInverse() {}
+        ~LKHoughWFInverse() {}
+
+        double EvalFromPoints(LKImagePoint* imagePoint, LKParamPointRT* paramPoint) {
+            auto distance = paramPoint -> DistanceToImagePoint(0, imagePoint);
+            auto error = imagePoint -> GetError();
+            return EvalFromDistance(distance,error,imagePoint->fWeight);
+        }
+        double EvalFromDistance(double distance, double error, double pointWeight) {
             double weight = pointWeight * (error)/(distance+error);
             return weight;
         }
 };
+*/
 #endif

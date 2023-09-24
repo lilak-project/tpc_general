@@ -89,6 +89,13 @@ void LKHoughTransformTracker::SetCorrelateBoxLine()
         fWeightingFunction = new LKHoughWFInverse();
 }
 
+void LKHoughTransformTracker::SetCorrelateBoxRBand()
+{
+    fCorrelateType = kCorrelateBoxRBand;
+    if (fWeightingFunction==nullptr)
+        fWeightingFunction = new LKHoughWFInverse();
+}
+
 void LKHoughTransformTracker::SetCorrelateBoxBand()
 {
     fCorrelateType = kCorrelateBoxBand;
@@ -281,6 +288,30 @@ void LKHoughTransformTracker::Transform()
             {
                 auto imagePoint = GetImagePoint(iImage);
 
+                if (fCorrelateType==kCorrelateBoxRBand)
+                {
+                    int irMax = -INT_MAX;
+                    int irMin = INT_MAX;
+                    for (auto iImageCorner : {1,2,3,4})
+                    {
+                        auto radius = imagePoint -> EvalR(iImageCorner,theta0,fTransformCenter[0],fTransformCenter[1]);
+                        int ir = floor( (radius-fRangeParamSpace[0][0])/fBinSizeParamSpace[0] );
+                        if (irMax<ir) irMax = ir;
+                        if (irMin>ir) irMin = ir;
+                    }
+                    if (irMax>=fNumBinsParamSpace[0]) irMax = fNumBinsParamSpace[0] - 1;
+                    if (irMin<0) irMin = 0;
+                    for (int ir=irMin; ir<=irMax; ++ir) {
+                        auto paramPoint = GetParamPoint(ir,it);
+                        auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
+                        if (weight>0) {
+                            fIdxSelectedR = ir;
+                            fIdxSelectedT = it;
+                            fParamData[ir][it] = fParamData[ir][it] + weight;
+                        }
+                    }
+                }
+
                 if (fCorrelateType==kCorrelateBoxBand)
                 {
                     int irMax = -INT_MAX;
@@ -300,8 +331,11 @@ void LKHoughTransformTracker::Transform()
                     for (int ir=irMin; ir<=irMax; ++ir) {
                         auto paramPoint = GetParamPoint(ir,it);
                         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                        if (weight>0)
+                        if (weight>0) {
+                            fIdxSelectedR = ir;
+                            fIdxSelectedT = it;
                             fParamData[ir][it] = fParamData[ir][it] + weight;
+                        }
                     }
                 }
 
@@ -312,8 +346,11 @@ void LKHoughTransformTracker::Transform()
                     if (ir>=fNumBinsParamSpace[0] || ir<0) continue;
                     auto paramPoint = GetParamPoint(ir,it);
                     auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                    if (weight>0)
+                    if (weight>0) {
+                        fIdxSelectedR = ir;
+                        fIdxSelectedT = it;
                         fParamData[ir][it] = fParamData[ir][it] + weight;
+                    }
                 }
 
                 else if (fCorrelateType==kCorrelateBoxLine)
@@ -331,8 +368,11 @@ void LKHoughTransformTracker::Transform()
                     for (int ir=irMin; ir<=irMax; ++ir) {
                         auto paramPoint = GetParamPoint(ir,it);
                         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                        if (weight>0)
+                        if (weight>0) {
+                            fIdxSelectedR = ir;
+                            fIdxSelectedT = it;
                             fParamData[ir][it] = fParamData[ir][it] + weight;
+                        }
                     }
                 }
 
@@ -353,8 +393,11 @@ void LKHoughTransformTracker::Transform()
                             auto distance = paramPoint -> DistanceToImagePoint(imagePoint);
                             if (distance>0) {
                                 auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                                if (weight>0)
+                                if (weight>0) {
+                                    fIdxSelectedR = ir;
+                                    fIdxSelectedT = it;
                                     fParamData[ir][it] = fParamData[ir][it] + weight;
+                                }
                             }
                             else
                                 break;
@@ -370,8 +413,11 @@ void LKHoughTransformTracker::Transform()
                             auto distance = paramPoint -> DistanceToImagePoint(imagePoint);
                             if (distance>0) {
                                 auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                                if (weight>0)
+                                if (weight>0) {
+                                    fIdxSelectedR = ir;
+                                    fIdxSelectedT = it;
                                     fParamData[ir][it] = fParamData[ir][it] + weight;
+                                }
                             }
                             else
                                 break;
@@ -404,6 +450,63 @@ LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint()
     if (fIdxSelectedR<0) {
         fParamPoint -> SetPoint(fTransformCenter[0],fTransformCenter[1],-1,0,-1,0,-1);
         return fParamPoint;
+    }
+
+    auto paramPoint = GetParamPoint(fIdxSelectedR,fIdxSelectedT);
+    return paramPoint;
+}
+
+LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint2()
+{
+    if (fGraphPathToMaxWeight==nullptr)
+        fGraphPathToMaxWeight = new TGraph();
+    else
+        fGraphPathToMaxWeight -> Set(0);
+    fGraphPathToMaxWeight -> SetPoint(fGraphPathToMaxWeight->GetN(),
+            fRangeParamSpace[1][0]+(fIdxSelectedT+0.5)*fBinSizeParamSpace[1],
+            fRangeParamSpace[0][0]+(fIdxSelectedR+0.5)*fBinSizeParamSpace[0]);
+    double maxValue = fParamData[fIdxSelectedR][fIdxSelectedT];
+    lk_debug << fIdxSelectedT << " " << fIdxSelectedR << " "
+             << fRangeParamSpace[1][0]+(fIdxSelectedT+0.5)*fBinSizeParamSpace[1] << " "
+             << fRangeParamSpace[0][0]+(fIdxSelectedR+0.5)*fBinSizeParamSpace[0] << " " << maxValue << endl;
+    double val;
+    int irAtMax, itAtMax, irNew, itNew;
+    bool foundNewMaximum = false;
+    while (true)
+    {
+        foundNewMaximum = false;
+        for (auto irOff : {-1,0,1}) {
+            for (auto itOff : {-1,0,1})
+            {
+                if (irOff==0&&itOff==0) continue;
+                irNew = fIdxSelectedR + irOff;
+                itNew = fIdxSelectedT + itOff;
+                if (irNew<0 || irNew>=fNumBinsParamSpace[0]) continue;
+                if (itNew==-1) itNew = fNumBinsParamSpace[1] - 1;
+                else if (itNew==fNumBinsParamSpace[1]) itNew = 0;
+
+                val = fParamData[irNew][itNew];
+                lk_debug << irNew << " " << itNew << " " << val << endl;
+                if (val>maxValue) {
+                    foundNewMaximum = true;
+                    irAtMax = irNew;
+                    itAtMax = itNew;
+                    maxValue = val;
+                }
+            }
+        }
+        if (foundNewMaximum) {
+            fIdxSelectedR = irAtMax;
+            fIdxSelectedT = itAtMax;
+            lk_debug << fIdxSelectedT << " " << fIdxSelectedR << " "
+                     << fRangeParamSpace[1][0]+(fIdxSelectedT+0.5)*fBinSizeParamSpace[1] << " "
+                     << fRangeParamSpace[0][0]+(fIdxSelectedR+0.5)*fBinSizeParamSpace[0] << " " << maxValue << endl;
+            fGraphPathToMaxWeight -> SetPoint(fGraphPathToMaxWeight->GetN(),
+                    fRangeParamSpace[1][0]+(fIdxSelectedT+0.5)*fBinSizeParamSpace[1],
+                    fRangeParamSpace[0][0]+(fIdxSelectedR+0.5)*fBinSizeParamSpace[0]);
+        }
+        else
+            break;
     }
 
     auto paramPoint = GetParamPoint(fIdxSelectedR,fIdxSelectedT);
@@ -579,6 +682,7 @@ TH2D* LKHoughTransformTracker::GetHistImageSpace(TString name, TString title)
          if (fCorrelateType==kCorrelatePointBand)  correlatorName = "Point-Band";
     else if (fCorrelateType==kCorrelateBoxLine)  correlatorName = "Box-Line";
     else if (fCorrelateType==kCorrelateBoxBand)  correlatorName = "Box-Band";
+    else if (fCorrelateType==kCorrelateBoxRBand)  correlatorName = "Box-RBand";
     else if (fCorrelateType==kCorrelateDistance) correlatorName = "Distance";
     if (title.IsNull()) title = Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);x;y", correlatorName.Data(), fNumBinsImageSpace[0], fNumBinsImageSpace[1], fTransformCenter[0],fTransformCenter[1]);
     auto hist = new TH2D(name,title, fNumBinsImageSpace[0],fRangeImageSpace[0][0],fRangeImageSpace[0][1],fNumBinsImageSpace[1],fRangeImageSpace[1][0],fRangeImageSpace[1][1]);
@@ -593,6 +697,17 @@ TH2D* LKHoughTransformTracker::GetHistImageSpace(TString name, TString title)
     return hist;
 }
 
+TGraphErrors* LKHoughTransformTracker::GetGraphImageSapce()
+{
+    auto graph = new TGraphErrors();
+    for (auto iPoint=0; iPoint<fNumImagePoints; ++iPoint) {
+        auto imagePoint = (LKImagePoint*) fImagePointArray -> At(iPoint);
+        graph -> SetPoint(iPoint, imagePoint->GetCenterX(), imagePoint->GetCenterY());
+        graph -> SetPointError(iPoint, (imagePoint->GetX2()-imagePoint->GetX1())/2., (imagePoint->GetY2()-imagePoint->GetY1())/2.);
+    }
+    return graph;
+}
+
 TH2D* LKHoughTransformTracker::GetHistParamSpace(TString name, TString title)
 {
     if (name.IsNull()) name = "histParamSpace";
@@ -600,6 +715,7 @@ TH2D* LKHoughTransformTracker::GetHistParamSpace(TString name, TString title)
          if (fCorrelateType==kCorrelatePointBand)  correlatorName = "Point-Band";
     else if (fCorrelateType==kCorrelateBoxLine)  correlatorName = "Box-Line";
     else if (fCorrelateType==kCorrelateBoxBand)  correlatorName = "Box-Band";
+    else if (fCorrelateType==kCorrelateBoxRBand)  correlatorName = "Box-RBand";
     else if (fCorrelateType==kCorrelateDistance) correlatorName = "Distance";
     if (title.IsNull()) title = Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);#theta (degrees);Radius", correlatorName.Data(), fNumBinsParamSpace[0], fNumBinsParamSpace[1], fTransformCenter[0],fTransformCenter[1]);
     auto hist = new TH2D(name,title, fNumBinsParamSpace[1],fRangeParamSpace[1][0],fRangeParamSpace[1][1],fNumBinsParamSpace[0],fRangeParamSpace[0][0],fRangeParamSpace[0][1]);

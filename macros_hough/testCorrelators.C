@@ -51,7 +51,8 @@ void testCorrelators()
     tk3 -> SetTransformCenter(xt, yt);
     tk3 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk3 -> SetParamSpaceBins(numBinsR, numBinsT);
-    tk3 -> SetCorrelateBoxBand();
+    //tk3 -> SetCorrelateBoxBand();
+    tk3 -> SetCorrelateBoxRBand();
 
     auto tk4 = new LKHoughTransformTracker();
     tk4 -> SetTransformCenter(xt, yt);
@@ -92,34 +93,6 @@ void testCorrelators()
         }
     }
 
-    auto DrawParamSpace = [](LKHoughTransformTracker* tk, int idx)
-    {
-        auto hist = tk -> GetHistParamSpace(Form("paramSpace%d",idx));
-        hist -> Draw("colz");
-    };
-    
-    auto DrawImageSpace = [nx,x1,x2,wx,ny,y1,y2,wy](LKHoughTransformTracker *tk, int idx)
-    {
-        auto hist = new TH2D(Form("frame%d",idx), "", nx, -150, +150, ny, 150, 450);
-        auto hist2 = tk -> GetHistImageSpace(Form("imageSpace%d",idx));
-        hist2 -> Draw("same colz");
-        hist -> SetTitle(hist2->GetTitle());
-
-        if (1)
-        {
-            double zmin = hist -> GetZaxis() -> GetXmin();
-            double zmax = hist -> GetZaxis() -> GetXmax();
-            hist -> Fill(x1-2.*wx,0.,zmax);
-            hist -> GetZaxis() -> SetRangeUser(zmin, zmax);
-            hist -> SetMinimum(zmin);
-            hist -> SetMaximum(zmax);
-            //hist -> Draw("");
-            hist2 -> Draw("same colz");
-        }
-        else
-            hist2 -> Draw("colz");
-    };
-
     auto DrawTransformCenter = [xt, yt]()
     {
         auto marker = new TMarker(xt,yt,20);
@@ -133,54 +106,70 @@ void testCorrelators()
         marker -> Draw("same");
     };
 
-    auto FindAndDraw = [x1,x2,y1,y2](LKHoughTransformTracker* tk, Int_t numPoints, TVirtualPad* pad, Color_t color, double cleanRange=-1)
-    {
-        gStyle -> SetPalette(kBird);
-        for (auto iTrack=0; iTrack<numPoints; ++iTrack)
-        {
-            auto paramPoint = tk -> FindNextMaximumParamPoint();
-            tk -> CleanLastParamPoint(cleanRange,cleanRange);
-            //tk -> CleanLastParamPoint(0,cleanRange);
-            if (paramPoint -> fWeight<-1)
-                break;
-            pad -> cd();
-            if (0) {
-                for (auto i : {0,1,2,3,4}) {
-                    auto graph = paramPoint -> GetLineInImageSpace(i,x1,x2,y1,y2);
-                    graph -> SetLineColor(color);
-                    graph -> Draw("samel");
-                }
-            }
-            if (1) {
-                auto graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
-                graph -> SetFillColor(color);
-                graph -> SetFillStyle(3344);
-                graph -> Draw("samelf");
-            }
-            if (1) {
-                auto track = tk -> FitTrackWithParamPoint(paramPoint);
-                auto graph = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
-                graph -> Draw("samel");
-            }
-        }
-    };
-
     auto cvs = ejungwoo::Canvas("cvs",100,90,4,2);
 
     int iCvs = 0;
     for (auto tk : {tk1, tk2, tk3, tk4})
+    //for (auto tk : {tk3})
     {
         tk -> Transform();
 
         ++iCvs;
 
         cvs -> cd(iCvs+4);
-        DrawParamSpace(tk,iCvs);
+        auto histParam = tk -> GetHistParamSpace(Form("paramSpace%d",iCvs));
+        histParam -> Draw("colz");
 
         cvs -> cd(iCvs);
-        DrawImageSpace(tk,iCvs);
-        DrawTransformCenter();
-        FindAndDraw(tk,1*numTracks,cvs->cd(iCvs),33);
+        auto histImage = new TH2D(Form("frame%d",iCvs), "", nx, x1, x2, ny, y1, y2);
+        histImage -> Draw("colz");
+        auto marker = new TMarker(xt,yt,20);
+        marker -> SetMarkerSize(1);
+        marker -> SetMarkerColor(kBlack);
+        marker -> Draw("same");
+        marker = new TMarker(xt,yt,24);
+        marker -> SetMarkerSize(2);
+        marker -> SetMarkerColor(kBlack);
+        marker -> Draw("same");
+
+        for (auto iTrack=0; iTrack<numTracks; ++iTrack)
+        {
+            //auto paramPoint = tk -> FindNextMaximumParamPoint2();
+            auto paramPoint = tk -> FindNextMaximumParamPoint();
+            tk -> CleanLastParamPoint();//cleanRange,cleanRange);
+            //tk -> CleanLastParamPoint(0,cleanRange);
+            if (paramPoint -> fWeight<-1) break;
+            cvs -> cd(iCvs);
+
+            TGraph *graph;
+            if (tk -> IsCorrelatePointBand()) graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
+            if (tk -> IsCorrelateBoxLine()) graph = paramPoint -> GetLineInImageSpace(0,x1,x2,y1,y2);
+            if (tk -> IsCorrelateBoxBand()) graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
+            if (tk -> IsCorrelateBoxRBand()) graph = paramPoint -> GetRBandInImageSpace(x1,x2,y1,y2);
+            if (tk -> IsCorrelateDistance()) graph = paramPoint -> GetLineInImageSpace(0,x1,x2,y1,y2);
+            graph -> SetFillColor(kYellow);
+            graph -> SetFillStyle(3344);
+            graph -> Draw("samelf");
+
+            auto track = tk -> FitTrackWithParamPoint(paramPoint);
+            auto graph2 = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
+            graph2 -> Draw("samel");
+
+            cvs -> cd(iCvs+4);
+            auto graphHoughAtMax = paramPoint -> GetRangeGraphInParamSpace(1);
+            graphHoughAtMax -> Draw("samel");
+        }
+
+        cvs -> cd(iCvs);
+        auto graph = tk -> GetGraphImageSapce();
+        graph -> SetMarkerStyle(20);
+        graph -> SetMarkerSize(0.3);
+        if (tk -> IsCorrelatePointBand()) graph -> Draw("samepx");
+        if (tk -> IsCorrelateBoxLine()) graph -> Draw("samepz");
+        if (tk -> IsCorrelateBoxBand()) graph -> Draw("samepz");
+        if (tk -> IsCorrelateBoxRBand()) graph -> Draw("samepz");
+        if (tk -> IsCorrelateDistance()) graph -> Draw("samepx");
     }
+
     //e_save_all();
 }
