@@ -17,6 +17,27 @@ bool LKHoughTransformTracker::Init()
     return true;
 }
 
+void LKHoughTransformTracker::Reset()
+{
+    fRangeParamSpace[0][0] = fRangeParamSpaceInit[0][0];
+    fRangeParamSpace[0][1] = fRangeParamSpaceInit[0][1];
+    fRangeParamSpace[1][0] = fRangeParamSpaceInit[1][0];
+    fRangeParamSpace[1][1] = fRangeParamSpaceInit[1][1];
+
+    fBinSizeParamSpace[0] = (fRangeParamSpace[0][1]-fRangeParamSpace[0][0])/fNumBinsParamSpace[0];
+    fBinSizeParamSpace[1] = (fRangeParamSpace[1][1]-fRangeParamSpace[1][0])/fNumBinsParamSpace[1];
+    fBinSizeMaxParamSpace = sqrt(fBinSizeParamSpace[0]*fBinSizeParamSpace[0] + fBinSizeParamSpace[1]*fBinSizeParamSpace[1]);
+
+    fIdxSelectedR = 0;
+    fIdxSelectedT = 0;
+
+    if (fInitializedParamData) {
+        for(int i = 0; i < fNumBinsParamSpace[0]; ++i)
+            for(int j = 0; j < fNumBinsParamSpace[1]; ++j)
+                fParamData[i][j] = 0;
+    }
+}
+
 void LKHoughTransformTracker::Clear(Option_t *option)
 {
     fRangeParamSpace[0][0] = fRangeParamSpaceInit[0][0];
@@ -236,6 +257,30 @@ LKImagePoint* LKHoughTransformTracker::GetImagePoint(int i)
         double y1 = fRangeImageSpace[1][0] + iy*fBinSizeImageSpace[1];
         double y2 = fRangeImageSpace[1][0] + (iy+1)*fBinSizeImageSpace[1];
         fImagePoint -> SetPoint(x1,y1,x2,y2,fImageData[ix][iy]);
+        return fImagePoint;
+    }
+    fImagePoint -> Clear();
+    return fImagePoint;
+}
+
+LKImagePoint* LKHoughTransformTracker::PopImagePoint(int i)
+{
+    if (fUsingImagePointArray) {
+        auto imagePoint = (LKImagePoint*) fImagePointArray -> At(i);
+        fImagePointArray -> RemoveAt(i);
+        return imagePoint;
+    }
+    else {
+        int iy = int(i/fNumBinsImageSpace[1]);
+        int ix = i - fNumBinsImageSpace[1] * iy;
+
+        double x1 = fRangeImageSpace[0][0] + ix*fBinSizeImageSpace[0];
+        double x2 = fRangeImageSpace[0][0] + (ix+1)*fBinSizeImageSpace[0];
+        double y1 = fRangeImageSpace[1][0] + iy*fBinSizeImageSpace[1];
+        double y2 = fRangeImageSpace[1][0] + (iy+1)*fBinSizeImageSpace[1];
+        fImagePoint -> SetPoint(x1,y1,x2,y2,fImageData[ix][iy]);
+        fImageData[ix][iy] = 0;
+        return fImagePoint;
     }
     fImagePoint -> Clear();
     return fImagePoint;
@@ -456,6 +501,7 @@ LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint()
     return paramPoint;
 }
 
+/*
 LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint2()
 {
     if (fGraphPathToMaxWeight==nullptr)
@@ -512,6 +558,7 @@ LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint2()
     auto paramPoint = GetParamPoint(fIdxSelectedR,fIdxSelectedT);
     return paramPoint;
 }
+*/
 
 void LKHoughTransformTracker::CleanLastParamPoint(double rWidth, double tWidth)
 {
@@ -593,26 +640,30 @@ LKLinearTrack* LKHoughTransformTracker::FitTrackWithParamPoint(LKParamPointRT* p
     if (weightCut==-1) {
         weightCut = 0.2;
     }
+    //lk_debug << weightCut << endl;
     auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fNumLinearTracks);
     ++fNumLinearTracks;
 
     fLineFitter -> Reset();
 
+    vector<int> vImagePointIdxs;
     for (int iImage=0; iImage<fNumImagePoints; ++iImage) {
         auto imagePoint = GetImagePoint(iImage);
-        imagePoint->fWeight = 1;
+        //imagePoint->fWeight = 1;
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
+        //lk_debug << weight << endl;
         if (weight > weightCut) {
+            vImagePointIdxs.push_back(iImage);
             fLineFitter -> PreAddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
         }
     }
-    for (int iImage=0; iImage<fNumImagePoints; ++iImage) {
-        auto imagePoint = GetImagePoint(iImage);
-        imagePoint->fWeight = 1;
+    for (int iImage : vImagePointIdxs)
+    {
+        //lk_debug << iImage << endl;
+        auto imagePoint = PopImagePoint(iImage);
+        //imagePoint->fWeight = 1;
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-        if (weight > weightCut) {
-            fLineFitter -> AddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
-        }
+        fLineFitter -> AddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
     }
     if (fLineFitter->GetNumPoints()<fCutNumTrackHits)
         return track;
@@ -629,6 +680,11 @@ LKLinearTrack* LKHoughTransformTracker::FitTrackWithParamPoint(LKParamPointRT* p
 
     track -> SetLine(centroid - size*fLineFitter->GetDirection(), centroid + size*fLineFitter->GetDirection());
     track -> SetRMS(fLineFitter->GetRMSLine());
+
+    if (fUsingImagePointArray) {
+        fImagePointArray -> Compress();
+        fNumImagePoints = fImagePointArray -> GetEntriesFast();
+    }
 
     return track;
 }

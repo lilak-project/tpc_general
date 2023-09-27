@@ -142,6 +142,7 @@ class LKHoughTransformTracker : public TObject
         bool Init();
         void Clear(Option_t *option="");
         void Print(Option_t *option="") const;
+        void Reset();
 
         TVector3 GetTransformCenter() const  { return fTransformCenter; }
         int GetNumBinsImageSpace(int ixy) const  { return fNumBinsImageSpace[ixy]; }
@@ -192,12 +193,13 @@ class LKHoughTransformTracker : public TObject
         void SetWeightingFunction(LKHoughWeightingFunction* wf) { fWeightingFunction = wf; }
 
         LKImagePoint* GetImagePoint(int i);
+        LKImagePoint* PopImagePoint(int i);
         LKParamPointRT* GetParamPoint(int i);
         LKParamPointRT* GetParamPoint(int ir, int it);
 
         void Transform();
         LKParamPointRT* FindNextMaximumParamPoint();
-        LKParamPointRT* FindNextMaximumParamPoint2();
+        //LKParamPointRT* FindNextMaximumParamPoint2();
         LKLinearTrack* FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut=-1);
         void CleanLastParamPoint(double rWidth=-1, double tWidth=-1);
         LKParamPointRT* ReinitializeFromLastParamPoint();
