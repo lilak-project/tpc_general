@@ -228,8 +228,8 @@ TCanvas *LKWindowManager::CanvasR(const char *name, Int_t w, Int_t h, Int_t ww, 
     if (rh>1) rh = 0.01*rh;
 
     if ((rw>0 && rw<=1) && (rh>0 && rh<=1)) {
-        dwFinal = rw * ww;
-        dhFinal = rh * wh;
+        dwFinal = rw * fDWFull;
+        dhFinal = rh * fDHFull;
     }
     else if (rw>0 && rw<=1) {
         dwFinal = rw * fDWFull;
@@ -515,7 +515,10 @@ TCanvas *ejungwoo::Canvas(const char* name="", double dwx=800, double dwy=680, i
     else if (wx>=10&&wx<=100&&wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,wwFull,whFull,0.01*wx,0.01*wy);
     else if (wx>=10&&wx<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0.01*wx,0);
     else if (wy>=10&&wy<=100) cvs0 = windowManager -> CanvasR(name,0,0,0,0,0,0.01*wy);
-    else if (wx==0) { cvs0 = windowManager -> CanvasFull(name); }
+    else if (wx==0) {
+        e_info << "Creating full size canvas" << endl;
+        cvs0 = windowManager -> CanvasFull(name);
+    }
     else if (wx==2) cvs0 = windowManager -> Canvas(name);
     else            cvs0 = windowManager -> CanvasR(name, wx, wy);
 #else

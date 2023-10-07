@@ -205,11 +205,14 @@ class LKHoughTransformTracker : public TObject
         LKParamPointRT* ReinitializeFromLastParamPoint();
         void RetransformFromLastParamPoint();
 
-        TGraphErrors *GetGraphImageSapce();
+        TGraphErrors *GetDataGraphImageSapce();
         TH2D* GetHistImageSpace(TString name="", TString title="");
         TH2D* GetHistParamSpace(TString name="", TString title="");
         void DrawAllParamLines(int i=-1, bool drawRadialLine=true);
         void DrawAllParamBands();
+
+        void DrawToPads(TVirtualPad* padImage, TVirtualPad* padParam);
+        static void ClickPadParam(int iPlane);
 
         TGraph* GetGraphPathToMaxWeight() { return fGraphPathToMaxWeight; }
 
@@ -255,6 +258,11 @@ class LKHoughTransformTracker : public TObject
         LKHoughWeightingFunction* fWeightingFunction = nullptr;
 
         TGraph* fGraphPathToMaxWeight = nullptr;
+
+        TPad *fPadImage = nullptr;
+        TPad *fPadParam = nullptr;
+        TH2D *fHistImage = nullptr;
+        TH2D *fHistParam = nullptr;
 
     ClassDef(LKHoughTransformTracker,1);
 };

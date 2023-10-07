@@ -13,6 +13,11 @@ double fYDiffCut = 3;
 bool fDrawStripChain = true;
 bool fFillIfMXZ = true;
 
+double fBeamRangeX1 = -10;
+double fBeamRangeX2 = +10;
+double fBeamRangeY1 = 150;
+double fBeamRangeY2 = 200;
+
 ejungwoo::Binning* fBnnYDiff;
 ejungwoo::Binning* fBnnX;
 ejungwoo::Binning* fBnnY;
@@ -21,6 +26,9 @@ ejungwoo::Binning* fBnnXZ;
 ejungwoo::Binning* fBnnZY;
 ejungwoo::Binning* fBnnXY;
 TCanvas* fCvsAll;
+TCanvas* fCvsParam;
+TCanvas* fCvsTest;
+bool fJustXY = true;
 
 int fTreeEntry = -1;
 //int fDrawEntry = 114-1;
@@ -35,16 +43,16 @@ void DrawEvent(int entry=-1);
 void UnfoldHits();
 void SetYDiffCut(double value) { fYDiffCut = value; }
 
-LKHoughTransformTracker* fTracker;
+LKHoughTransformTracker* fTrackerXY;
 
 void drawTexat()
 {
-    fTracker = new LKHoughTransformTracker();
-    fTracker -> SetTransformCenter(-150, 0);
-    fTracker -> SetImageSpaceRange(150,-150,150,150,150,350);
-    fTracker -> SetParamSpaceBins(120,120);
-    fTracker -> SetCorrelateBoxBand();
-    fTracker -> SetWFLinear();
+    fTrackerXY = new LKHoughTransformTracker();
+    fTrackerXY -> SetTransformCenter(-150, 0);
+    fTrackerXY -> SetImageSpaceRange(150,-150,150,150,150,350);
+    fTrackerXY -> SetParamSpaceBins(50,50);
+    fTrackerXY -> SetCorrelateBoxBand();
+    fTrackerXY -> SetWFLinear();
 
     fRun = new LKRun("texat",0,"drawhit");
     //fRun -> AddInputFile("/home/ejungwoo/lilak/texat_reco/macros_tracking/data/texat_0000.psa.root");
@@ -59,12 +67,18 @@ void drawTexat()
     fRightStripArray = new TClonesArray("LKHit",50);
     fUnfoldedArray   = new TClonesArray("LKHit",50);
 
-    fCvsAll = ejungwoo::Canvas("cvs_event_view",0,0,2,2);
+    //fCvsParam = ejungwoo::Canvas("cvs_param_space",0,0,2,2);
+    fCvsParam = ejungwoo::Canvas("cvs_param_space",0,0);
+    if (fJustXY)
+        fCvsAll = ejungwoo::Canvas("cvs_event_view",0,0);
+    else
+        fCvsAll = ejungwoo::Canvas("cvs_event_view",0,0,2,2);
+    fCvsTest = ejungwoo::Canvas("cvs_test",100,70,2,1);
 
     fBnnYDiff = new ejungwoo::Binning("ydiff","ydiff (tb)","",100,0,50);
     //fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-3,140);
     //fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,0,330);
-    fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-150,150);
+    fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-120,120);
     fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,0,330);
     fBnnZ = new ejungwoo::Binning("zaxis","Z (beam axis)", "Hit.fZ", 141,150,500);
 
@@ -134,10 +148,11 @@ void DrawEvent(int entry)
         bool fillX = true;
         //auto dx = hit->GetDX()/2.;
         //auto dy = hit->GetDY()/2.;
-        auto dx = hit->GetDX()*2.;
-        auto dy = hit->GetDY()*2.;
-        fTracker -> AddImagePoint(x,dx,y,dy,1);
-        //fTracker -> AddImagePointBox(x,y,x,y,1);
+        auto dx = hit->GetDX()*1.;
+        auto dy = hit->GetDY()*1.;
+        if (x<fBeamRangeX1||x>fBeamRangeX2)
+            fTrackerXY -> AddImagePoint(x,dx,y,dy,1);
+        //fTrackerXY -> AddImagePointBox(x,y,x,y,1);
         if (x<0) {
             fillX = false;
             if (fFillIfMXZ)
@@ -192,19 +207,21 @@ void DrawEvent(int entry)
         }
     }
 
-    //UnfoldHits();
-
-    auto numHitsUnfolded = fUnfoldedArray -> GetEntries();
-    for (auto iHit=0; iHit<numHitsUnfolded; ++iHit) {
-        auto hit = (LKHit*) fUnfoldedArray -> At(iHit);
-        auto x = hit -> X();
-        auto y = hit -> Y();
-        auto z = hit -> Z();
-        auto w = hit -> W();
-        //w = 1;
-        histXY -> Fill(x,y,w);
-        histXZ -> Fill(x,z,w);
-        histZY -> Fill(z,y,w);
+    if (0)
+    {
+        UnfoldHits();
+        auto numHitsUnfolded = fUnfoldedArray -> GetEntries();
+        for (auto iHit=0; iHit<numHitsUnfolded; ++iHit) {
+            auto hit = (LKHit*) fUnfoldedArray -> At(iHit);
+            auto x = hit -> X();
+            auto y = hit -> Y();
+            auto z = hit -> Z();
+            auto w = hit -> W();
+            //w = 1;
+            histXY -> Fill(x,y,w);
+            histXZ -> Fill(x,z,w);
+            histZY -> Fill(z,y,w);
+        }
     }
 
     auto iCvs = 0;
@@ -213,22 +230,30 @@ void DrawEvent(int entry)
         TString title = TString("[event-") + fDrawEntry + "]  " + bnn->fMainTitle;
         auto hist = bnn -> fHist2;
         hist -> SetTitle(title);
-        fCvsAll -> cd(++iCvs);
+        if (fJustXY) {
+            if (bnn!=fBnnXY)
+                continue;
+            fCvsAll -> cd();
+        }
+        else
+            fCvsAll -> cd(++iCvs);
         hist -> Draw("colz");
-        //auto line1 = new TLine(64,fBnnY->fMin[0],64,fBnnY->fMax[0]);
-        //auto line2 = new TLine(70,fBnnY->fMin[0],70,fBnnY->fMax[0]);
-        auto line1 = new TLine(-10,fBnnY->fMin[0],-10,fBnnY->fMax[0]);
-        auto line2 = new TLine(10,fBnnY->fMin[0],10,fBnnY->fMax[0]);
-        auto line3 = new TLine(fBnnX->fMin[0],150,fBnnX->fMax[0],150);
-        auto line4 = new TLine(fBnnX->fMin[0],200,fBnnX->fMax[0],200);
-        for (auto line : {line1, line2, line3, line4}) {
+        auto line1 = new TLine(fBeamRangeX1,fBnnY->fMin[0],fBeamRangeX1,fBnnY->fMax[0]);
+        auto line2 = new TLine(fBeamRangeX2,fBnnY->fMin[0],fBeamRangeX2,fBnnY->fMax[0]);
+        auto line3 = new TLine(fBnnX->fMin[0],fBeamRangeY1,fBnnX->fMax[0],fBeamRangeY1);
+        auto line4 = new TLine(fBnnX->fMin[0],fBeamRangeY2,fBnnX->fMax[0],fBeamRangeY2);
+        auto line5 = new TLine(fBeamRangeX1,fBnnZ->fMin[0],fBeamRangeX1,fBnnZ->fMax[0]);
+        auto line6 = new TLine(fBeamRangeX2,fBnnZ->fMin[0],fBeamRangeX2,fBnnZ->fMax[0]);
+        auto line7 = new TLine(fBnnZ->fMin[0],fBeamRangeY1,fBnnZ->fMax[0],fBeamRangeY1);
+        auto line8 = new TLine(fBnnZ->fMin[0],fBeamRangeY2,fBnnZ->fMax[0],fBeamRangeY2);
+        for (auto line : {line1, line2, line3, line4, line5, line6, line7, line8}) {
             line -> SetLineColor(kOrange-3);
             line -> SetLineStyle(2);
             line -> SetLineWidth(1);
         }
         if (bnn==fBnnXZ) {
-            line1 -> Draw("samel");
-            line2 -> Draw("samel");
+            line5 -> Draw("samel");
+            line6 -> Draw("samel");
         }
         if (bnn==fBnnXY) {
             line1 -> Draw("samel");
@@ -237,44 +262,48 @@ void DrawEvent(int entry)
             line4 -> Draw("samel");
         }
         if (bnn==fBnnZY) {
-            line3 -> Draw("samel");
-            line4 -> Draw("samel");
+            line7 -> Draw("samel");
+            line8 -> Draw("samel");
         }
     }
 
-    fCvsAll -> cd(++iCvs);
-    fBnnYDiff -> fHist -> Draw();
-
-    //for (auto i : {0,1,2}) {
-    //    fTracker -> Transform();
-    //    auto paramPointAtMax = fTracker -> FindNextMaximumParamPoint();
-    //    auto paramPointRange = fTracker -> ReinitializeFromLastParamPoint();
-    //}
-
-    fTracker -> Transform();
-    auto paramPointAtMax = fTracker -> FindNextMaximumParamPoint();
-    //{
-    //    auto track = fTracker -> FitTrackWithParamPoint(paramPointAtMax,0.01);
-    //    auto graphTrack = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
-    //    fCvsAll -> cd(1);
-    //    graphTrack -> Draw("samel");
-    //}
-    auto graph1 = paramPointAtMax -> GetRBandInImageSpace(-150,150,0,350);
-    fCvsAll -> cd(1);
-    graph1 -> Draw("samel");
-    {
-        paramPointAtMax -> GetRadialLineInImageSpace(0,5) -> Draw("samel");
-        paramPointAtMax -> GetRadialLineInImageSpace(1,5) -> Draw("samel");
-        paramPointAtMax -> GetRadialLineInImageSpace(2,5) -> Draw("samel");
-        paramPointAtMax -> GetRadialLineInImageSpace(3,5) -> Draw("samel");
-        paramPointAtMax -> GetRadialLineInImageSpace(4,5) -> Draw("samel");
+    if (!fJustXY) {
+        fCvsAll -> cd(++iCvs);
+        fBnnYDiff -> fHist -> Draw();
     }
 
-    fCvsAll -> cd(iCvs);
-    auto histParam = fTracker -> GetHistParamSpace("paramSpace");
+    fTrackerXY -> Transform();
+    fTrackerXY -> DrawToPads(fCvsTest->cd(1),fCvsTest->cd(2));
+
+    auto graphData = fTrackerXY -> GetDataGraphImageSapce();
+    graphData -> SetMarkerStyle(20);
+    graphData -> SetLineColor(kGray+1);
+    graphData -> SetMarkerSize(0.3);
+    fCvsParam -> cd();
+    auto histParam = fTrackerXY -> GetHistParamSpace("paramSpace");
     histParam -> Draw("colz");
-    auto graph2 = paramPointAtMax -> GetRangeGraphInParamSpace(1);
-    graph2 -> Draw("samel");
+    auto histParam2 = fTrackerXY -> GetHistParamSpace("paramSpace2");
+    histParam -> Draw("samebox");
+    if (fJustXY) fCvsAll -> cd();
+    else fCvsAll -> cd(1);
+    graphData -> Draw("samepz");
+    //for (auto i : {1,2,3,4}) {
+    for (auto i : {1}) {
+        auto paramPointAtMax = fTrackerXY -> FindNextMaximumParamPoint();
+        auto graphRBand = paramPointAtMax -> GetRBandInImageSpace(-150,150,0,350);
+        graphRBand -> SetLineColor(kBlue);
+        //graphRBand -> SetLineColor(i);
+        if (fJustXY) fCvsAll -> cd();
+        else fCvsAll -> cd(1);
+        graphRBand -> Draw("samel");
+        //fCvsParam -> cd(i);
+        //auto histParam = fTrackerXY -> GetHistParamSpace(Form("paramSpace+%d",i));
+        //histParam -> Draw("colz");
+        fCvsParam -> cd();
+        auto graph2 = paramPointAtMax -> GetRangeGraphInParamSpace(1);
+        graph2 -> Draw("samel");
+        fTrackerXY -> CleanLastParamPoint(0,0);
+    }
 }
 
 void UnfoldHits()

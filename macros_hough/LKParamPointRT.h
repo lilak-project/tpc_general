@@ -10,8 +10,17 @@
 #include "LKImagePoint.cpp"
 //#include "LKImagePoint.h"
 
-//class LKParamPointRT : public LKContainer
+/**
+ * ### Indexing iParamCorner
+ * - 0 : center of parameter bin
+ * - 1 : left  bottom corner of parameter bin
+ * - 2 : left  top    corner of parameter bin
+ * - 3 : right bottom corner of parameter bin
+ * - 4 : right top    corner of parameter bin
+ * - 9rrtt : rr and tt range between 0 - 10. The parameter point will be (r, t) where r = r1 + 0.1*rr*(r2-r1) and t = t1 + 0.1*tt*(t2-t1).
+ */
 class LKParamPointRT : public TObject
+//class LKParamPointRT : public LKContainer
 {
     public:
         LKParamPointRT();
@@ -59,6 +68,8 @@ class LKParamPointRT : public TObject
         double EvalY(int iParamCorner, double x) const;
         double EvalX(double y) const { return EvalX(0,y); }
         double EvalY(double x) const { return EvalY(0,x); }
+        /// Evaluate two end points of straight line (x1,y1) and (x2,y2) in image space from parameter bin corner of index=iParamCorner (see Indexing iParamCorner).
+        /// The position of two end points are evaluated within given x/y-ranges (x1, x2) and (y1, y2).
         void GetImagePoints(int iParamCorner, double &x1, double &x2, double &y1, double &y2);
         LKGeoLine GetGeoLine(int iParamCorner, double x1, double x2, double y1, double y2);
 

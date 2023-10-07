@@ -177,8 +177,10 @@ void LKHoughTransformTracker::SetParamSpaceBins(int nr, int nt)
     if (fTransformCenter.X()>fRangeImageSpace[0][0]&&fTransformCenter.X()<fRangeImageSpace[0][1] && 
         fTransformCenter.Y()>fRangeImageSpace[1][0]&&fTransformCenter.Y()<fRangeImageSpace[1][1]) {
     }
-    r1 = 0;
-    t1 = -180;
+    r1 = -r2;
+    //t1 = -180;
+    //t2 = +180;
+    t1 = 0;
     t2 = +180;
 
     SetParamSpaceRange(nr, r1, r2, nt, t1, t2);
@@ -562,8 +564,8 @@ LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint2()
 
 void LKHoughTransformTracker::CleanLastParamPoint(double rWidth, double tWidth)
 {
-    if (rWidth<0) rWidth = (fRangeParamSpace[0][1]-fRangeParamSpace[0][0])/15;
-    if (tWidth<0) tWidth = (fRangeParamSpace[1][1]-fRangeParamSpace[1][0])/15;;
+    if (rWidth<0) rWidth = (fRangeParamSpace[0][1]-fRangeParamSpace[0][0])/20;
+    if (tWidth<0) tWidth = (fRangeParamSpace[1][1]-fRangeParamSpace[1][0])/20;;
     int numBinsHalfR = std::floor(rWidth/fBinSizeParamSpace[0]/2.);
     int numBinsHalfT = std::floor(tWidth/fBinSizeParamSpace[1]/2.);
     if (rWidth==0) numBinsHalfR = 0;
@@ -649,9 +651,7 @@ LKLinearTrack* LKHoughTransformTracker::FitTrackWithParamPoint(LKParamPointRT* p
     vector<int> vImagePointIdxs;
     for (int iImage=0; iImage<fNumImagePoints; ++iImage) {
         auto imagePoint = GetImagePoint(iImage);
-        //imagePoint->fWeight = 1;
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-        //lk_debug << weight << endl;
         if (weight > weightCut) {
             vImagePointIdxs.push_back(iImage);
             fLineFitter -> PreAddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
@@ -659,9 +659,7 @@ LKLinearTrack* LKHoughTransformTracker::FitTrackWithParamPoint(LKParamPointRT* p
     }
     for (int iImage : vImagePointIdxs)
     {
-        //lk_debug << iImage << endl;
         auto imagePoint = PopImagePoint(iImage);
-        //imagePoint->fWeight = 1;
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
         fLineFitter -> AddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
     }
@@ -748,7 +746,7 @@ TH2D* LKHoughTransformTracker::GetHistImageSpace(TString name, TString title)
     return hist;
 }
 
-TGraphErrors* LKHoughTransformTracker::GetGraphImageSapce()
+TGraphErrors* LKHoughTransformTracker::GetDataGraphImageSapce()
 {
     auto graph = new TGraphErrors();
     for (auto iPoint=0; iPoint<fNumImagePoints; ++iPoint) {
@@ -756,6 +754,7 @@ TGraphErrors* LKHoughTransformTracker::GetGraphImageSapce()
         graph -> SetPoint(iPoint, imagePoint->GetCenterX(), imagePoint->GetCenterY());
         graph -> SetPointError(iPoint, (imagePoint->GetX2()-imagePoint->GetX1())/2., (imagePoint->GetY2()-imagePoint->GetY1())/2.);
     }
+    graph -> SetMarkerSize(0.5);
     return graph;
 }
 
@@ -775,4 +774,54 @@ TH2D* LKHoughTransformTracker::GetHistParamSpace(TString name, TString title)
     hist -> GetXaxis() -> SetTitleOffset(1.25);
     hist -> GetYaxis() -> SetTitleOffset(1.60);
     return hist;
+}
+
+void LKHoughTransformTracker::DrawToPads(TVirtualPad* padImage, TVirtualPad* padParam)
+{
+    fPadImage = (TPad *) padImage -> cd();
+    fPadParam = (TPad *) padParam -> cd();
+
+    fPadImage -> cd();
+    fHistImage = GetHistImageSpace("histImageSpace");
+    fHistImage -> Draw("colz");
+    auto graph = GetDataGraphImageSapce();
+    graph -> Draw("samepz");
+
+    fPadParam -> cd();
+    //fPadParam -> AddExec("ex", "LKHoughTransformTracker::ClickPadParam()");
+    fHistParam = GetHistParamSpace("histParamSpace");
+    fHistParam -> Draw("colz");
+}
+
+void LKHoughTransformTracker::ClickPadParam(int iPlane)
+{
+    TObject* select = ((TCanvas*)gPad) -> GetClickSelected();
+    if (select == nullptr)
+        return;
+
+    bool isNotH2 = !(select -> InheritsFrom(TH2::Class()));
+    if (isNotH2)
+        return;
+
+    TH2D* hist = (TH2D*) select;
+
+    Int_t xEvent = gPad -> GetEventX();
+    Int_t yEvent = gPad -> GetEventY();
+    Float_t xAbs = gPad -> AbsPixeltoX(xEvent);
+    Float_t yAbs = gPad -> AbsPixeltoY(yEvent);
+    Double_t xOnClick = gPad -> PadtoX(xAbs);
+    Double_t yOnClick = gPad -> PadtoY(yAbs);
+
+    //Int_t bin = hist -> FindBin(xOnClick, yOnClick);
+    //gPad -> SetUniqueID(bin);
+    //gPad -> GetCanvas() -> SetClickSelected(NULL);
+
+    //int binx = fHistParam -> GetXaxis() -> FindBin(xClick);
+    //int biny = fHistParam -> GetYaxis() -> FindBin(yClick);
+
+    //auto paramPoint = GetParamPoint(binx-1,biny-1);
+    //auto graphBand = paramPoint -> GetBandInImageSpace(fRangeImageSpace[0][0],fRangeImageSpace[0][1],fRangeImageSpace[1][0],fRangeImageSpace[1][1]);
+
+    //fPadImage -> cd();
+    //graphBand -> Draw("samel");
 }

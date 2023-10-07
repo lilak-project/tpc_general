@@ -51,8 +51,19 @@ TVector3 LKParamPointRT::GetCorner(int iParamCorner) const
          if (iParamCorner==0) { return TVector3(fRadius0, fTheta0, 0); }
     else if (iParamCorner==1) { return TVector3(fRadius1, fTheta1, 0); }
     else if (iParamCorner==2) { return TVector3(fRadius1, fTheta2, 0); }
-    else if (iParamCorner==3) { return TVector3(fRadius2, fTheta1, 0); }
-    else if (iParamCorner==4) { return TVector3(fRadius2, fTheta2, 0); }
+    else if (iParamCorner==3) { return TVector3(fRadius2, fTheta2, 0); }
+    else if (iParamCorner==4) { return TVector3(fRadius2, fTheta1, 0); }
+    else if (iParamCorner==5) { return TVector3(fRadius1, fTheta0, 0); }
+    else if (iParamCorner==6) { return TVector3(fRadius0, fTheta2, 0); }
+    else if (iParamCorner==7) { return TVector3(fRadius2, fTheta0, 0); }
+    else if (iParamCorner==8) { return TVector3(fRadius0, fTheta1, 0); }
+    else if (iParamCorner>=90000) {
+        iParamCorner = iParamCorner - 90000;
+        int iTT = int(iParamCorner/100);
+        int iRR = iParamCorner - iTT*100;
+        lk_debug << iParamCorner << " " << iTT << " " << iRR << endl;
+        return TVector3(fRadius1+0.1*iRR*(fRadius2-fRadius1), fTheta1+0.1*iTT*(fTheta2-fTheta1), 0);
+    }
     return TVector3(-999,-999,-999);
 }
 
@@ -106,11 +117,14 @@ TGraph* LKParamPointRT::GetRadialLineInImageSpace(int iParamCorner, double angle
     graph -> SetPoint(3,point2.X(),point2.Y());
     graph -> SetPoint(4,point3.X(),point3.Y());
 
-    if (iParamCorner>=1) graph -> SetPoint(5,extra1.X(),extra1.Y());
-    if (iParamCorner>=2) graph -> SetPoint(6,extra2.X(),extra2.Y());
-    if (iParamCorner>=2) graph -> SetPoint(7,extra3.X(),extra3.Y());
-    if (iParamCorner>=3) graph -> SetPoint(8,extra4.X(),extra4.Y());
-    if (iParamCorner>=4) graph -> SetPoint(9,extra5.X(),extra5.Y());
+    if (iParamCorner>=90000) ;
+    else {
+        if (iParamCorner>=1) graph -> SetPoint(5,extra1.X(),extra1.Y());
+        if (iParamCorner>=2) graph -> SetPoint(6,extra2.X(),extra2.Y());
+        if (iParamCorner>=2) graph -> SetPoint(7,extra3.X(),extra3.Y());
+        if (iParamCorner>=3) graph -> SetPoint(8,extra4.X(),extra4.Y());
+        if (iParamCorner>=4) graph -> SetPoint(9,extra5.X(),extra5.Y());
+    }
     return graph;
 }
 
@@ -127,7 +141,8 @@ TGraph* LKParamPointRT::GetRBandInImageSpace(double x1, double x2, double y1, do
         yCrossMaxArray.push_back(-DBL_MAX);
     }
 
-    for (auto iParamCorner : {1,2,3,4}) {
+    //for (auto iParamCorner : {1,2,3,4}) {
+    for (auto iParamCorner : {5,7}) {
         double x1i = x1;
         double x2i = x2;
         double y1i = y1;
@@ -168,42 +183,46 @@ TGraph* LKParamPointRT::GetBandInImageSpace(double x1, double x2, double y1, dou
 {
     vector<double> xCrossArray;
 
-    double combination[12][2] = {
-        {1,2}, {1,4}, {2,3}, {3,4},
-        {1,5}, {2,5}, {3,5}, {4,5},
-        {1,6}, {2,6}, {3,6}, {4,6},
-    };
-    for (auto iCombination=0; iCombination<12; ++iCombination)
+    //double combination[12][2] = {
+    //    {1,2}, {1,4}, {2,3}, {3,4},
+    //    {1,5}, {2,5}, {3,5}, {4,5},
+    //    {1,6}, {2,6}, {3,6}, {4,6},
+    //};
+    //for (auto iCombination=0; iCombination<12; ++iCombination)
+    for (auto iParamCorner=1; iParamCorner<=10; ++iParamCorner)
     {
-        auto iParamCorner = combination[iCombination][0];
-        auto jParamCorner = combination[iCombination][1];
-        if (iParamCorner==jParamCorner)
-            continue;
+        for (auto jParamCorner=1; jParamCorner<=10; ++jParamCorner)
+        {
+            //auto iParamCorner = combination[iCombination][0];
+            //auto jParamCorner = combination[iCombination][1];
+            if (iParamCorner==jParamCorner)
+                continue;
 
-        double x1i = x1;
-        double x2i = x2;
-        double y1i = y1;
-        double y2i = y2;
-        GetImagePoints(iParamCorner,x1i,x2i,y1i,y2i);
-        double si = (y2i - y1i) / (x2i - x1i); // slope
-        double bi = y1i - si * x1i; // interception
+            double x1i = x1;
+            double x2i = x2;
+            double y1i = y1;
+            double y2i = y2;
+            GetImagePoints(iParamCorner,x1i,x2i,y1i,y2i);
+            double si = (y2i - y1i) / (x2i - x1i); // slope
+            double bi = y1i - si * x1i; // interception
 
-        double x1j = x1;
-        double x2j = x2;
-        double y1j = y1;
-        double y2j = y2;
-        if (jParamCorner==5) y2j = y1;
-        else if (jParamCorner==6) y1j = y2;
-        else GetImagePoints(jParamCorner,x1j,x2j,y1j,y2j);
-        double sj = (y2j - y1j) / (x2j - x1j); // slope
-        double bj = y1j - sj * x1j; // interception
+            double x1j = x1;
+            double x2j = x2;
+            double y1j = y1;
+            double y2j = y2;
+            if (jParamCorner==9) y2j = y1;
+            else if (jParamCorner==10) y1j = y2;
+            else GetImagePoints(jParamCorner,x1j,x2j,y1j,y2j);
+            double sj = (y2j - y1j) / (x2j - x1j); // slope
+            double bj = y1j - sj * x1j; // interception
 
-        if (abs(si-sj)<1.e-10)
-            continue;
-        else {
-            double xCross = (bj - bi) / (si - sj);
-            if (xCross>x1 && xCross<x2) {
-                xCrossArray.push_back(xCross);
+            if (abs(si-sj)<1.e-10)
+                continue;
+            else {
+                double xCross = (bj - bi) / (si - sj);
+                if (xCross>x1 && xCross<x2) {
+                    xCrossArray.push_back(xCross);
+                }
             }
         }
     }
@@ -261,7 +280,7 @@ TGraph* LKParamPointRT::GetRangeGraphInParamSpace(bool drawYX)
     auto graph = new TGraph();
     graph -> SetLineColor(kRed);
     graph -> SetLineWidth(3);
-    for (auto iParamCorner : {1,2,4,3,1}) {
+    for (auto iParamCorner : {1,2,3,4,1}) {
         auto pos = GetCorner(iParamCorner);
         if (drawYX)
             graph -> SetPoint(graph->GetN(),pos.Y(),pos.X());
@@ -273,39 +292,28 @@ TGraph* LKParamPointRT::GetRangeGraphInParamSpace(bool drawYX)
 
 TVector3 LKParamPointRT::GetPOCA(int iParamCorner)
 {
-    double radius, theta;
-         if (iParamCorner==0) { radius = fRadius0, theta = fTheta0; }
-    else if (iParamCorner==1) { radius = fRadius1, theta = fTheta1; }
-    else if (iParamCorner==2) { radius = fRadius1, theta = fTheta2; }
-    else if (iParamCorner==3) { radius = fRadius2, theta = fTheta1; }
-    else if (iParamCorner==4) { radius = fRadius2, theta = fTheta2; }
+    auto v3 = GetCorner(iParamCorner);
+    double radius = v3.X();
+    double theta = v3.Y();
     return TVector3(radius*TMath::Cos(TMath::DegToRad()*theta)+fXTransformCenter,radius*TMath::Sin(TMath::DegToRad()*theta)+fYTransformCenter,0);
 }
 
 double LKParamPointRT::EvalY(int iParamCorner, double x) const
 {
-    double radius, theta;
-         if (iParamCorner==0) { radius = fRadius0, theta = fTheta0; }
-    else if (iParamCorner==1) { radius = fRadius1, theta = fTheta1; }
-    else if (iParamCorner==2) { radius = fRadius1, theta = fTheta2; }
-    else if (iParamCorner==3) { radius = fRadius2, theta = fTheta1; }
-    else if (iParamCorner==4) { radius = fRadius2, theta = fTheta2; }
+    auto v3 = GetCorner(iParamCorner);
+    double radius = v3.X();
+    double theta = v3.Y();
     double y = (radius - (x-fXTransformCenter)*TMath::Cos(TMath::DegToRad()*theta)) / TMath::Sin(TMath::DegToRad()*theta) + fYTransformCenter;
-    //lk_debug << radius << " " << theta << " >> " << x << " " << y << endl;
 
     return y;
 }
 
 double LKParamPointRT::EvalX(int iParamCorner, double y) const
 {
-    double radius, theta;
-         if (iParamCorner==0) { radius = fRadius0, theta = fTheta0; }
-    else if (iParamCorner==1) { radius = fRadius1, theta = fTheta1; }
-    else if (iParamCorner==2) { radius = fRadius1, theta = fTheta2; }
-    else if (iParamCorner==3) { radius = fRadius2, theta = fTheta1; }
-    else if (iParamCorner==4) { radius = fRadius2, theta = fTheta2; }
+    auto v3 = GetCorner(iParamCorner);
+    double radius = v3.X();
+    double theta = v3.Y();
     double x = (radius - (y-fYTransformCenter)*TMath::Sin(TMath::DegToRad()*theta)) / TMath::Cos(TMath::DegToRad()*theta) + fXTransformCenter;
-    //lk_debug << radius << " " << theta << " >> " << x << " " << y << endl;
 
     return x;
 }
