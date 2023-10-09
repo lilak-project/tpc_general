@@ -156,7 +156,7 @@ class LKHoughTransformTracker : public TObject
         double GetMaxWeightingDistance(double distance) const { return fMaxWeightingDistance; }
 
         void SetTransformCenter(double x, double y) { fTransformCenter = TVector3(x,y,0); }
-        void SetImageSpaceRange(int nx, double x2, double x1, int ny, double y1, double y2);
+        void SetImageSpaceRange(int nx, double x1, double x2, int ny, double y1, double y2);
         void SetParamSpaceBins(int nr, int nt);
         void SetParamSpaceRange(int nr, double r2, double r1, int nt, double t1, double t2);
         void AddImagePoint(double x, double xError, double y, double yError, double weight);

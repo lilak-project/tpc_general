@@ -90,7 +90,7 @@ void LKHoughTransformTracker::SetImageData(double** imageData)
     }
 
     for (auto ix=0; ix<fNumBinsImageSpace[0]; ++ix)
-        for (auto iy=0; iy<fNumBinsImageSpace[0]; ++iy)
+        for (auto iy=0; iy<fNumBinsImageSpace[1]; ++iy)
             fImageData[ix][iy] = imageData[ix][iy];
 
     fNumImagePoints = fNumBinsImageSpace[0] * fNumBinsImageSpace[1];
