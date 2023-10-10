@@ -32,16 +32,32 @@ class TTPulseAnalysisTask : public LKTask
         void Exec(Option_t *option="");
         bool EndOfRun();
 
-        void CAACtoRealDim(Int_t Cobo, Int_t Asad, Int_t Aget, Int_t Chan,
-                Double_t &posx, Double_t &posy, Double_t &posz,
-                Double_t &errx, Double_t &erry, Double_t &errz);
-
     private:
         TClonesArray *fChannelArray = nullptr;
-        TClonesArray *fHitArray = nullptr;
+        TClonesArray *fHitArrayCenter = nullptr;
+        TClonesArray *fHitArrayLStrip = nullptr;
+        TClonesArray *fHitArrayLChain = nullptr;
+        TClonesArray *fHitArrayRStrip = nullptr;
+        TClonesArray *fHitArrayRChain = nullptr;
+        TClonesArray *fHitArrayOthers = nullptr;
+
         TTEventHeader* fEventHeader = nullptr;
 
         TexAT2 *fDetector;
+
+        int fITypeLStrip;
+        int fITypeRStrip;
+        int fITypeLChain;
+        int fITypeRChain;
+        int fITypeLCenter;
+        int fITypeHCenter;
+
+        int fCountHitCenter = 0;
+        int fCountHitLStrip = 0;
+        int fCountHitLChain = 0;
+        int fCountHitRStrip = 0;
+        int fCountHitRChain = 0;
+        int fCountHitOthers = 0;
 
     ClassDef(TTPulseAnalysisTask,1);
 };
