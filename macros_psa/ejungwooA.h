@@ -331,6 +331,7 @@ namespace ejungwoo
             double fMax[3] = {100,100,100};
             TH1D* fHist = nullptr;
             TH2D* fHist2 = nullptr;
+            TH2Poly* fHist2Poly = nullptr;
 
             Binning() {}
             Binning(int numBins, double x1, double x2) { SetBinning(numBins, x1, x2); }

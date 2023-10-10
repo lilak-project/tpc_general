@@ -1,3 +1,29 @@
+TH2Poly* GetHistStrip()
+{
+    int cobo, asad, aget, chan;
+    double x0, x1, x2, z0, z1, z2;
+
+    auto hist1 = new TH2Poly("hist1",";x;z",-125,125,180,420);
+    ifstream file1("hist_channels_center_and_strip.txt");
+    while (file1 >> cobo >> asad >> aget >> chan >> x0 >> x1 >> x2 >> z0 >> z1 >> z2)
+        hist1 -> AddBin(x1,z1,x2,z2);
+
+    return hist1;
+}
+
+TH2Poly* GetHistChain()
+{
+    int cobo, asad, aget, chan;
+    double x0, x1, x2, z0, z1, z2;
+
+    auto hist1 = new TH2Poly("hist1",";x;z",-125,125,180,420);
+    ifstream file2("hist_channels_center_and_chain.txt");
+    while (file2 >> cobo >> asad >> aget >> chan >> x0 >> x1 >> x2 >> z0 >> z1 >> z2)
+        hist1 -> AddBin(x1,z1,x2,z2);
+
+    return hist1;
+}
+
 void CAACtoRealDim(Int_t Cobo, Int_t Asad, Int_t Aget, Int_t Chan,
                    Double_t &posx, Double_t &posy, Double_t &posz,
                    Double_t &errx, Double_t &erry, Double_t &errz)
