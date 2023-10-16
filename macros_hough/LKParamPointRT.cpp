@@ -119,16 +119,18 @@ TGraph* LKParamPointRT::GetRadialLineInImageSpace(int iParamCorner, double angle
 
     if (iParamCorner>=90000) ;
     else {
-        if (iParamCorner>=1) graph -> SetPoint(5,extra1.X(),extra1.Y());
-        if (iParamCorner>=2) graph -> SetPoint(6,extra2.X(),extra2.Y());
-        if (iParamCorner>=2) graph -> SetPoint(7,extra3.X(),extra3.Y());
-        if (iParamCorner>=3) graph -> SetPoint(8,extra4.X(),extra4.Y());
-        if (iParamCorner>=4) graph -> SetPoint(9,extra5.X(),extra5.Y());
+        if (iParamCorner<5) {
+            if (iParamCorner>=1) graph -> SetPoint(5,extra1.X(),extra1.Y());
+            if (iParamCorner>=2) graph -> SetPoint(6,extra2.X(),extra2.Y());
+            if (iParamCorner>=2) graph -> SetPoint(7,extra3.X(),extra3.Y());
+            if (iParamCorner>=3) graph -> SetPoint(8,extra4.X(),extra4.Y());
+            if (iParamCorner>=4) graph -> SetPoint(9,extra5.X(),extra5.Y());
+        }
     }
     return graph;
 }
 
-TGraph* LKParamPointRT::GetRBandInImageSpace(double x1, double x2, double y1, double y2)
+TGraph* LKParamPointRT::GetBandInImageSpace(double x1, double x2, double y1, double y2)
 {
     vector<double> xCrossArray;
     xCrossArray.push_back(x1);
@@ -162,15 +164,15 @@ TGraph* LKParamPointRT::GetRBandInImageSpace(double x1, double x2, double y1, do
     for (int iCross=0; iCross<xCrossArray.size(); ++iCross) {
         auto xCross = xCrossArray[iCross];
         auto yCross = yCrossMinArray[iCross];
-        if (yCross<y1) yCross = y1;
-        if (yCross>y2) yCross = y2;
+        //if (yCross<y1) yCross = y1;
+        //if (yCross>y2) yCross = y2;
         graph -> SetPoint(graph->GetN(), xCross, yCross);
     }
     for (int iCross=xCrossArray.size()-1; iCross>=0; --iCross) {
         auto xCross = xCrossArray[iCross];
         auto yCross = yCrossMaxArray[iCross];
-        if (yCross<y1) yCross = y1;
-        if (yCross>y2) yCross = y2;
+        //if (yCross<y1) yCross = y1;
+        //if (yCross>y2) yCross = y2;
         graph -> SetPoint(graph->GetN(), xCross, yCross);
     }
     auto xCross = xCrossArray[0];
@@ -179,7 +181,7 @@ TGraph* LKParamPointRT::GetRBandInImageSpace(double x1, double x2, double y1, do
     return graph;
 }
 
-TGraph* LKParamPointRT::GetBandInImageSpace(double x1, double x2, double y1, double y2)
+TGraph* LKParamPointRT::GetRibbonInImageSpace(double x1, double x2, double y1, double y2)
 {
     vector<double> xCrossArray;
 
@@ -238,7 +240,7 @@ TGraph* LKParamPointRT::GetBandInImageSpace(double x1, double x2, double y1, dou
         yCrossMaxArray.push_back(-DBL_MAX);
     }
 
-    for (auto iParamCorner : {1,2,3,4}) {
+    for (auto iParamCorner : {1,2,3,4,5,7}) {
         double x1i = x1;
         double x2i = x2;
         double y1i = y1;
@@ -405,7 +407,7 @@ double LKParamPointRT::CorrelateBoxLine(LKImagePoint* imagePoint)
     return -1;
 }
 
-double LKParamPointRT::CorrelateBoxBand(LKImagePoint* imagePoint)
+double LKParamPointRT::CorrelateBoxRibbon(LKImagePoint* imagePoint)
 {
     auto weight = 0;
     int includedBelowOrAbove[4] = {0};
@@ -451,7 +453,7 @@ double LKParamPointRT::CorrelateBoxBand(LKImagePoint* imagePoint)
     return -1;
 }
 
-double LKParamPointRT::CorrelateBoxRBand(LKImagePoint* imagePoint)
+double LKParamPointRT::CorrelateBoxBand(LKImagePoint* imagePoint)
 {
     auto weight = 0;
     int includedBelowOrAbove[2] = {0};

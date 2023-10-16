@@ -132,8 +132,8 @@ void testMultiTracks()
             graphImageData -> SetMarkerStyle(20);
             if (tk1 -> IsCorrelatePointBand()) graphImageData -> Draw("samepx");
             if (tk1 -> IsCorrelateBoxLine()) graphImageData -> Draw("samepz");
+            if (tk1 -> IsCorrelateBoxRibbon()) graphImageData -> Draw("samepz");
             if (tk1 -> IsCorrelateBoxBand()) graphImageData -> Draw("samepz");
-            if (tk1 -> IsCorrelateBoxRBand()) graphImageData -> Draw("samepz");
             if (tk1 -> IsCorrelateDistance()) graphImageData -> Draw("samepx");
 
             if (iTransform==numIteration-1) {

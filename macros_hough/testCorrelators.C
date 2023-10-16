@@ -51,8 +51,8 @@ void testCorrelators()
     tk3 -> SetTransformCenter(xt, yt);
     tk3 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk3 -> SetParamSpaceBins(numBinsR, numBinsT);
-    //tk3 -> SetCorrelateBoxBand();
-    tk3 -> SetCorrelateBoxRBand();
+    //tk3 -> SetCorrelateBoxRibbon();
+    tk3 -> SetCorrelateBoxBand();
 
     auto tk4 = new LKHTLineTracker();
     tk4 -> SetTransformCenter(xt, yt);
@@ -141,10 +141,10 @@ void testCorrelators()
             cvs -> cd(iCvs);
 
             TGraph *graph;
-            if (tk -> IsCorrelatePointBand()) graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
+            if (tk -> IsCorrelatePointBand()) graph = paramPoint -> GetRibbonInImageSpace(x1,x2,y1,y2);
             if (tk -> IsCorrelateBoxLine()) graph = paramPoint -> GetLineInImageSpace(0,x1,x2,y1,y2);
+            if (tk -> IsCorrelateBoxRibbon()) graph = paramPoint -> GetRibbonInImageSpace(x1,x2,y1,y2);
             if (tk -> IsCorrelateBoxBand()) graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
-            if (tk -> IsCorrelateBoxRBand()) graph = paramPoint -> GetRBandInImageSpace(x1,x2,y1,y2);
             if (tk -> IsCorrelateDistance()) graph = paramPoint -> GetLineInImageSpace(0,x1,x2,y1,y2);
             graph -> SetFillColor(kYellow);
             graph -> SetFillStyle(3344);
@@ -164,8 +164,8 @@ void testCorrelators()
         graphData -> SetMarkerSize(0.5);
         if (tk -> IsCorrelatePointBand()) graphData -> Draw("samepx");
         if (tk -> IsCorrelateBoxLine()) graphData -> Draw("samepz");
+        if (tk -> IsCorrelateBoxRibbon()) graphData -> Draw("samepz");
         if (tk -> IsCorrelateBoxBand()) graphData -> Draw("samepz");
-        if (tk -> IsCorrelateBoxRBand()) graphData -> Draw("samepz");
         if (tk -> IsCorrelateDistance()) graphData -> Draw("samepx");
     }
 

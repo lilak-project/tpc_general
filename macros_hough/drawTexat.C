@@ -91,7 +91,7 @@ void drawTexat()
         tk -> SetTransformCenter(bnnx->X1(),bnny->X1());
         tk -> SetImageSpaceRange(bnnx->NX(),bnnx->X1(),bnnx->X2(),bnny->NX(),bnny->X1(),bnny->X2());
         tk -> SetParamSpaceBins(80,100);
-        tk -> SetCorrelateBoxRBand();
+        tk -> SetCorrelateBoxBand();
         tk -> SetWFConst();
     };
 
@@ -264,18 +264,18 @@ void DrawEvent(int entry)
             if (iCLR!=kMMCenter && iView!=kTopView && tkFit->GetNumImagePoints()>3)
             {
                 track = tkFit -> FitTrackWithParamPoint(paramPoint);
-                auto graphRBand = paramPoint -> GetRBandInImageSpace(tkTrf->GetRangeImageSpace(0,0),tkTrf->GetRangeImageSpace(0,1),tkTrf->GetRangeImageSpace(1,0),tkTrf->GetRangeImageSpace(1,1));
-                graphRBand -> SetLineColor(kBlue);
+                auto graphBand = paramPoint -> GetBandInImageSpace(tkTrf->GetRangeImageSpace(0,0),tkTrf->GetRangeImageSpace(0,1),tkTrf->GetRangeImageSpace(1,0),tkTrf->GetRangeImageSpace(1,1));
+                graphBand -> SetLineColor(kBlue);
                 auto graphTrack = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
-                graphRBand -> SetLineColor(kBlue);
+                graphBand -> SetLineColor(kBlue);
                 graphTrack -> SetLineColor(kRed);
                 if (iCLR==kMMRight) {
-                    graphRBand -> SetLineColor(kGreen+1);
+                    graphBand -> SetLineColor(kGreen+1);
                     graphTrack -> SetLineColor(kViolet);
                 }
 
                 padImage -> cd();
-                graphRBand -> Draw("samel");
+                graphBand -> Draw("samel");
                 graphTrack -> Draw("samel");
             }
         }

@@ -51,9 +51,9 @@ class LKParamPointRT : public TObject
         void IsInside(double r, double t);
         TGraph* GetLineInImageSpace(int iParamCorner, double x1, double x2, double y1, double y2);
         TGraph* GetRadialLineInImageSpace(int iParamCorner, double angleSize);
+        TGraph* GetRibbonInImageSpace(double x1, double x2, double y1, double y2);
         TGraph* GetBandInImageSpace(double x1, double x2, double y1, double y2);
-        TGraph* GetRBandInImageSpace(double x1, double x2, double y1, double y2);
-        TGraph* GetRangeGraphInParamSpace(bool drawYX);
+        TGraph* GetRangeGraphInParamSpace(bool drawYX=true);
 
         double DistanceToPoint(TVector3 point);
         double DistanceToPoint(int iParamCorner, TVector3 point);
@@ -61,8 +61,8 @@ class LKParamPointRT : public TObject
         double DistanceToImagePoint(LKImagePoint* imagePoint);
         double DistanceToImagePoint(int iParamCorner, LKImagePoint* imagePoint);
         double CorrelateBoxLine(LKImagePoint* imagePoint);
+        double CorrelateBoxRibbon(LKImagePoint* imagePoint);
         double CorrelateBoxBand(LKImagePoint* imagePoint);
-        double CorrelateBoxRBand(LKImagePoint* imagePoint);
 
         TVector3 GetPOCA(int iParamCorner);
         double EvalX(int iParamCorner, double y) const;

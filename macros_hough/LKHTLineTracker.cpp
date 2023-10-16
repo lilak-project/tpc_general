@@ -115,9 +115,9 @@ void LKHTLineTracker::SetCorrelateBoxLine()
         fWeightingFunction = new LKHoughWFConst();
 }
 
-void LKHTLineTracker::SetCorrelateBoxRBand()
+void LKHTLineTracker::SetCorrelateBoxRibbon()
 {
-    fCorrelateType = kCorrelateBoxRBand;
+    fCorrelateType = kCorrelateBoxRibbon;
     if (fWeightingFunction==nullptr)
         fWeightingFunction = new LKHoughWFConst();
 }
@@ -125,13 +125,6 @@ void LKHTLineTracker::SetCorrelateBoxRBand()
 void LKHTLineTracker::SetCorrelateBoxBand()
 {
     fCorrelateType = kCorrelateBoxBand;
-    if (fWeightingFunction==nullptr)
-        fWeightingFunction = new LKHoughWFConst();
-}
-
-void LKHTLineTracker::SetCorrelateDistance()
-{
-    fCorrelateType = kCorrelateDistance;
     if (fWeightingFunction==nullptr)
         fWeightingFunction = new LKHoughWFConst();
 }
@@ -340,7 +333,20 @@ void LKHTLineTracker::Transform()
             {
                 auto imagePoint = GetImagePoint(iImage);
 
-                if (fCorrelateType==kCorrelateBoxRBand)
+                if (fCorrelateType==kCorrelatePointBand)
+                {
+                    auto radius = imagePoint -> EvalR(0,theta0,fTransformCenter[0],fTransformCenter[1]);
+                    int ir = floor( (radius-fRangeParamSpace[0][0])/fBinSizeParamSpace[0] );
+                    auto paramPoint = GetParamPoint(ir,it);
+                    auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
+                    if (weight>0) {
+                        fIdxSelectedR = ir;
+                        fIdxSelectedT = it;
+                        fParamData[ir][it] = fParamData[ir][it] + weight;
+                    }
+                }
+
+                else if (fCorrelateType==kCorrelateBoxBand)
                 {
                     int irMax = -INT_MAX;
                     int irMin = INT_MAX;
@@ -355,7 +361,6 @@ void LKHTLineTracker::Transform()
                     if (irMin<0) irMin = 0;
                     for (int ir=irMin; ir<=irMax; ++ir) {
                         auto paramPoint = GetParamPoint(ir,it);
-                        //if (paramPoint -> CorrelateBoxRBand(imagePoint) < 0) continue; /// XXX
                         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
                         if (weight>0) {
                             fIdxSelectedR = ir;
@@ -365,7 +370,7 @@ void LKHTLineTracker::Transform()
                     }
                 }
 
-                if (fCorrelateType==kCorrelateBoxBand)
+                else if (fCorrelateType==kCorrelateBoxRibbon)
                 {
                     int irMax = -INT_MAX;
                     int irMin = INT_MAX;
@@ -392,20 +397,6 @@ void LKHTLineTracker::Transform()
                     }
                 }
 
-                else if (fCorrelateType==kCorrelatePointBand)
-                {
-                    auto radius = imagePoint -> EvalR(0,theta0,fTransformCenter[0],fTransformCenter[1]);
-                    int ir = floor( (radius-fRangeParamSpace[0][0])/fBinSizeParamSpace[0] );
-                    if (ir>=fNumBinsParamSpace[0] || ir<0) continue;
-                    auto paramPoint = GetParamPoint(ir,it);
-                    auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                    if (weight>0) {
-                        fIdxSelectedR = ir;
-                        fIdxSelectedT = it;
-                        fParamData[ir][it] = fParamData[ir][it] + weight;
-                    }
-                }
-
                 else if (fCorrelateType==kCorrelateBoxLine)
                 {
                     int irMax = -INT_MAX;
@@ -425,55 +416,6 @@ void LKHTLineTracker::Transform()
                             fIdxSelectedR = ir;
                             fIdxSelectedT = it;
                             fParamData[ir][it] = fParamData[ir][it] + weight;
-                        }
-                    }
-                }
-
-                else if (fCorrelateType==kCorrelateDistance)
-                {
-                    auto radius = imagePoint -> EvalR(0,theta0,fTransformCenter[0],fTransformCenter[1]);
-                    int ir0 = floor( (radius-fRangeParamSpace[0][0])/fBinSizeParamSpace[0] );
-                    int rangeR = int(fMaxWeightingDistance/fBinSizeMaxImageSpace);
-                    int debug_count_ir1 = 0;
-                    int debug_count_ir2 = 0;
-                    if (ir0>=0)
-                    {
-                        for (auto irOff=0; irOff>=-rangeR; --irOff) {
-                            int ir = ir0 + irOff;
-                            if (ir<0||ir>=fNumBinsParamSpace[0])
-                                continue;
-                            auto paramPoint = GetParamPoint(ir,it);
-                            auto distance = paramPoint -> DistanceToImagePoint(imagePoint);
-                            if (distance>0) {
-                                auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                                if (weight>0) {
-                                    fIdxSelectedR = ir;
-                                    fIdxSelectedT = it;
-                                    fParamData[ir][it] = fParamData[ir][it] + weight;
-                                }
-                            }
-                            else
-                                break;
-                        }
-                    }
-                    if (ir0<=fNumBinsParamSpace[0]-1)
-                    {
-                        for (auto irOff=0; irOff<=rangeR; ++irOff) {
-                            int ir = ir0 + irOff;
-                            if (ir<0||ir>=fNumBinsParamSpace[0])
-                                continue;
-                            auto paramPoint = GetParamPoint(ir,it);
-                            auto distance = paramPoint -> DistanceToImagePoint(imagePoint);
-                            if (distance>0) {
-                                auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                                if (weight>0) {
-                                    fIdxSelectedR = ir;
-                                    fIdxSelectedT = it;
-                                    fParamData[ir][it] = fParamData[ir][it] + weight;
-                                }
-                            }
-                            else
-                                break;
                         }
                     }
                 }
@@ -672,8 +614,8 @@ LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoin
         auto imagePoint = GetImagePoint(iImage);
 
         double distance = 0;
-        if (fCorrelateType==kCorrelateBoxRBand)
-            distance = paramPoint -> CorrelateBoxRBand(imagePoint);
+        if (fCorrelateType==kCorrelateBoxBand)
+            distance = paramPoint -> CorrelateBoxBand(imagePoint);
         if (distance<0)
             continue;
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);

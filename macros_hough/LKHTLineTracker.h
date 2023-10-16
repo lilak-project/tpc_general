@@ -94,9 +94,8 @@ class LKHoughWFInverse : public LKHTWeightingFunction {
     @param Correlator Choose from the following options. More descriptions are given below paragraph.
            1. Point-Band correlator : SetCorrelatePointBand()
            2. Box-Line correlator : SetCorrelateBoxLine()
-           3. Box-Band correlator : SetCorrelateBoxBand()
-           4. Box-Band correlator : SetCorrelateBoxRBand()
-           5. Distance correlator : SetCorrelateDistance()
+           3. Box-Ribbon correlator : SetCorrelateBoxRibbon()
+           4. Box-Band correlator : SetCorrelateBoxBand()
 
     ## Correlators
     While the PML represents the line defined from the central value of the selected bin in PMS,
@@ -124,11 +123,6 @@ class LKHoughWFInverse : public LKHTWeightingFunction {
                               However, r-band is defined only using the center theta value.
                               This means that r-band do not overlap with the other neighboring parameter bins with same theta range.
                               This correlator is default option.
-    5. Distance correlator : This correlator calculate the perpendicular distance from IMB center to the PML.
-                             User should choose the cut fMaxWeightingDistance,
-                             The default value of fMaxWeightingDistance is diagonal length of IMS bin chosen from GetRangeImageSpace() method.
-                             the maximum distance from the PML to weight the PMP using SetMaxWeightingDistance().
-                             The speed of this method depend on cut value. For most of the cases, this is the most slowest out of all.
 
     ## Weighting function
     Weighting function is a function that gives weight value to fill up the PMS bin by correlating with IMB.
@@ -205,25 +199,22 @@ class LKHTLineTracker : public TNamed
 
         TString GetCorrelatorName() {
             TString correlatorName;
-            if (fCorrelateType==kCorrelatePointBand)  correlatorName = "Point-Band";
-            else if (fCorrelateType==kCorrelateBoxLine)  correlatorName = "Box-Line";
-            else if (fCorrelateType==kCorrelateBoxBand)  correlatorName = "Box-Band";
-            else if (fCorrelateType==kCorrelateBoxRBand)  correlatorName = "Box-RBand";
-            else if (fCorrelateType==kCorrelateDistance) correlatorName = "Distance";
+            if (fCorrelateType==kCorrelatePointBand) correlatorName = "Point-Band";
+            else if (fCorrelateType==kCorrelateBoxLine) correlatorName = "Box-Line";
+            else if (fCorrelateType==kCorrelateBoxRibbon) correlatorName = "Box-Ribbon";
+            else if (fCorrelateType==kCorrelateBoxBand) correlatorName = "Box-Band";
             return correlatorName;
         }
 
-        bool IsCorrelatePointBand() { if (fCorrelateType==kCorrelatePointBand) return true; return false; }
+        bool IsCorrelatePointBand()   { if (fCorrelateType==kCorrelatePointBand)   return true; return false; }
         bool IsCorrelateBoxLine()   { if (fCorrelateType==kCorrelateBoxLine)   return true; return false; }
-        bool IsCorrelateBoxBand()   { if (fCorrelateType==kCorrelateBoxBand)   return true; return false; }
-        bool IsCorrelateBoxRBand()  { if (fCorrelateType==kCorrelateBoxRBand)  return true; return false; }
-        bool IsCorrelateDistance()  { if (fCorrelateType==kCorrelateDistance)  return true; return false; }
+        bool IsCorrelateBoxRibbon()   { if (fCorrelateType==kCorrelateBoxRibbon)   return true; return false; }
+        bool IsCorrelateBoxBand()  { if (fCorrelateType==kCorrelateBoxBand)  return true; return false; }
 
         void SetCorrelatePointBand();
         void SetCorrelateBoxLine();
+        void SetCorrelateBoxRibbon();
         void SetCorrelateBoxBand();
-        void SetCorrelateBoxRBand();
-        void SetCorrelateDistance();
         void SetMaxWeightingDistance(double distance) { fMaxWeightingDistance = distance; }
         void SetCutNumTrackHits(double value) { fCutNumTrackHits = value; }
 
@@ -290,10 +281,9 @@ class LKHTLineTracker : public TNamed
 
         const int    kCorrelatePointBand = 0;
         const int    kCorrelateBoxLine = 1;
-        const int    kCorrelateBoxBand = 2;
-        const int    kCorrelateBoxRBand = 3;
-        const int    kCorrelateDistance = 4;
-        int          fCorrelateType = kCorrelateBoxRBand;
+        const int    kCorrelateBoxRibbon = 2;
+        const int    kCorrelateBoxBand = 3;
+        int          fCorrelateType = kCorrelateBoxBand;
 
         LKHTWeightingFunction* fWeightingFunction = nullptr;
 
@@ -317,7 +307,7 @@ class LKHTCorrelator
 };
 
 /*
-class CorrelateBoxRBand
+class CorrelateBoxBand
 {
     public:
         LKHTCorrelator() {}

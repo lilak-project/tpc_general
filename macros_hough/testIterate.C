@@ -38,7 +38,7 @@ void testIterate()
     tk1 -> SetTransformCenter(xt, yt);
     tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
-    tk1 -> SetCorrelateBoxBand();
+    tk1 -> SetCorrelateBoxRibbon();
 
     auto func = new TF1("track",Form("[0]*(x-%f)+[1]+%f",(x1+x2)/2.,(y1+y2)/2.),x1,x2);
     for (auto iTrack=0; iTrack<numTracks; ++iTrack) {
@@ -130,7 +130,7 @@ void testIterate()
                 }
             }
             if (1) {
-                auto graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
+                auto graph = paramPoint -> GetRibbonInImageSpace(x1,x2,y1,y2);
                 graph -> SetFillColor(color);
                 graph -> SetFillStyle(3344);
                 graph -> Draw("samelf");
@@ -154,7 +154,7 @@ void testIterate()
 
         auto paramPointAtMax = tk1 -> FindNextMaximumParamPoint();
         auto graphHoughAtMax = paramPointAtMax -> GetRangeGraphInParamSpace(1);
-        auto graphImageAtMax = paramPointAtMax -> GetRBandInImageSpace(x1,x2,y1,y2);
+        auto graphImageAtMax = paramPointAtMax -> GetBandInImageSpace(x1,x2,y1,y2);
         graphImageAtMax -> SetFillColor(kRed);
         graphImageAtMax -> SetLineColor(kRed);
         graphImageAtMax -> SetLineStyle(1);
@@ -167,7 +167,7 @@ void testIterate()
 
         auto paramPointRange = tk1 -> ReinitializeFromLastParamPoint();
         auto graphHoughReinit = paramPointRange -> GetRangeGraphInParamSpace(1);
-        auto graphImageReinit = paramPointRange -> GetRBandInImageSpace(x1,x2,y1,y2);
+        auto graphImageReinit = paramPointRange -> GetBandInImageSpace(x1,x2,y1,y2);
         graphImageReinit -> SetFillColor(kYellow);
         graphImageReinit -> SetFillStyle(3345);
 
@@ -194,8 +194,10 @@ void testIterate()
         graph -> SetMarkerSize(0.3);
         if (tk1 -> IsCorrelatePointBand()) graph -> Draw("samepx");
         if (tk1 -> IsCorrelateBoxLine()) graph -> Draw("samepz");
+        if (tk1 -> IsCorrelateBoxRibbon()) graph -> Draw("samepz");
         if (tk1 -> IsCorrelateBoxBand()) graph -> Draw("samepz");
-        if (tk1 -> IsCorrelateBoxRBand()) graph -> Draw("samepz");
         if (tk1 -> IsCorrelateDistance()) graph -> Draw("samepx");
     }
+
+    e_save_all();
 }
