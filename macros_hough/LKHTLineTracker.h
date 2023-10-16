@@ -1,7 +1,7 @@
 #ifndef LKHOUGHTRANSFORMTRACKER_HH
 #define LKHOUGHTRANSFORMTRACKER_HH
 
-#include "TObject.h"
+#include "TNamed.h"
 #include "LKLogger.h"
 #include "LKGeoLine.h"
 #include "TGraphErrors.h"
@@ -11,10 +11,50 @@
 #include "LKImagePoint.cpp"
 #include "LKParamPointRT.cpp"
 
-#include "LKHoughWeightingFunction.h"
+class LKHTWeightingFunction
+{
+    public:
+        LKHTWeightingFunction() {}
+        ~LKHTWeightingFunction() {}
+        virtual double EvalFromPoints(LKImagePoint* imagePoint, LKParamPointRT* paramPoint) {
+            auto distance = paramPoint -> DistanceToImagePoint(0, imagePoint);
+            auto error = imagePoint -> GetError();
+            return EvalFromDistance(distance,error,imagePoint->fWeight);
+        }
+        virtual double EvalFromDistance(double distance, double error, double pointWeight) { return 1; }
+};
+class LKHoughWFConst : public LKHTWeightingFunction {
+    public:
+        LKHoughWFConst() {}
+        ~LKHoughWFConst() {}
+        double EvalFromPoints(LKImagePoint* imagePoint, LKParamPointRT* paramPoint) { return 1; }
+        double EvalFromDistance(double distance, double error, double pointWeight) { return 1; }
+};
+class LKHoughWFLinear : public LKHTWeightingFunction {
+    public:
+        LKHoughWFLinear() {}
+        ~LKHoughWFLinear() {}
+        double EvalFromDistance(double distance, double error, double pointWeight) {
+            double weight = (1 - distance/error/2);
+            if (weight<0)
+                return 0;
+            return weight;
+        }
+};
+class LKHoughWFInverse : public LKHTWeightingFunction {
+    public:
+        LKHoughWFInverse() {}
+        ~LKHoughWFInverse() {}
+        double EvalFromDistance(double distance, double error, double pointWeight) {
+            double weight = (error)/(distance+error);
+            return weight;
+        }
+};
+
+//#include "LKHTWeightingFunction.h"
 
 /**
-    @brief LKHoughTransformTracker is tool for finding and fitting a straight line track from a provided list of hits.
+    @brief LKHTLineTracker is tool for finding and fitting a straight line track from a provided list of hits.
 
     ## Abriviations for this document
     @param HT Hough Transform
@@ -94,8 +134,8 @@
     Weighting function is a function that gives weight value to fill up the PMS bin by correlating with IMB.
     Defualt weighting function is LKHoughWFInverse. The weight in LKHoughWFInverse is defined by:
     weight = [IMP weight] * [IMP error] / ([distance from IMP to PML] + [IMP error])
-    Other weighting functions can be found in LKHoughTransformTracker.h.
-    It is also possible to create an user defined weighting function by inheriting LKHoughTransformTracker class.
+    Other weighting functions can be found in LKHTLineTracker.h.
+    It is also possible to create an user defined weighting function by inheriting LKHTLineTracker class.
 
     ## Usage of HT
     The author of this method does not recommend the use of the HT method as a track fitter.
@@ -117,7 +157,7 @@
 
     @code{.cpp}
     {
-         auto tracker = new LKHoughTransformTracker();
+         auto tracker = new LKHTLineTracker();
          tracker -> SetTransformCenter(TVector3(0,0,0));
          tracker -> SetImageSpaceRange(120, -150, 150, 120, 0, 500);
          tracker -> SetParamSpaceBins(numBinsR, numBinsT);
@@ -133,11 +173,11 @@
     @todo performance & parameters guide
  */
 
-class LKHoughTransformTracker : public TObject
+class LKHTLineTracker : public TNamed
 {
     public:
-        LKHoughTransformTracker();
-        virtual ~LKHoughTransformTracker() { ; }
+        LKHTLineTracker();
+        virtual ~LKHTLineTracker() { ; }
 
         bool Init();
         void Clear(Option_t *option="");
@@ -190,7 +230,7 @@ class LKHoughTransformTracker : public TObject
         void SetWFConst()   { fWeightingFunction = new LKHoughWFConst(); }
         void SetWFLinear()  { fWeightingFunction = new LKHoughWFLinear(); }
         void SetWFInverse() { fWeightingFunction = new LKHoughWFInverse(); }
-        void SetWeightingFunction(LKHoughWeightingFunction* wf) { fWeightingFunction = wf; }
+        void SetWeightingFunction(LKHTWeightingFunction* wf) { fWeightingFunction = wf; }
 
         LKImagePoint* GetImagePoint(int i);
         LKImagePoint* PopImagePoint(int i);
@@ -245,7 +285,7 @@ class LKHoughTransformTracker : public TObject
         int           fNumLinearTracks = 0;
         TClonesArray* fTrackArray = nullptr;
 
-        int          fCutNumTrackHits = 5;
+        int          fCutNumTrackHits = 3;
         LKODRFitter* fLineFitter = nullptr;
 
         const int    kCorrelatePointBand = 0;
@@ -255,8 +295,9 @@ class LKHoughTransformTracker : public TObject
         const int    kCorrelateDistance = 4;
         int          fCorrelateType = kCorrelateBoxRBand;
 
-        LKHoughWeightingFunction* fWeightingFunction = nullptr;
+        LKHTWeightingFunction* fWeightingFunction = nullptr;
 
+        TGraphErrors* fGraphImageData = nullptr;
         TGraph* fGraphPathToMaxWeight = nullptr;
 
         TPad *fPadImage = nullptr;
@@ -264,7 +305,47 @@ class LKHoughTransformTracker : public TObject
         TH2D *fHistImage = nullptr;
         TH2D *fHistParam = nullptr;
 
-    ClassDef(LKHoughTransformTracker,1);
+    ClassDef(LKHTLineTracker,1);
 };
 
+class LKHTCorrelator
+{
+    public:
+        LKHTCorrelator() {}
+        ~LKHTCorrelator() {}
+        virtual bool Correlate(LKImagePoint* imagePoint, LKParamPointRT* paramPoint) = 0;
+};
+
+/*
+class CorrelateBoxRBand
+{
+    public:
+        LKHTCorrelator() {}
+        ~LKHTCorrelator() {}
+        bool Correlate(LKImagePoint* imagePoint, LKParamPointRT* paramSpace, TVector3 transformCenter, int numBinsR, double r1, double r2)
+        {
+            double binSizeR = (r2-r1)/numBinsR;
+            int irMax = -INT_MAX;
+            int irMin = INT_MAX;
+            for (auto iImageCorner : {1,2,3,4})
+            {
+                auto radius = imagePoint -> EvalR(iImageCorner, paramSpace->GetT0(), transformCenter[0], transformCenter[1]);
+                int ir = floor( (radius-r1)/binSizeR);
+                if (irMax<ir) irMax = ir;
+                if (irMin>ir) irMin = ir;
+            }
+            if (irMax>=numBinsR) irMax = numBinsR - 1;
+            if (irMin<0) irMin = 0;
+            for (int ir=irMin; ir<=irMax; ++ir) {
+                auto paramPoint = GetParamPoint(ir,it);
+                auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
+                if (weight>0) {
+                    fIdxSelectedR = ir;
+                    fIdxSelectedT = it;
+                    fParamData[ir][it] = fParamData[ir][it] + weight;
+                }
+            }
+        }
+};
+*/
 #endif

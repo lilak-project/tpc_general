@@ -1,8 +1,8 @@
-#include "LKHoughTransformTracker.h"
+#include "LKHTLineTracker.h"
 
-ClassImp(LKHoughTransformTracker);
+ClassImp(LKHTLineTracker);
 
-LKHoughTransformTracker::LKHoughTransformTracker()
+LKHTLineTracker::LKHTLineTracker()
 {
     fLineFitter = LKODRFitter::GetFitter();
     fImagePoint = new LKImagePoint();
@@ -12,12 +12,12 @@ LKHoughTransformTracker::LKHoughTransformTracker()
     Clear();
 }
 
-bool LKHoughTransformTracker::Init()
+bool LKHTLineTracker::Init()
 {
     return true;
 }
 
-void LKHoughTransformTracker::Reset()
+void LKHTLineTracker::Reset()
 {
     fRangeParamSpace[0][0] = fRangeParamSpaceInit[0][0];
     fRangeParamSpace[0][1] = fRangeParamSpaceInit[0][1];
@@ -38,7 +38,7 @@ void LKHoughTransformTracker::Reset()
     }
 }
 
-void LKHoughTransformTracker::Clear(Option_t *option)
+void LKHTLineTracker::Clear(Option_t *option)
 {
     fRangeParamSpace[0][0] = fRangeParamSpaceInit[0][0];
     fRangeParamSpace[0][1] = fRangeParamSpaceInit[0][1];
@@ -73,11 +73,16 @@ void LKHoughTransformTracker::Clear(Option_t *option)
     }
 }
 
-void LKHoughTransformTracker::Print(Option_t *option) const
+void LKHTLineTracker::Print(Option_t *option) const
 {
+    lk_info << "param1 = (" << fRangeImageSpace[0][0] << ", " << fRangeImageSpace[0][1] << ") / " << fNumBinsImageSpace[0] << endl;
+    lk_info << "param2 = (" << fRangeImageSpace[1][0] << ", " << fRangeImageSpace[1][1] << ") / " << fNumBinsImageSpace[1] << endl;
+    lk_info << "image1 = (" << fRangeParamSpace[0][0] << ", " << fRangeParamSpace[0][1] << ") / " << fNumBinsParamSpace[0] << endl;
+    lk_info << "image2 = (" << fRangeParamSpace[1][0] << ", " << fRangeParamSpace[1][1] << ") / " << fNumBinsParamSpace[1] << endl;
+    lk_info << "Number of image points = " << fNumImagePoints << endl;
 }
 
-void LKHoughTransformTracker::SetImageData(double** imageData)
+void LKHTLineTracker::SetImageData(double** imageData)
 {
     if (fInitializedImageData==false) {
         fImageData = new double*[fNumBinsImageSpace[0]];
@@ -96,42 +101,42 @@ void LKHoughTransformTracker::SetImageData(double** imageData)
     fNumImagePoints = fNumBinsImageSpace[0] * fNumBinsImageSpace[1];
 }
 
-void LKHoughTransformTracker::SetCorrelatePointBand()
+void LKHTLineTracker::SetCorrelatePointBand()
 {
     fCorrelateType = kCorrelatePointBand;
     if (fWeightingFunction==nullptr)
         fWeightingFunction = new LKHoughWFInverse();
 }
 
-void LKHoughTransformTracker::SetCorrelateBoxLine()
+void LKHTLineTracker::SetCorrelateBoxLine()
 {
     fCorrelateType = kCorrelateBoxLine;
     if (fWeightingFunction==nullptr)
         fWeightingFunction = new LKHoughWFInverse();
 }
 
-void LKHoughTransformTracker::SetCorrelateBoxRBand()
+void LKHTLineTracker::SetCorrelateBoxRBand()
 {
     fCorrelateType = kCorrelateBoxRBand;
     if (fWeightingFunction==nullptr)
         fWeightingFunction = new LKHoughWFInverse();
 }
 
-void LKHoughTransformTracker::SetCorrelateBoxBand()
+void LKHTLineTracker::SetCorrelateBoxBand()
 {
     fCorrelateType = kCorrelateBoxBand;
     if (fWeightingFunction==nullptr)
         fWeightingFunction = new LKHoughWFInverse();
 }
 
-void LKHoughTransformTracker::SetCorrelateDistance()
+void LKHTLineTracker::SetCorrelateDistance()
 {
     fCorrelateType = kCorrelateDistance;
     if (fWeightingFunction==nullptr)
         fWeightingFunction = new LKHoughWFInverse();
 }
 
-void LKHoughTransformTracker::SetImageSpaceRange(int nx, double x1, double x2, int ny, double y1, double y2)
+void LKHTLineTracker::SetImageSpaceRange(int nx, double x1, double x2, int ny, double y1, double y2)
 {
     fNumBinsImageSpace[0] = nx;
     fBinSizeImageSpace[0] = (x2-x1)/nx;
@@ -148,7 +153,7 @@ void LKHoughTransformTracker::SetImageSpaceRange(int nx, double x1, double x2, i
         fMaxWeightingDistance = fBinSizeMaxImageSpace;
 }
 
-void LKHoughTransformTracker::SetParamSpaceBins(int nr, int nt)
+void LKHTLineTracker::SetParamSpaceBins(int nr, int nt)
 {
     if (fInitializedParamData) {
         e_warning << "hough data is already initialized!" << endl;
@@ -186,7 +191,7 @@ void LKHoughTransformTracker::SetParamSpaceBins(int nr, int nt)
     SetParamSpaceRange(nr, r1, r2, nt, t1, t2);
 }
 
-void LKHoughTransformTracker::SetParamSpaceRange(int nr, double r1, double r2, int nt, double t1, double t2)
+void LKHTLineTracker::SetParamSpaceRange(int nr, double r1, double r2, int nt, double t1, double t2)
 {
     if (fInitializedParamData) {
         e_warning << "hough data is already initialized!" << endl;
@@ -224,7 +229,7 @@ void LKHoughTransformTracker::SetParamSpaceRange(int nr, double r1, double r2, i
     fInitializedParamData = true;
 }
 
-void LKHoughTransformTracker::AddImagePoint(double x, double xError, double y, double yError, double weight)
+void LKHTLineTracker::AddImagePoint(double x, double xError, double y, double yError, double weight)
 {
     fUsingImagePointArray = true;
     double x1 = x-xError;
@@ -236,7 +241,7 @@ void LKHoughTransformTracker::AddImagePoint(double x, double xError, double y, d
     ++fNumImagePoints;
 }
 
-void LKHoughTransformTracker::AddImagePointBox(double x1, double y1, double x2, double y2, double weight)
+void LKHTLineTracker::AddImagePointBox(double x1, double y1, double x2, double y2, double weight)
 {
     fUsingImagePointArray = true;
     auto imagePoint = (LKImagePoint*) fImagePointArray -> ConstructedAt(fNumImagePoints);
@@ -244,7 +249,7 @@ void LKHoughTransformTracker::AddImagePointBox(double x1, double y1, double x2, 
     ++fNumImagePoints;
 }
 
-LKImagePoint* LKHoughTransformTracker::GetImagePoint(int i)
+LKImagePoint* LKHTLineTracker::GetImagePoint(int i)
 {
     if (fUsingImagePointArray) {
         auto imagePoint = (LKImagePoint*) fImagePointArray -> At(i);
@@ -265,7 +270,7 @@ LKImagePoint* LKHoughTransformTracker::GetImagePoint(int i)
     return fImagePoint;
 }
 
-LKImagePoint* LKHoughTransformTracker::PopImagePoint(int i)
+LKImagePoint* LKHTLineTracker::PopImagePoint(int i)
 {
     if (fUsingImagePointArray) {
         auto imagePoint = (LKImagePoint*) fImagePointArray -> At(i);
@@ -288,7 +293,7 @@ LKImagePoint* LKHoughTransformTracker::PopImagePoint(int i)
     return fImagePoint;
 }
 
-LKParamPointRT* LKHoughTransformTracker::GetParamPoint(int i)
+LKParamPointRT* LKHTLineTracker::GetParamPoint(int i)
 {
     // TODO
     double dr = (fRangeParamSpace[0][0] + fRangeParamSpace[0][1]) / fNumBinsParamSpace[0];
@@ -311,7 +316,7 @@ LKParamPointRT* LKHoughTransformTracker::GetParamPoint(int i)
     return fParamPoint;
 }
 
-LKParamPointRT* LKHoughTransformTracker::GetParamPoint(int ir, int it)
+LKParamPointRT* LKHTLineTracker::GetParamPoint(int ir, int it)
 {
     double r1 = fRangeParamSpace[0][0] + ir*fBinSizeParamSpace[0];
     double r2 = fRangeParamSpace[0][0] + (ir+1)*fBinSizeParamSpace[0];
@@ -321,7 +326,7 @@ LKParamPointRT* LKHoughTransformTracker::GetParamPoint(int ir, int it)
     return fParamPoint;
 }
 
-void LKHoughTransformTracker::Transform()
+void LKHTLineTracker::Transform()
 {
     //if (fUsingImagePointArray)
     {
@@ -350,6 +355,7 @@ void LKHoughTransformTracker::Transform()
                     if (irMin<0) irMin = 0;
                     for (int ir=irMin; ir<=irMax; ++ir) {
                         auto paramPoint = GetParamPoint(ir,it);
+                        //if (paramPoint -> CorrelateBoxRBand(imagePoint) < 0) continue; /// XXX
                         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
                         if (weight>0) {
                             fIdxSelectedR = ir;
@@ -480,7 +486,9 @@ void LKHoughTransformTracker::Transform()
     //}
 }
 
-LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint()
+//#define DEBUG_SAME_MAX
+
+LKParamPointRT* LKHTLineTracker::FindNextMaximumParamPoint()
 {
     fIdxSelectedR = -1;
     fIdxSelectedT = -1;
@@ -494,6 +502,17 @@ LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint()
             }
         }
     }
+#ifdef DEBUG_SAME_MAX
+    lk_debug << "max value is " << maxValue << endl;
+    int countMaxValue = 0;
+    for (auto ir=0; ir<fNumBinsParamSpace[0]; ++ir) {
+        for (auto it=0; it<fNumBinsParamSpace[1]; ++it) {
+            if (maxValue==fParamData[ir][it])
+                countMaxValue++;
+        }
+    }
+    lk_debug << "count same max value : " << countMaxValue << " (" << maxValue << ")" << endl;
+#endif
     if (fIdxSelectedR<0) {
         fParamPoint -> SetPoint(fTransformCenter[0],fTransformCenter[1],-1,0,-1,0,-1);
         return fParamPoint;
@@ -504,7 +523,7 @@ LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint()
 }
 
 /*
-LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint2()
+LKParamPointRT* LKHTLineTracker::FindNextMaximumParamPoint2()
 {
     if (fGraphPathToMaxWeight==nullptr)
         fGraphPathToMaxWeight = new TGraph();
@@ -562,7 +581,7 @@ LKParamPointRT* LKHoughTransformTracker::FindNextMaximumParamPoint2()
 }
 */
 
-void LKHoughTransformTracker::CleanLastParamPoint(double rWidth, double tWidth)
+void LKHTLineTracker::CleanLastParamPoint(double rWidth, double tWidth)
 {
     if (rWidth<0) rWidth = (fRangeParamSpace[0][1]-fRangeParamSpace[0][0])/20;
     if (tWidth<0) tWidth = (fRangeParamSpace[1][1]-fRangeParamSpace[1][0])/20;;
@@ -584,7 +603,7 @@ void LKHoughTransformTracker::CleanLastParamPoint(double rWidth, double tWidth)
     }
 }
 
-LKParamPointRT* LKHoughTransformTracker::ReinitializeFromLastParamPoint()
+LKParamPointRT* LKHTLineTracker::ReinitializeFromLastParamPoint()
 {
     auto ir1 = fIdxSelectedR - 1;
     auto ir2 = fIdxSelectedR + 1;
@@ -631,26 +650,32 @@ LKParamPointRT* LKHoughTransformTracker::ReinitializeFromLastParamPoint()
     return fParamPoint;
 }
 
-void LKHoughTransformTracker::RetransformFromLastParamPoint()
+void LKHTLineTracker::RetransformFromLastParamPoint()
 {
     ReinitializeFromLastParamPoint();
     Transform();
 }
 
-LKLinearTrack* LKHoughTransformTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut)
+LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut)
 {
     if (weightCut==-1) {
         weightCut = 0.2;
     }
-    //lk_debug << weightCut << endl;
     auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fNumLinearTracks);
     ++fNumLinearTracks;
 
     fLineFitter -> Reset();
 
     vector<int> vImagePointIdxs;
-    for (int iImage=0; iImage<fNumImagePoints; ++iImage) {
+    for (int iImage=0; iImage<fNumImagePoints; ++iImage)
+    {
         auto imagePoint = GetImagePoint(iImage);
+
+        double distance = 0;
+        if (fCorrelateType==kCorrelateBoxRBand)
+            distance = paramPoint -> CorrelateBoxRBand(imagePoint);
+        if (distance<0)
+            continue;
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
         if (weight > weightCut) {
             vImagePointIdxs.push_back(iImage);
@@ -663,22 +688,34 @@ LKLinearTrack* LKHoughTransformTracker::FitTrackWithParamPoint(LKParamPointRT* p
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
         fLineFitter -> AddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
     }
-    if (fLineFitter->GetNumPoints()<fCutNumTrackHits)
+    if (fLineFitter->GetNumPoints()<fCutNumTrackHits) {
+        lk_debug << "return because " << fLineFitter->GetNumPoints() << " < " << fCutNumTrackHits << endl;
         return track;
+    }
 
     bool fitted = fLineFitter -> FitLine();
-    if (fitted==false)
+    if (fitted==false) {
+        lk_debug << "return from fitter" << endl;
         return track;
+    }
 
     auto centroid = fLineFitter -> GetCentroid();
 
-    auto dx = fRangeImageSpace[1][0] - fRangeImageSpace[0][0];
-    auto dy = fRangeImageSpace[1][0] - fRangeImageSpace[0][0];
+    //auto dx = fRangeImageSpace[1][0] - fRangeImageSpace[0][0];
+    //auto dy = fRangeImageSpace[1][0] - fRangeImageSpace[0][0];
+    auto dx = fRangeImageSpace[0][0] - fRangeImageSpace[0][1];
+    auto dy = fRangeImageSpace[1][0] - fRangeImageSpace[1][1];
     auto size = sqrt(dx*dx + dy*dy)/2;
+    auto direction = fLineFitter->GetDirection();
 
-    track -> SetLine(centroid - size*fLineFitter->GetDirection(), centroid + size*fLineFitter->GetDirection());
+    track -> SetLine(centroid - size*direction, centroid + size*direction);
+    //track -> SetLine(centroid, centroid + size*direction);
     track -> SetRMS(fLineFitter->GetRMSLine());
 
+    //lk_debug << fRangeImageSpace[1][0] << " " << fRangeImageSpace[0][0] << endl;
+    //lk_debug << fNumImagePoints << " " << dx << " " << dy << endl;
+    //direction.Print();
+    //(centroid - size*direction).Print();
     if (fUsingImagePointArray) {
         fImagePointArray -> Compress();
         fNumImagePoints = fImagePointArray -> GetEntriesFast();
@@ -687,7 +724,7 @@ LKLinearTrack* LKHoughTransformTracker::FitTrackWithParamPoint(LKParamPointRT* p
     return track;
 }
 
-void LKHoughTransformTracker::DrawAllParamLines(int i, bool drawRadialLine)
+void LKHTLineTracker::DrawAllParamLines(int i, bool drawRadialLine)
 {
     vector<int> corners = {0,1,2,3,4};
     if (i>=0) {
@@ -715,7 +752,7 @@ void LKHoughTransformTracker::DrawAllParamLines(int i, bool drawRadialLine)
     }
 }
 
-void LKHoughTransformTracker::DrawAllParamBands()
+void LKHTLineTracker::DrawAllParamBands()
 {
     for (auto ir=0; ir<fNumBinsParamSpace[0]; ++ir)
     {
@@ -729,11 +766,11 @@ void LKHoughTransformTracker::DrawAllParamBands()
     }
 }
 
-TH2D* LKHoughTransformTracker::GetHistImageSpace(TString name, TString title)
+TH2D* LKHTLineTracker::GetHistImageSpace(TString name, TString title)
 {
     if (name.IsNull()) name = "histImageSpace";
     TString correlatorName = GetCorrelatorName();
-    if (title.IsNull()) title = Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);x;y", correlatorName.Data(), fNumBinsImageSpace[0], fNumBinsImageSpace[1], fTransformCenter[0],fTransformCenter[1]);
+    if (title.IsNull()) title = Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);x;y", correlatorName.Data(), fNumBinsParamSpace[0], fNumBinsParamSpace[1], fTransformCenter[0],fTransformCenter[1]);
     auto hist = new TH2D(name,title, fNumBinsImageSpace[0],fRangeImageSpace[0][0],fRangeImageSpace[0][1],fNumBinsImageSpace[1],fRangeImageSpace[1][0],fRangeImageSpace[1][1]);
     if (fUsingImagePointArray) {
         for (auto iPoint=0; iPoint<fNumImagePoints; ++iPoint) {
@@ -746,23 +783,26 @@ TH2D* LKHoughTransformTracker::GetHistImageSpace(TString name, TString title)
     return hist;
 }
 
-TGraphErrors* LKHoughTransformTracker::GetDataGraphImageSapce()
+TGraphErrors* LKHTLineTracker::GetDataGraphImageSapce()
 {
-    auto graph = new TGraphErrors();
+    if (fGraphImageData==nullptr) {
+        fGraphImageData = new TGraphErrors();
+        fGraphImageData -> SetMarkerSize(0.5);
+    }
+    fGraphImageData -> Set(0);
     for (auto iPoint=0; iPoint<fNumImagePoints; ++iPoint) {
         auto imagePoint = (LKImagePoint*) fImagePointArray -> At(iPoint);
-        graph -> SetPoint(iPoint, imagePoint->GetCenterX(), imagePoint->GetCenterY());
-        graph -> SetPointError(iPoint, (imagePoint->GetX2()-imagePoint->GetX1())/2., (imagePoint->GetY2()-imagePoint->GetY1())/2.);
+        fGraphImageData -> SetPoint(iPoint, imagePoint->GetCenterX(), imagePoint->GetCenterY());
+        fGraphImageData -> SetPointError(iPoint, (imagePoint->GetX2()-imagePoint->GetX1())/2., (imagePoint->GetY2()-imagePoint->GetY1())/2.);
     }
-    graph -> SetMarkerSize(0.5);
-    return graph;
+    return fGraphImageData;
 }
 
-TH2D* LKHoughTransformTracker::GetHistParamSpace(TString name, TString title)
+TH2D* LKHTLineTracker::GetHistParamSpace(TString name, TString title)
 {
     if (name.IsNull()) name = "histParamSpace";
     TString correlatorName = GetCorrelatorName();
-    if (title.IsNull()) title = Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);#theta (degrees);Radius", correlatorName.Data(), fNumBinsParamSpace[0], fNumBinsParamSpace[1], fTransformCenter[0],fTransformCenter[1]);
+    if (title.IsNull()) title = Form("%s (%dx%d);#theta (degrees);Radius", correlatorName.Data(), fNumBinsParamSpace[0], fNumBinsParamSpace[1]);
     auto hist = new TH2D(name,title, fNumBinsParamSpace[1],fRangeParamSpace[1][0],fRangeParamSpace[1][1],fNumBinsParamSpace[0],fRangeParamSpace[0][0],fRangeParamSpace[0][1]);
     for (auto ir=0; ir<fNumBinsParamSpace[0]; ++ir) {
         for (auto it=0; it<fNumBinsParamSpace[1]; ++it) {
@@ -776,7 +816,7 @@ TH2D* LKHoughTransformTracker::GetHistParamSpace(TString name, TString title)
     return hist;
 }
 
-void LKHoughTransformTracker::DrawToPads(TVirtualPad* padImage, TVirtualPad* padParam)
+void LKHTLineTracker::DrawToPads(TVirtualPad* padImage, TVirtualPad* padParam)
 {
     fPadImage = (TPad *) padImage -> cd();
     fPadParam = (TPad *) padParam -> cd();
@@ -788,12 +828,12 @@ void LKHoughTransformTracker::DrawToPads(TVirtualPad* padImage, TVirtualPad* pad
     graph -> Draw("samepz");
 
     fPadParam -> cd();
-    //fPadParam -> AddExec("ex", "LKHoughTransformTracker::ClickPadParam()");
+    //fPadParam -> AddExec("ex", "LKHTLineTracker::ClickPadParam()");
     fHistParam = GetHistParamSpace("histParamSpace");
     fHistParam -> Draw("colz");
 }
 
-void LKHoughTransformTracker::ClickPadParam(int iPlane)
+void LKHTLineTracker::ClickPadParam(int iPlane)
 {
     TObject* select = ((TCanvas*)gPad) -> GetClickSelected();
     if (select == nullptr)

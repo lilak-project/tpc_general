@@ -62,6 +62,7 @@ class LKParamPointRT : public TObject
         double DistanceToImagePoint(int iParamCorner, LKImagePoint* imagePoint);
         double CorrelateBoxLine(LKImagePoint* imagePoint);
         double CorrelateBoxBand(LKImagePoint* imagePoint);
+        double CorrelateBoxRBand(LKImagePoint* imagePoint);
 
         TVector3 GetPOCA(int iParamCorner);
         double EvalX(int iParamCorner, double y) const;

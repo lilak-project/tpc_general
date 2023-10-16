@@ -61,7 +61,7 @@ TVector3 LKParamPointRT::GetCorner(int iParamCorner) const
         iParamCorner = iParamCorner - 90000;
         int iTT = int(iParamCorner/100);
         int iRR = iParamCorner - iTT*100;
-        lk_debug << iParamCorner << " " << iTT << " " << iRR << endl;
+        //lk_debug << iParamCorner << " " << iTT << " " << iRR << endl;
         return TVector3(fRadius1+0.1*iRR*(fRadius2-fRadius1), fTheta1+0.1*iTT*(fTheta2-fTheta1), 0);
     }
     return TVector3(-999,-999,-999);
@@ -443,6 +443,57 @@ double LKParamPointRT::CorrelateBoxBand(LKImagePoint* imagePoint)
     if (existAbove&&existBelow)
         crossOver = true;
 
+    if (crossOver) {
+        auto distance = DistanceToPoint(imagePoint->GetCenter());
+        return distance;
+    }
+
+    return -1;
+}
+
+double LKParamPointRT::CorrelateBoxRBand(LKImagePoint* imagePoint)
+{
+    auto weight = 0;
+    int includedBelowOrAbove[2] = {0};
+
+    int countCorner = 0;
+    for (auto iParamCorner : {5,7})
+    {
+        bool existAboveLine = false;
+        bool existBelowLine = false;
+
+        for (auto iImageCorner : {1,2,3,4})
+        {
+            auto point = imagePoint -> GetCorner(iImageCorner);
+            auto yParamLine = EvalY(iParamCorner, point.X());
+            if (yParamLine<=point.Y()) existAboveLine = true;
+            if (yParamLine> point.Y()) existBelowLine = true;
+        }
+
+        if (existAboveLine&&existBelowLine)
+            includedBelowOrAbove[countCorner] = 0;
+        else if (existAboveLine)
+            includedBelowOrAbove[countCorner] = 1;
+        else
+            includedBelowOrAbove[countCorner] = 2;
+        ++countCorner;
+    }
+
+    bool existAbove = false;
+    bool existBelow = false;
+    bool crossOver = false;
+    countCorner = 0;
+    for (auto iParamCorner : {5,7})
+    {
+             if (includedBelowOrAbove[countCorner]==0) { crossOver = true;  }
+        else if (includedBelowOrAbove[countCorner]==1) { existAbove = true; }
+        else if (includedBelowOrAbove[countCorner]==2) { existBelow = true; }
+        ++countCorner;
+    }
+    if (existAbove&&existBelow)
+        crossOver = true;
+
+    //if (imagePoint->GetY0()<100) lk_debug << crossOver << endl;
     if (crossOver) {
         auto distance = DistanceToPoint(imagePoint->GetCenter());
         return distance;
