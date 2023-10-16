@@ -1,368 +1,365 @@
 #include "ejungwooA.h"
-#include "LKHoughTransformTracker.cpp"
+#include "LKHTLineTracker.cpp"
+
+//int fDrawEntry = 113;
+//int fDrawEntry = 219;
+//int fDrawEntry = 535;
+//int fDrawEntry = 804;
+//int fDrawEntry = 1068;
+int fDrawEntry = 1074;
+//int fDrawEntry = 0;
 
 LKRun* fRun;
 TTree* fTree = nullptr;
-TClonesArray* fHitArray;
-TClonesArray* fLeftChainArray;
-TClonesArray* fLeftStripArray;
-TClonesArray* fRightChainArray;
-TClonesArray* fRightStripArray;
-TClonesArray* fUnfoldedArray;
+TClonesArray* fEventHeaderHolder;
+TClonesArray* fHitArray[3][2];
 double fYDiffCut = 3;
 bool fDrawStripChain = true;
 bool fFillIfMXZ = true;
+
+const int kStripAndChain = 2;
+const int kStrip = 0;
+const int kChain = 1;
+const int kMMCenter = 0;
+const int kMMLeft = 1;
+const int kMMRight = 2;
+const int kFrontView = 0;
+const int kSideView = 1;
+const int kTopView = 2;
 
 double fBeamRangeX1 = -10;
 double fBeamRangeX2 = +10;
 double fBeamRangeY1 = 150;
 double fBeamRangeY2 = 200;
 
-ejungwoo::Binning* fBnnYDiff;
 ejungwoo::Binning* fBnnX;
 ejungwoo::Binning* fBnnY;
 ejungwoo::Binning* fBnnZ;
 ejungwoo::Binning* fBnnXZ;
 ejungwoo::Binning* fBnnZY;
 ejungwoo::Binning* fBnnXY;
-TCanvas* fCvsAll;
-TCanvas* fCvsParam;
-TCanvas* fCvsTest;
-bool fJustXY = true;
+ejungwoo::Binning* fBnnZXY;
+TCanvas* fCvsAll = nullptr;
+TCanvas* fCvsParam = nullptr;
+TCanvas* fCvsTest = nullptr;
 
-int fTreeEntry = -1;
-//int fDrawEntry = 114-1;
-//int fDrawEntry = 220-1;
-//int fDrawEntry = 536-1;
-//int fDrawEntry = 805-1;
-//int fDrawEntry = 1069-1;
-int fDrawEntry = 1075-1;
+LKHTLineTracker* fTrackerXZ[3][3];
+LKHTLineTracker* fTrackerZY[3][3];
+LKHTLineTracker* fTrackerXY[3][3];
 
-void DrawTree(int entry=-1);
+TH3D *fHistZXY;
+TGraph2DErrors* fGraphZXY[4];
+TGraphErrors* fGraphXY;
+TGraphErrors* fGraphZY;
+TGraphErrors* fGraphXZ;
+
 void DrawEvent(int entry=-1);
-void UnfoldHits();
-void SetYDiffCut(double value) { fYDiffCut = value; }
-
-LKHoughTransformTracker* fTrackerXY;
 
 void drawTexat()
 {
-    fTrackerXY = new LKHoughTransformTracker();
-    fTrackerXY -> SetTransformCenter(-150, 0);
-    fTrackerXY -> SetImageSpaceRange(150,-150,150,150,150,350);
-    fTrackerXY -> SetParamSpaceBins(50,50);
-    fTrackerXY -> SetCorrelateBoxBand();
-    fTrackerXY -> SetWFLinear();
+    gStyle -> SetOptStat(0);
 
     fRun = new LKRun("texat",0,"drawhit");
     //fRun -> AddInputFile("/home/ejungwoo/lilak/texat_reco/macros_tracking/data/texat_0000.psa.root");
-    fRun -> AddInputFile("~/data/texat/reco/texat_0801.psa.root");
+    //fRun -> AddInputFile("~/data/texat/reco/texat_0801.psa.root");
+    fRun -> AddInputFile("/home/ejungwoo/data/texat/reco/texat_0801.all.root");
     fRun -> Init();
-    fHitArray = fRun -> GetBranchA("Hit");
+    fEventHeaderHolder = fRun -> GetBranchA("EventHeader");
+    fHitArray[0][0] = fRun -> GetBranchA("HitCenter");
+    fHitArray[0][1] = fRun -> GetBranchA("HitOthers");
+    fHitArray[1][0] = fRun -> GetBranchA("HitLStrip");
+    fHitArray[1][1] = fRun -> GetBranchA("HitLChain");
+    fHitArray[2][0] = fRun -> GetBranchA("HitRStrip");
+    fHitArray[2][1] = fRun -> GetBranchA("HitRChain");
     fTree = fRun -> GetInputTree();
 
-    fLeftChainArray  = new TClonesArray("LKHit",50);
-    fLeftStripArray  = new TClonesArray("LKHit",50);
-    fRightChainArray = new TClonesArray("LKHit",50);
-    fRightStripArray = new TClonesArray("LKHit",50);
-    fUnfoldedArray   = new TClonesArray("LKHit",50);
-
-    //fCvsParam = ejungwoo::Canvas("cvs_param_space",0,0,2,2);
-    fCvsParam = ejungwoo::Canvas("cvs_param_space",0,0);
-    if (fJustXY)
-        fCvsAll = ejungwoo::Canvas("cvs_event_view",0,0);
-    else
-        fCvsAll = ejungwoo::Canvas("cvs_event_view",0,0,2,2);
-    fCvsTest = ejungwoo::Canvas("cvs_test",100,70,2,1);
-
-    fBnnYDiff = new ejungwoo::Binning("ydiff","ydiff (tb)","",100,0,50);
-    //fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-3,140);
+    //fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-120,120);
     //fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,0,330);
-    fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-120,120);
-    fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,0,330);
-    fBnnZ = new ejungwoo::Binning("zaxis","Z (beam axis)", "Hit.fZ", 141,150,500);
+    //fBnnZ = new ejungwoo::Binning("zaxis","Z (beam axis)", "Hit.fZ", 141,150,500);
+    fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-150,150);
+    fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,-100,500);
+    fBnnZ = new ejungwoo::Binning("zaxis","Z (beam axis)", "Hit.fZ", 141,0,600);
+    fBnnXZ = new ejungwoo::Binning(fBnnX,fBnnZ); fBnnXZ -> SetNameMainTitle("top","Top-view");
+    fBnnZY = new ejungwoo::Binning(fBnnZ,fBnnY); fBnnZY -> SetNameMainTitle("side","Side-view");
+    fBnnXY = new ejungwoo::Binning(fBnnX,fBnnY); fBnnXY -> SetNameMainTitle("front","Front(upstream)-view");
+    fBnnZXY = new ejungwoo::Binning(fBnnZ,fBnnX,fBnnY);
+    fHistZXY = fBnnZXY -> NewHist3();
+    auto bnnXL = new ejungwoo::Binning("xaxis","X", "Hit.fX", 60,-120,0);
+    auto bnnXR = new ejungwoo::Binning("xaxis","X", "Hit.fX", 60,0,120);
 
-    fBnnXZ = fBnnX->Add(fBnnZ); fBnnXZ -> SetNameMainTitle("top","Top view");
-    fBnnZY = fBnnZ->Add(fBnnY); fBnnZY -> SetNameMainTitle("side","Side view");
-    fBnnXY = fBnnX->Add(fBnnY); fBnnXY -> SetNameMainTitle("front","Front (upstream) view");
+    auto SetTracker = [](LKHTLineTracker* tk, ejungwoo::Binning* bnnx, ejungwoo::Binning* bnny) {
+        tk -> SetTransformCenter(bnnx->X1(),bnny->X1());
+        tk -> SetImageSpaceRange(bnnx->NX(),bnnx->X1(),bnnx->X2(),bnny->NX(),bnny->X1(),bnny->X2());
+        tk -> SetParamSpaceBins(80,100);
+        tk -> SetCorrelateBoxRBand();
+        tk -> SetWFConst();
+    };
 
-    for (auto bnn : {fBnnXY,fBnnXZ,fBnnZY})
-        auto hist = bnn -> NewHist2();
-    fBnnYDiff -> NewHist();
-
-    //DrawTree(-2);
-    DrawEvent();
-}
-
-void DrawTree(int entry)
-{
-    if (entry==-1) fTreeEntry = fTreeEntry + 1;
-    else fTreeEntry = entry;
-
-    TCut cut(Form("Hit.fW&&Entry$==%d",fTreeEntry));
-    if (entry==-2)
-        cut = TCut();
-
-    auto iCvs = 0;
-    for (auto bnn : {fBnnXY,fBnnXZ,fBnnZY})
-    {
-        TString title = (TString(cut.GetTitle()).IsNull()==false) ? bnn->fMainTitle+" {"+cut.GetTitle()+"}" : bnn->fMainTitle;
-        auto hist = bnn -> fHist2;
-        fTree -> Project(bnn->fName,bnn->GetSelection(2),cut);
-        fCvsAll -> cd(++iCvs);
-        hist -> SetTitle(title);
-        hist -> Draw("colz");
+    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight}) {
+        for (auto iSCA : {kStrip,kChain,kStripAndChain}) {
+            auto bnnX = fBnnX;
+            if (iCLR==1) bnnX = bnnXL;
+            if (iCLR==2) bnnX = bnnXR;
+            fTrackerXY[iCLR][iSCA] = new LKHTLineTracker(); SetTracker(fTrackerXY[iCLR][iSCA], bnnX,fBnnY);
+            fTrackerZY[iCLR][iSCA] = new LKHTLineTracker(); SetTracker(fTrackerZY[iCLR][iSCA],fBnnZ,fBnnY);
+            fTrackerXZ[iCLR][iSCA] = new LKHTLineTracker(); SetTracker(fTrackerXZ[iCLR][iSCA], bnnX,fBnnZ);
+        }
     }
+    for (auto bnn : {fBnnXY,fBnnXZ,fBnnZY}) bnn -> NewHist2();
+
+    fCvsParam = ejungwoo::Canvas("cvs_param",90,100,3,2); 
+    fCvsAll = ejungwoo::Canvas("cvs_all",60,100,2,2);
+
+    DrawEvent();
 }
 
 void DrawEvent(int entry)
 {
     if (entry==-1) fDrawEntry = fDrawEntry + 1;
     else fDrawEntry = entry;
-
-    auto histXY = fBnnXY -> fHist2;
-    auto histXZ = fBnnXZ -> fHist2;
-    auto histZY = fBnnZY -> fHist2;
-    histXY -> Reset("ICES");
-    histXZ -> Reset("ICES");
-    histZY -> Reset("ICES");
-
-    fLeftStripArray -> Clear("C");
-    fRightStripArray -> Clear("C");
-    fLeftChainArray -> Clear("C");
-    fRightChainArray -> Clear("C");
-
     fRun -> GetEntry(fDrawEntry);
-    auto numHits = fHitArray -> GetEntries();
-    if (numHits==0) {
-        DrawEvent();
-        return;
-    }
-    for (auto iHit=0; iHit<numHits; ++iHit) {
-        auto hit = (LKHit*) fHitArray -> At(iHit);
-        auto x = hit -> X();
-        auto y = 350-hit -> Y();
-        auto z = hit -> Z();
-        auto w = hit -> W();
-        //w = 1;
-        bool fillX = true;
-        //auto dx = hit->GetDX()/2.;
-        //auto dy = hit->GetDY()/2.;
-        auto dx = hit->GetDX()*1.;
-        auto dy = hit->GetDY()*1.;
-        if (x<fBeamRangeX1||x>fBeamRangeX2)
-            fTrackerXY -> AddImagePoint(x,dx,y,dy,1);
-        //fTrackerXY -> AddImagePointBox(x,y,x,y,1);
-        if (x<0) {
-            fillX = false;
-            if (fFillIfMXZ)
-                fillX = true;
-        }
-        bool fillZ = true;
-        if (z<0) {
-            fillZ = false;
-            if (fFillIfMXZ)
-                fillZ = true;
-        }
-        if (fillX) histXY -> Fill(x,y,w);
-        if (fillX&&fillZ) histXZ -> Fill(x,z,w);
-        if (fillZ) histZY -> Fill(z,y,w);
-        if (x==-3) {
-            auto hit0 = (LKHit*) fLeftStripArray -> ConstructedAt(fLeftStripArray->GetEntries());
-            hit0 -> CopyFrom(hit);
-            if (fDrawStripChain)
-                for (auto xAll=0.5; xAll<64; xAll+=1) {
-                    histXY -> Fill(xAll,y,w);
-                    histXZ -> Fill(xAll,z,w);
-                }
-        }
-        if (x==-2) {
-            auto hit0 = (LKHit*) fRightStripArray -> ConstructedAt(fRightStripArray->GetEntries());
-            hit0 -> CopyFrom(hit);
-            if (fDrawStripChain)
-                for (auto xAll=70.5; xAll<134; xAll+=1) {
-                    histXY -> Fill(xAll,y,w);
-                    histXZ -> Fill(xAll,z,w);
-                }
-        }
-        if (z==-1) {
-            if (x<65) {
-                auto hit0 = (LKHit*) fLeftChainArray -> ConstructedAt(fLeftChainArray->GetEntries());
-                hit0 -> CopyFrom(hit);
-                if (fDrawStripChain)
-                    for (auto zAll=0.5; zAll<127; zAll+=1) {
-                        histXZ -> Fill(x,zAll);
-                        histZY -> Fill(zAll,y);
-                    }
-            }
-            else {
-                auto hit0 = (LKHit*) fRightChainArray -> ConstructedAt(fRightChainArray->GetEntries());
-                hit0 -> CopyFrom(hit);
-                if (fDrawStripChain)
-                    for (auto zAll=0.5; zAll<127; zAll+=1) {
-                        histXZ -> Fill(x,zAll);
-                        histZY -> Fill(zAll,y);
-                    }
-            }
-        }
-    }
 
-    if (0)
+    auto numHitsAll = 0;
+    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
+        for (auto iSCA : {kStrip,kChain})
+            numHitsAll += fHitArray[iCLR][iSCA] -> GetEntries();
+
+    auto eventHeader = (TTEventHeader*) fEventHeaderHolder -> At(0);
+    auto goodEvent = eventHeader -> IsGoodEvent();
+    if (numHitsAll==0||goodEvent==false) { DrawEvent(); return; }
+
+    auto eventNumber = eventHeader -> GetEventNumber();
+    e_info << ">>>> " << fDrawEntry << " " << eventNumber << " " << numHitsAll << " " << goodEvent << endl;
+
+    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
     {
-        UnfoldHits();
-        auto numHitsUnfolded = fUnfoldedArray -> GetEntries();
-        for (auto iHit=0; iHit<numHitsUnfolded; ++iHit) {
-            auto hit = (LKHit*) fUnfoldedArray -> At(iHit);
-            auto x = hit -> X();
-            auto y = hit -> Y();
-            auto z = hit -> Z();
-            auto w = hit -> W();
-            //w = 1;
-            histXY -> Fill(x,y,w);
-            histXZ -> Fill(x,z,w);
-            histZY -> Fill(z,y,w);
+        for (auto iSCA : {kStrip,kChain})
+        {
+            TString titleCLR = "center";
+            if (iCLR==1) titleCLR = "left";
+            if (iCLR==2) titleCLR = "right";
+            TString titleSC = "strip";
+            if (iSCA==1) titleSC = "chain";
+            if (iCLR==kMMCenter) {
+                titleSC = "";
+                if (iSCA==1) titleCLR = "others";
+            }
+            e_info << titleCLR << " " << titleSC << " " << fHitArray[iCLR][iSCA] -> GetEntries() << endl;;
         }
     }
 
-    auto iCvs = 0;
-    for (auto bnn : {fBnnXY,fBnnXZ,fBnnZY})
+    if (fGraphZXY[0]==nullptr)
     {
-        TString title = TString("[event-") + fDrawEntry + "]  " + bnn->fMainTitle;
-        auto hist = bnn -> fHist2;
-        hist -> SetTitle(title);
-        if (fJustXY) {
-            if (bnn!=fBnnXY)
-                continue;
-            fCvsAll -> cd();
-        }
-        else
-            fCvsAll -> cd(++iCvs);
-        hist -> Draw("colz");
-        auto line1 = new TLine(fBeamRangeX1,fBnnY->fMin[0],fBeamRangeX1,fBnnY->fMax[0]);
-        auto line2 = new TLine(fBeamRangeX2,fBnnY->fMin[0],fBeamRangeX2,fBnnY->fMax[0]);
-        auto line3 = new TLine(fBnnX->fMin[0],fBeamRangeY1,fBnnX->fMax[0],fBeamRangeY1);
-        auto line4 = new TLine(fBnnX->fMin[0],fBeamRangeY2,fBnnX->fMax[0],fBeamRangeY2);
-        auto line5 = new TLine(fBeamRangeX1,fBnnZ->fMin[0],fBeamRangeX1,fBnnZ->fMax[0]);
-        auto line6 = new TLine(fBeamRangeX2,fBnnZ->fMin[0],fBeamRangeX2,fBnnZ->fMax[0]);
-        auto line7 = new TLine(fBnnZ->fMin[0],fBeamRangeY1,fBnnZ->fMax[0],fBeamRangeY1);
-        auto line8 = new TLine(fBnnZ->fMin[0],fBeamRangeY2,fBnnZ->fMax[0],fBeamRangeY2);
-        for (auto line : {line1, line2, line3, line4, line5, line6, line7, line8}) {
-            line -> SetLineColor(kOrange-3);
-            line -> SetLineStyle(2);
-            line -> SetLineWidth(1);
-        }
-        if (bnn==fBnnXZ) {
-            line5 -> Draw("samel");
-            line6 -> Draw("samel");
-        }
-        if (bnn==fBnnXY) {
-            line1 -> Draw("samel");
-            line2 -> Draw("samel");
-            line3 -> Draw("samel");
-            line4 -> Draw("samel");
-        }
-        if (bnn==fBnnZY) {
-            line7 -> Draw("samel");
-            line8 -> Draw("samel");
-        }
+        fGraphZXY[0] = new TGraph2DErrors();
+        fGraphZXY[1] = new TGraph2DErrors();
+        fGraphZXY[2] = new TGraph2DErrors();
+        fGraphZXY[3] = new TGraph2DErrors();
+        fGraphZXY[0] -> SetMarkerStyle(24);
+        fGraphZXY[1] -> SetMarkerStyle(25);
+        fGraphZXY[2] -> SetMarkerStyle(25);
+        fGraphZXY[3] -> SetMarkerStyle(26);
+        fGraphZXY[0] -> SetMarkerColor(kRed);
+        fGraphZXY[1] -> SetMarkerColor(kBlack);
+        fGraphZXY[2] -> SetMarkerColor(kBlue);
+        fGraphZXY[3] -> SetMarkerColor(kGreen+1);
     }
+    fGraphZXY[0] -> Clear();
+    fGraphZXY[1] -> Clear();
+    fGraphZXY[2] -> Clear();
 
-    if (!fJustXY) {
-        fCvsAll -> cd(++iCvs);
-        fBnnYDiff -> fHist -> Draw();
-    }
-
-    fTrackerXY -> Transform();
-    fTrackerXY -> DrawToPads(fCvsTest->cd(1),fCvsTest->cd(2));
-
-    auto graphData = fTrackerXY -> GetDataGraphImageSapce();
-    graphData -> SetMarkerStyle(20);
-    graphData -> SetLineColor(kGray+1);
-    graphData -> SetMarkerSize(0.3);
-    fCvsParam -> cd();
-    auto histParam = fTrackerXY -> GetHistParamSpace("paramSpace");
-    histParam -> Draw("colz");
-    auto histParam2 = fTrackerXY -> GetHistParamSpace("paramSpace2");
-    histParam -> Draw("samebox");
-    if (fJustXY) fCvsAll -> cd();
-    else fCvsAll -> cd(1);
-    graphData -> Draw("samepz");
-    //for (auto i : {1,2,3,4}) {
-    for (auto i : {1}) {
-        auto paramPointAtMax = fTrackerXY -> FindNextMaximumParamPoint();
-        auto graphRBand = paramPointAtMax -> GetRBandInImageSpace(-150,150,0,350);
-        graphRBand -> SetLineColor(kBlue);
-        //graphRBand -> SetLineColor(i);
-        if (fJustXY) fCvsAll -> cd();
-        else fCvsAll -> cd(1);
-        graphRBand -> Draw("samel");
-        //fCvsParam -> cd(i);
-        //auto histParam = fTrackerXY -> GetHistParamSpace(Form("paramSpace+%d",i));
-        //histParam -> Draw("colz");
-        fCvsParam -> cd();
-        auto graph2 = paramPointAtMax -> GetRangeGraphInParamSpace(1);
-        graph2 -> Draw("samel");
-        fTrackerXY -> CleanLastParamPoint(0,0);
-    }
-}
-
-void UnfoldHits()
-{
-    fBnnYDiff -> fHist -> Reset("ICES");
-    fUnfoldedArray -> Clear("C");
-
-    auto numHitsStrip = fLeftStripArray -> GetEntries();
-    auto numHitsChain = fLeftChainArray -> GetEntries();
-    e_info << "Left: " << numHitsStrip << " strip-hits and " << numHitsChain << " chain-hits" << endl;
-    for (auto iHitStrip=0; iHitStrip<numHitsStrip; ++iHitStrip) {
-        auto hitStrip = (LKHit*) fLeftStripArray -> At(iHitStrip);
-        for (auto iHitChain=0; iHitChain<numHitsChain; ++iHitChain)
+    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
+    {
+        for (auto iSCA : {kStrip,kChain,kStripAndChain})
         {
-            auto hitChain = (LKHit*) fLeftChainArray -> At(iHitChain);
+            fTrackerXY[iCLR][iSCA] -> Clear();
+            fTrackerZY[iCLR][iSCA] -> Clear();
+            fTrackerXZ[iCLR][iSCA] -> Clear();
+        }
+    }
 
-            auto yChain = hitChain -> Y();
-            auto yStrip = hitStrip -> Y();
-            double yDiff = abs(yChain-yStrip);
-            fBnnYDiff -> fHist -> Fill(yDiff);
-            if (yDiff<fYDiffCut)
+    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
+    {
+        for (auto iSCA : {kStrip,kChain})
+        {
+            auto numHits = fHitArray[iCLR][iSCA] -> GetEntries();
+            for (auto iHit=0; iHit<numHits; ++iHit)
             {
-                auto x = hitChain -> X();
-                auto y = 0.5 * (yChain + yStrip);
-                auto z = hitStrip -> Z();
-                auto w = 0.5 * (hitChain->W() + hitStrip->W());
-                //lk_debug << "uhit-" << iHitChain << "/" << iHitStrip << ", dy=" << abs(yChain-yStrip) << " (" << x << ", " << y << ", " << z << " | " << w << ")" << endl;
-                auto hit = (LKHit*) fUnfoldedArray -> ConstructedAt(fUnfoldedArray->GetEntries());
-                hit -> SetPosition(x,y,z);
-                hit -> SetCharge(w);
+                auto hit = (LKHit*) fHitArray[iCLR][iSCA] -> At(iHit);
+                auto w = hit -> W();
+                auto x = hit -> X();
+                auto y = 350 - (hit -> Y());
+                auto z = hit -> Z();
+                auto dx = hit->GetDX();
+                auto dy = hit->GetDY();
+                auto dz = hit->GetDZ();
+
+                fTrackerXY[iCLR][iSCA] -> AddImagePoint(x,dx,y,dy,1);
+                fTrackerZY[iCLR][iSCA] -> AddImagePoint(z,dz,y,dy,1);
+                fTrackerXZ[iCLR][iSCA] -> AddImagePoint(x,dx,z,dz,1);
+                fTrackerXY[iCLR][kStripAndChain] -> AddImagePoint(x,dx,y,dy,1);
+                fTrackerZY[iCLR][kStripAndChain] -> AddImagePoint(z,dz,y,dy,1);
+                fTrackerXZ[iCLR][kStripAndChain] -> AddImagePoint(x,dx,z,dz,1);
+
+                fGraphZXY[iCLR] -> SetPoint(fGraphZXY[iCLR]->GetN(),z,x,y);
+                fGraphZXY[iCLR] -> SetPointError(fGraphZXY[iCLR]->GetN()-1,dz,dx,dy);
+                if (iCLR==0&&iSCA==1) {
+                    fGraphZXY[3] -> SetPoint(fGraphZXY[3]->GetN(),z,x,y);
+                    fGraphZXY[3] -> SetPointError(fGraphZXY[3]->GetN()-1,dz,dx,dy);
+                }
             }
         }
     }
 
-    numHitsStrip = fRightStripArray -> GetEntries();
-    numHitsChain = fRightChainArray -> GetEntries();
-    e_info << "Right: " << numHitsStrip << " strip-hits and " << numHitsChain << " chain-hits" << endl;
-    for (auto iHitStrip=0; iHitStrip<numHitsStrip; ++iHitStrip) {
-        auto hitStrip = (LKHit*) fRightStripArray -> At(iHitStrip);
-        for (auto iHitChain=0; iHitChain<numHitsChain; ++iHitChain)
-        {
-            auto hitChain = (LKHit*) fRightChainArray -> At(iHitChain);
+    auto TransformAndFit = [eventNumber](int iView, int iCLR, LKHTLineTracker* tk[3][3], TVirtualPad *padImage, TVirtualPad *padParam=nullptr)
+    {
+        ejungwoo::Binning *bnn = fBnnXY;
+        if (iView==kTopView) bnn = fBnnXZ;
+        else if (iView==kSideView) bnn = fBnnZY;
+        const char* mainTitle0 = bnn -> fMainTitle.Data();
 
-            auto yChain = hitChain -> Y();
-            auto yStrip = hitStrip -> Y();
-            double yDiff = abs(yChain-yStrip);
-            fBnnYDiff -> fHist -> Fill(yDiff);
-            if (yDiff<fYDiffCut)
+        padImage -> cd();
+        if (padImage->GetListOfPrimitives()->GetEntries()==0) {
+            bnn -> fHist2 -> SetTitle(Form("[event-%d(%d)] %s",fDrawEntry,eventNumber,mainTitle0));
+            bnn -> fHist2 -> Draw("colz");
+        }
+
+        for (auto iSCA : {kStrip,kChain})
+        {
+            auto graph = tk[iCLR][iSCA] -> GetDataGraphImageSapce();
+            graph -> SetMarkerStyle(20);
+            if (iSCA==kStrip) graph -> SetMarkerColor(kBlack);
+            if (iSCA==kChain) graph -> SetMarkerColor(kBlue);
+            if (iSCA==kStripAndChain) graph -> SetMarkerColor(kViolet);
+            if (iCLR==kMMCenter && iSCA==kStrip) graph -> SetMarkerColor(kRed);
+            if (iCLR==kMMCenter && iSCA==kChain) graph -> SetMarkerColor(kGreen+1);
+            graph -> SetLineColor(kGray);
+            graph -> SetMarkerSize(0.8);
+            graph -> Draw("same pz");
+
+        }
+
+        int iSCA = ((iView==kFrontView)?kChain:kStrip);
+        auto tkLAll = tk[iCLR][kStripAndChain];
+        auto tkLFit = tk[iCLR][iSCA];
+
+        LKLinearTrack* track = nullptr;
+
+        if (padParam!=nullptr)
+        {
+            LKHTLineTracker* tkTrf = tkLAll;
+            LKHTLineTracker* tkFit = tkLFit;
+            tkTrf -> Transform();
+            const char* titleCLR = "C";
+            if (iCLR==kMMLeft) titleCLR = "L";
+            if (iCLR==kMMRight) titleCLR = "R";
+            auto histParam = tkTrf -> GetHistParamSpace(Form("paramSpace%s_%d_%d",titleCLR,fDrawEntry,iView));
+            histParam -> SetTitle(Form("%s (%s) %s",mainTitle0, ((iCLR==kMMLeft)?"L":"R"), histParam->GetTitle()));
+            auto paramPoint = tkTrf -> FindNextMaximumParamPoint();
+            auto graphRange = paramPoint -> GetRangeGraphInParamSpace(1);
+
+            padParam -> cd();
+            histParam -> Draw("colz");
+            graphRange -> Draw("samel");
+
+            if (iCLR!=kMMCenter && iView!=kTopView && tkFit->GetNumImagePoints()>3)
             {
-                auto x = hitChain -> X();
-                auto y = 0.5 * (yChain + yStrip);
-                auto z = hitStrip -> Z();
-                auto w = 0.5 * (hitChain->W() + hitStrip->W());
-                //e_info << "uhit-" << iHitChain << "/" << iHitStrip << ", dy=" << abs(yChain-yStrip) << " (" << x << ", " << y << ", " << z << " | " << w << ")" << endl;
-                auto hit = (LKHit*) fUnfoldedArray -> ConstructedAt(fUnfoldedArray->GetEntries());
-                hit -> SetPosition(x,y,z);
-                hit -> SetCharge(w);
+                track = tkFit -> FitTrackWithParamPoint(paramPoint);
+                auto graphRBand = paramPoint -> GetRBandInImageSpace(tkTrf->GetRangeImageSpace(0,0),tkTrf->GetRangeImageSpace(0,1),tkTrf->GetRangeImageSpace(1,0),tkTrf->GetRangeImageSpace(1,1));
+                graphRBand -> SetLineColor(kBlue);
+                auto graphTrack = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
+                graphRBand -> SetLineColor(kBlue);
+                graphTrack -> SetLineColor(kRed);
+                if (iCLR==kMMRight) {
+                    graphRBand -> SetLineColor(kGreen+1);
+                    graphTrack -> SetLineColor(kViolet);
+                }
+
+                padImage -> cd();
+                graphRBand -> Draw("samel");
+                graphTrack -> Draw("samel");
             }
         }
+
+        return track;
+    };
+
+    fCvsAll -> cd(1) -> Clear();
+    fCvsAll -> cd(2) -> Clear();
+    fCvsAll -> cd(3) -> Clear();
+    fCvsAll -> cd(4) -> Clear();
+
+    TransformAndFit(kTopView,   kMMCenter, fTrackerXZ, fCvsAll->cd(3));
+    TransformAndFit(kTopView,   kMMLeft,   fTrackerXZ, fCvsAll->cd(3));
+    TransformAndFit(kTopView,   kMMRight,  fTrackerXZ, fCvsAll->cd(3));
+    TransformAndFit(kFrontView, kMMCenter, fTrackerXY, fCvsAll->cd(1), fCvsParam->cd(3));
+    TransformAndFit(kSideView,  kMMCenter, fTrackerZY, fCvsAll->cd(2), fCvsParam->cd(6));
+
+    auto trackFL = TransformAndFit(kFrontView, kMMLeft,  fTrackerXY, fCvsAll->cd(1), fCvsParam->cd(1));
+    auto trackSL = TransformAndFit(kSideView,  kMMLeft,  fTrackerZY, fCvsAll->cd(2), fCvsParam->cd(2));
+    auto trackFR = TransformAndFit(kFrontView, kMMRight, fTrackerXY, fCvsAll->cd(1), fCvsParam->cd(4));
+    auto trackSR = TransformAndFit(kSideView,  kMMRight, fTrackerZY, fCvsAll->cd(2), fCvsParam->cd(5));
+
+    LKGeoLine lineL;
+    LKGeoLine lineR;
+    bool existLTrack = false;
+    bool existRTrack = false;
+
+    if (trackFL!=nullptr && trackSL!=nullptr)
+    {
+        existLTrack = true;
+        auto point1 = trackFL -> GetPoint1();
+        auto point2 = trackSL -> GetPoint2();
+        point1.SetXYZ(point1.X(), point1.Y(), 0);
+        point2.SetXYZ(0, point2.Y(), point2.X());
+        auto directionF = trackFL -> Direction();
+        auto directionS = trackSL -> Direction();
+        TVector3 normal1(-directionF.Y(), directionF.X(), 0);
+        TVector3 normal2(0, directionS.X(), -directionS.Y());
+        LKGeoPlaneWithCenter plane1(point1, normal1);
+        LKGeoPlaneWithCenter plane2(point2, normal2);
+        lineL = plane1.GetCrossSectionLine(plane2);
+        auto vertex1 = lineL.GetPointAtX(0);
+        auto vertex2 = lineL.GetPointAtX(fBnnX->X1());
+        lineL.SetLine(vertex1,vertex2);
     }
-    e_info << "unfolded " << fUnfoldedArray -> GetEntries() << " hits" << endl;
+    if (trackFR!=nullptr && trackSR!=nullptr)
+    {
+        existRTrack = true;
+        auto point1 = trackFR -> GetPoint1();
+        auto point2 = trackSR -> GetPoint2();
+        point1.SetXYZ(point1.X(), point1.Y(), 0);
+        point2.SetXYZ(0, point2.Y(), point2.X());
+        auto directionF = trackFR -> Direction();
+        auto directionS = trackSR -> Direction();
+        TVector3 normal1(-directionF.Y(), directionF.X(), 0);
+        TVector3 normal2(0, directionS.X(), -directionS.Y());
+        LKGeoPlaneWithCenter plane1(point1, normal1);
+        LKGeoPlaneWithCenter plane2(point2, normal2);
+        lineR = plane1.GetCrossSectionLine(plane2);
+        auto vertex1 = lineR.GetPointAtX(0);
+        auto vertex2 = lineR.GetPointAtX(fBnnX->X2());
+        lineR.SetLine(vertex1,vertex2);
+    }
+
+    fCvsAll -> cd(4);
+    fHistZXY -> Draw();
+    if (fGraphZXY[0]->GetN()>0) fGraphZXY[0] -> Draw("same p error");
+    if (fGraphZXY[1]->GetN()>0) fGraphZXY[1] -> Draw("same p error");
+    if (fGraphZXY[2]->GetN()>0) fGraphZXY[2] -> Draw("same p error");
+    if (fGraphZXY[3]->GetN()>0) fGraphZXY[3] -> Draw("same p error");
+    fCvsAll -> Modified();
+    fCvsAll -> Update();
+
+    if (existLTrack) {
+        auto graphFitL = lineL.GetGraphZXY();
+        graphFitL -> SetMarkerColor(kRed);
+        graphFitL -> SetLineColor(kRed);
+        graphFitL -> Draw("same p0 line");
+    }
+    if (existRTrack) {
+        auto graphFitR = lineR.GetGraphZXY();
+        graphFitR -> SetMarkerColor(kViolet);
+        graphFitR -> SetLineColor(kViolet);
+        graphFitR -> Draw("same p0 line");
+    }
 }

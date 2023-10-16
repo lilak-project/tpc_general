@@ -332,6 +332,7 @@ namespace ejungwoo
             double fMax[3] = {100,100,100};
             TH1D* fHist = nullptr;
             TH2D* fHist2 = nullptr;
+            TH3D* fHist3 = nullptr;
             TH2Poly* fHist2Poly = nullptr;
 
             Binning() {}
@@ -347,6 +348,15 @@ namespace ejungwoo
                 Set(*binning1,0);
                 Set(*binning2,1);
             }
+            Binning(Binning* binning1, Binning* binning2, Binning* binning3) {
+                Set(*binning1,0);
+                Set(*binning2,1);
+                Set(*binning3,2);
+            }
+
+            double NX() { return fNumBins[0]; }
+            double X1() { return fMin[0]; }
+            double X2() { return fMax[0]; }
 
             void SetMainTitle(TString title) { fMainTitle = title; }
             void SetNameMainTitle(TString name, TString title) { fName = name; fMainTitle = title; }
@@ -415,6 +425,16 @@ namespace ejungwoo
                 fHist2 = new TH2D(name,title+";"+fAxisTitle[0]+";"+fAxisTitle[1], fNumBins[0],fMin[0],fMax[0], fNumBins[1],fMin[1],fMax[1]);
                 fHist2 -> SetStats(0);
                 return fHist2;
+            }
+
+            TH3D* NewHist3(TString name="", TString title="")
+            {
+                if (name.IsNull()) name = fName;
+                if (name.IsNull()) name = "hist3d";
+                if (title.IsNull()) title = fMainTitle;
+                fHist3 = new TH3D(name,title+";"+fAxisTitle[0]+";"+fAxisTitle[1]+";"+fAxisTitle[2], fNumBins[0],fMin[0],fMax[0], fNumBins[1],fMin[1],fMax[1], fNumBins[2],fMin[2],fMax[2]);
+                fHist3 -> SetStats(0);
+                return fHist3;
             }
 
             Binning* Add(Binning* binning2) {

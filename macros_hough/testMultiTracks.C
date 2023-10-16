@@ -1,6 +1,6 @@
 #include "ejungwooA.h"
 
-#include "LKHoughTransformTracker.cpp"
+#include "LKHTLineTracker.cpp"
 
 void testMultiTracks()
 {
@@ -34,11 +34,11 @@ void testMultiTracks()
     auto hist = new TH2D("hist",Form("%d",seed),nx,x1,x2,ny,y1,y2);
     hist -> SetStats(0);
 
-    auto tk1 = new LKHoughTransformTracker();
+    auto tk1 = new LKHTLineTracker();
     tk1 -> SetTransformCenter(xt, yt);
     tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
-    tk1 -> SetCorrelateBoxBand();
+    tk1 -> SetCorrelateBoxRBand();
 
     auto func = new TF1("track",Form("[0]*(x-%f)+[1]+%f",(x1+x2)/2.,(y1+y2)/2.),x1,x2);
     for (auto iTrack=0; iTrack<numTracks; ++iTrack) {
@@ -73,12 +73,12 @@ void testMultiTracks()
         }
     }
 
-    auto cvs = ejungwoo::Canvas("cvs",80,90,4,3);
+    auto cvs = ejungwoo::Canvas("cvs",80,90,4,2);
 
     int iCvs = 0;
     for (auto iTrack=0; iTrack<numTracks; ++iTrack)
     {
-        auto numIteration = 3;
+        auto numIteration = 2;
         for (auto iTransform=0; iTransform<numIteration; ++iTransform)
         {
             tk1 -> Transform();
@@ -128,7 +128,7 @@ void testMultiTracks()
             graphImageAtMax -> Draw("samelf");
             if (graphImageReinit!=nullptr) graphImageReinit -> Draw("samelf");
 
-            auto graphImageData = tk1 -> GetGraphImageSapce();
+            auto graphImageData = tk1 -> GetDataGraphImageSapce();
             graphImageData -> SetMarkerStyle(20);
             if (tk1 -> IsCorrelatePointBand()) graphImageData -> Draw("samepx");
             if (tk1 -> IsCorrelateBoxLine()) graphImageData -> Draw("samepz");

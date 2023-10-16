@@ -105,35 +105,35 @@ void LKHTLineTracker::SetCorrelatePointBand()
 {
     fCorrelateType = kCorrelatePointBand;
     if (fWeightingFunction==nullptr)
-        fWeightingFunction = new LKHoughWFInverse();
+        fWeightingFunction = new LKHoughWFConst();
 }
 
 void LKHTLineTracker::SetCorrelateBoxLine()
 {
     fCorrelateType = kCorrelateBoxLine;
     if (fWeightingFunction==nullptr)
-        fWeightingFunction = new LKHoughWFInverse();
+        fWeightingFunction = new LKHoughWFConst();
 }
 
 void LKHTLineTracker::SetCorrelateBoxRBand()
 {
     fCorrelateType = kCorrelateBoxRBand;
     if (fWeightingFunction==nullptr)
-        fWeightingFunction = new LKHoughWFInverse();
+        fWeightingFunction = new LKHoughWFConst();
 }
 
 void LKHTLineTracker::SetCorrelateBoxBand()
 {
     fCorrelateType = kCorrelateBoxBand;
     if (fWeightingFunction==nullptr)
-        fWeightingFunction = new LKHoughWFInverse();
+        fWeightingFunction = new LKHoughWFConst();
 }
 
 void LKHTLineTracker::SetCorrelateDistance()
 {
     fCorrelateType = kCorrelateDistance;
     if (fWeightingFunction==nullptr)
-        fWeightingFunction = new LKHoughWFInverse();
+        fWeightingFunction = new LKHoughWFConst();
 }
 
 void LKHTLineTracker::SetImageSpaceRange(int nx, double x1, double x2, int ny, double y1, double y2)
@@ -785,11 +785,11 @@ TH2D* LKHTLineTracker::GetHistImageSpace(TString name, TString title)
 
 TGraphErrors* LKHTLineTracker::GetDataGraphImageSapce()
 {
-    if (fGraphImageData==nullptr) {
+    //if (fGraphImageData==nullptr) {
         fGraphImageData = new TGraphErrors();
-        fGraphImageData -> SetMarkerSize(0.5);
-    }
-    fGraphImageData -> Set(0);
+        //fGraphImageData -> SetMarkerSize(0.5);
+    //}
+    //fGraphImageData -> Set(0);
     for (auto iPoint=0; iPoint<fNumImagePoints; ++iPoint) {
         auto imagePoint = (LKImagePoint*) fImagePointArray -> At(iPoint);
         fGraphImageData -> SetPoint(iPoint, imagePoint->GetCenterX(), imagePoint->GetCenterY());

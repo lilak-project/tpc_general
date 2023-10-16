@@ -1,6 +1,6 @@
 #include "ejungwooA.h"
 
-#include "LKHoughTransformTracker.cpp"
+#include "LKHTLineTracker.cpp"
 
 void testIterate()
 {
@@ -34,7 +34,7 @@ void testIterate()
     auto hist = new TH2D("hist",Form("%d",seed),nx,x1,x2,ny,y1,y2);
     hist -> SetStats(0);
 
-    auto tk1 = new LKHoughTransformTracker();
+    auto tk1 = new LKHTLineTracker();
     tk1 -> SetTransformCenter(xt, yt);
     tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
@@ -69,7 +69,7 @@ void testIterate()
         }
     }
 
-    auto DrawParamSpace = [](LKHoughTransformTracker* tk, int idx)
+    auto DrawParamSpace = [](LKHTLineTracker* tk, int idx)
     {
         auto hist = tk -> GetHistParamSpace(Form("paramSpace%d",idx));
         hist -> Draw("colz");
@@ -77,7 +77,7 @@ void testIterate()
         //hist -> Draw("arr");
     };
     
-    auto DrawImageSpace = [nx,x1,x2,wx,ny,y1,y2,wy](LKHoughTransformTracker *tk, int idx)
+    auto DrawImageSpace = [nx,x1,x2,wx,ny,y1,y2,wy](LKHTLineTracker *tk, int idx)
     {
         auto hist = new TH2D(Form("frame%d",idx), "", nx, -150, +150, ny, 150, 450);
         auto hist2 = tk -> GetHistImageSpace(Form("imageSpace%d",idx));
@@ -112,7 +112,7 @@ void testIterate()
         marker -> Draw("same");
     };
 
-    auto FindAndDraw = [x1,x2,y1,y2](LKHoughTransformTracker* tk, Int_t numPoints, TVirtualPad* pad, Color_t color, double cleanRange=-1)
+    auto FindAndDraw = [x1,x2,y1,y2](LKHTLineTracker* tk, Int_t numPoints, TVirtualPad* pad, Color_t color, double cleanRange=-1)
     {
         gStyle -> SetPalette(kBird);
         for (auto iTrack=0; iTrack<numPoints; ++iTrack)
@@ -189,7 +189,7 @@ void testIterate()
         histImage -> Draw("colz");
         graphImageAtMax -> Draw("samelf");
         graphImageReinit -> Draw("samelf");
-        auto graph = tk1 -> GetGraphImageSapce();
+        auto graph = tk1 -> GetDataGraphImageSapce();
         graph -> SetMarkerStyle(20);
         graph -> SetMarkerSize(0.3);
         if (tk1 -> IsCorrelatePointBand()) graph -> Draw("samepx");

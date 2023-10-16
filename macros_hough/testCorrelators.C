@@ -1,6 +1,6 @@
 #include "ejungwooA.h"
 
-#include "LKHoughTransformTracker.cpp"
+#include "LKHTLineTracker.cpp"
 
 void testCorrelators()
 {
@@ -13,10 +13,10 @@ void testCorrelators()
     gRandom -> SetSeed(seed);
 
     int numTracks = 1;
-    int numBinsT = 30;
-    int numBinsR = 30;
-    int nx = 30;
-    int ny = 30;
+    int numBinsT = 50;
+    int numBinsR = 50;
+    int nx = 50;
+    int ny = 50;
     double x1 = -120;
     double x2 = 120;
     double y1 = 150;
@@ -35,26 +35,26 @@ void testCorrelators()
     auto hist = new TH2D("hist",Form("%d",seed),nx,x1,x2,ny,y1,y2);
     hist -> SetStats(0);
 
-    auto tk1 = new LKHoughTransformTracker();
+    auto tk1 = new LKHTLineTracker();
     tk1 -> SetTransformCenter(xt, yt);
     tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk1 -> SetCorrelatePointBand();
 
-    auto tk2 = new LKHoughTransformTracker();
+    auto tk2 = new LKHTLineTracker();
     tk2 -> SetTransformCenter(xt, yt);
     tk2 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk2 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk2 -> SetCorrelateBoxLine();
 
-    auto tk3 = new LKHoughTransformTracker();
+    auto tk3 = new LKHTLineTracker();
     tk3 -> SetTransformCenter(xt, yt);
     tk3 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk3 -> SetParamSpaceBins(numBinsR, numBinsT);
     //tk3 -> SetCorrelateBoxBand();
     tk3 -> SetCorrelateBoxRBand();
 
-    auto tk4 = new LKHoughTransformTracker();
+    auto tk4 = new LKHTLineTracker();
     tk4 -> SetTransformCenter(xt, yt);
     tk4 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk4 -> SetParamSpaceBins(numBinsR, numBinsT);
@@ -110,7 +110,6 @@ void testCorrelators()
 
     int iCvs = 0;
     for (auto tk : {tk1, tk2, tk3, tk4})
-    //for (auto tk : {tk3})
     {
         tk -> Transform();
 
@@ -132,12 +131,12 @@ void testCorrelators()
         marker -> SetMarkerColor(kBlack);
         marker -> Draw("same");
 
+        auto graphData = tk -> GetDataGraphImageSapce();
+
         for (auto iTrack=0; iTrack<numTracks; ++iTrack)
         {
-            //auto paramPoint = tk -> FindNextMaximumParamPoint2();
             auto paramPoint = tk -> FindNextMaximumParamPoint();
             tk -> CleanLastParamPoint();//cleanRange,cleanRange);
-            //tk -> CleanLastParamPoint(0,cleanRange);
             if (paramPoint -> fWeight<-1) break;
             cvs -> cd(iCvs);
 
@@ -161,14 +160,13 @@ void testCorrelators()
         }
 
         cvs -> cd(iCvs);
-        auto graph = tk -> GetGraphImageSapce();
-        graph -> SetMarkerStyle(20);
-        graph -> SetMarkerSize(0.3);
-        if (tk -> IsCorrelatePointBand()) graph -> Draw("samepx");
-        if (tk -> IsCorrelateBoxLine()) graph -> Draw("samepz");
-        if (tk -> IsCorrelateBoxBand()) graph -> Draw("samepz");
-        if (tk -> IsCorrelateBoxRBand()) graph -> Draw("samepz");
-        if (tk -> IsCorrelateDistance()) graph -> Draw("samepx");
+        graphData -> SetMarkerStyle(20);
+        graphData -> SetMarkerSize(0.5);
+        if (tk -> IsCorrelatePointBand()) graphData -> Draw("samepx");
+        if (tk -> IsCorrelateBoxLine()) graphData -> Draw("samepz");
+        if (tk -> IsCorrelateBoxBand()) graphData -> Draw("samepz");
+        if (tk -> IsCorrelateBoxRBand()) graphData -> Draw("samepz");
+        if (tk -> IsCorrelateDistance()) graphData -> Draw("samepx");
     }
 
     //e_save_all();
