@@ -196,7 +196,6 @@ void testIterate()
         if (tk1 -> IsCorrelateBoxLine()) graph -> Draw("samepz");
         if (tk1 -> IsCorrelateBoxRibbon()) graph -> Draw("samepz");
         if (tk1 -> IsCorrelateBoxBand()) graph -> Draw("samepz");
-        if (tk1 -> IsCorrelateDistance()) graph -> Draw("samepx");
     }
 
     e_save_all();

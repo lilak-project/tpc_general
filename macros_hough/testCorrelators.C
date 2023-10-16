@@ -7,14 +7,14 @@ void testCorrelators()
     gStyle -> SetOptStat(0);
 
     int seed = time(0);
-    //seed = 1694313874;
     seed = 1694408477;
     cout << seed << endl;
     gRandom -> SetSeed(seed);
 
+    int numRandom = 80;
     int numTracks = 1;
-    int numBinsT = 50;
-    int numBinsR = 50;
+    int numBinsT = 100;
+    int numBinsR = 100;
     int nx = 50;
     int ny = 50;
     double x1 = -120;
@@ -30,7 +30,8 @@ void testCorrelators()
     double yErrMax = 1*dy;
     double xt = (x1+x2)/2;
     double yt = y2;
-    int numRandom = numBinsT;
+    xt = -50;
+    yt = -250;
 
     auto hist = new TH2D("hist",Form("%d",seed),nx,x1,x2,ny,y1,y2);
     hist -> SetStats(0);
@@ -41,25 +42,17 @@ void testCorrelators()
     tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk1 -> SetCorrelatePointBand();
 
-    auto tk2 = new LKHTLineTracker();
-    tk2 -> SetTransformCenter(xt, yt);
-    tk2 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
-    tk2 -> SetParamSpaceBins(numBinsR, numBinsT);
-    tk2 -> SetCorrelateBoxLine();
-
     auto tk3 = new LKHTLineTracker();
     tk3 -> SetTransformCenter(xt, yt);
     tk3 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk3 -> SetParamSpaceBins(numBinsR, numBinsT);
-    //tk3 -> SetCorrelateBoxRibbon();
     tk3 -> SetCorrelateBoxBand();
 
     auto tk4 = new LKHTLineTracker();
     tk4 -> SetTransformCenter(xt, yt);
     tk4 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk4 -> SetParamSpaceBins(numBinsR, numBinsT);
-    tk4 -> SetCorrelateDistance();
-    tk4 -> SetMaxWeightingDistance(0.1*sqrt(wx*wx+wy+wy));
+    tk4 -> SetCorrelateBoxRibbon();
 
     auto func = new TF1("track",Form("[0]*(x-%f)+[1]+%f",(x1+x2)/2.,(y1+y2)/2.),x1,x2);
     for (auto iTrack=0; iTrack<numTracks; ++iTrack) {
@@ -86,7 +79,6 @@ void testCorrelators()
                 auto xCenter = hist->GetXaxis()->GetBinCenter(binx);
                 auto yCenter = hist->GetYaxis()->GetBinCenter(biny);
                 tk1 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
-                tk2 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
                 tk3 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
                 tk4 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
             }
@@ -106,16 +98,16 @@ void testCorrelators()
         marker -> Draw("same");
     };
 
-    auto cvs = ejungwoo::Canvas("cvs",100,90,4,2);
+    auto cvs = ejungwoo::Canvas("cvs",100,90,3,2);
 
     int iCvs = 0;
-    for (auto tk : {tk1, tk2, tk3, tk4})
+    for (auto tk : {tk1, tk3, tk4})
     {
         tk -> Transform();
 
         ++iCvs;
 
-        cvs -> cd(iCvs+4);
+        cvs -> cd(iCvs+3);
         auto histParam = tk -> GetHistParamSpace(Form("paramSpace%d",iCvs));
         histParam -> Draw("colz");
 
@@ -141,11 +133,9 @@ void testCorrelators()
             cvs -> cd(iCvs);
 
             TGraph *graph;
-            if (tk -> IsCorrelatePointBand()) graph = paramPoint -> GetRibbonInImageSpace(x1,x2,y1,y2);
-            if (tk -> IsCorrelateBoxLine()) graph = paramPoint -> GetLineInImageSpace(0,x1,x2,y1,y2);
-            if (tk -> IsCorrelateBoxRibbon()) graph = paramPoint -> GetRibbonInImageSpace(x1,x2,y1,y2);
+            if (tk -> IsCorrelatePointBand()) graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
             if (tk -> IsCorrelateBoxBand()) graph = paramPoint -> GetBandInImageSpace(x1,x2,y1,y2);
-            if (tk -> IsCorrelateDistance()) graph = paramPoint -> GetLineInImageSpace(0,x1,x2,y1,y2);
+            if (tk -> IsCorrelateBoxRibbon()) graph = paramPoint -> GetRibbonInImageSpace(x1,x2,y1,y2);
             graph -> SetFillColor(kYellow);
             graph -> SetFillStyle(3344);
             graph -> Draw("samelf");
@@ -154,19 +144,19 @@ void testCorrelators()
             auto graph2 = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
             graph2 -> Draw("samel");
 
-            cvs -> cd(iCvs+4);
+            cvs -> cd(iCvs+3);
             auto graphHoughAtMax = paramPoint -> GetRangeGraphInParamSpace(1);
             graphHoughAtMax -> Draw("samel");
         }
 
         cvs -> cd(iCvs);
-        graphData -> SetMarkerStyle(20);
-        graphData -> SetMarkerSize(0.5);
-        if (tk -> IsCorrelatePointBand()) graphData -> Draw("samepx");
-        if (tk -> IsCorrelateBoxLine()) graphData -> Draw("samepz");
+        if (tk -> IsCorrelatePointBand())  {
+            graphData -> SetMarkerStyle(20);
+            graphData -> SetMarkerSize(0.2);
+            graphData -> Draw("samepx");
+        }
         if (tk -> IsCorrelateBoxRibbon()) graphData -> Draw("samepz");
         if (tk -> IsCorrelateBoxBand()) graphData -> Draw("samepz");
-        if (tk -> IsCorrelateDistance()) graphData -> Draw("samepx");
     }
 
     //e_save_all();
