@@ -1,4 +1,5 @@
 #include "TTPulseAnalysisTask.h"
+#include "TTEventHeader.h"
 #include "MMChannel.h"
 #include "LKHit.h"
 
@@ -15,13 +16,15 @@ bool TTPulseAnalysisTask::Init()
 
     fDetector = (TexAT2 *) fRun -> GetDetector();
     fDetector -> InitChannelAnalyzer();
+
     fChannelArray = fRun -> GetBranchA("RawData");
-    fHitArrayCenter = fRun -> RegisterBranchA("Hit_Center","LKHit",100);
-    fHitArrayLStrip = fRun -> RegisterBranchA("Hit_LStrip","LKHit",100);
-    fHitArrayLChain = fRun -> RegisterBranchA("Hit_LChain","LKHit",100);
-    fHitArrayRStrip = fRun -> RegisterBranchA("Hit_RStrip","LKHit",100);
-    fHitArrayRChain = fRun -> RegisterBranchA("Hit_RChain","LKHit",100);
-    fHitArrayOthers = fRun -> RegisterBranchA("Hit_Others","LKHit",100);
+
+    fHitArrayCenter = fRun -> RegisterBranchA("HitCenter","LKHit",100);
+    fHitArrayLStrip = fRun -> RegisterBranchA("HitLStrip","LKHit",100);
+    fHitArrayLChain = fRun -> RegisterBranchA("HitLChain","LKHit",100);
+    fHitArrayRStrip = fRun -> RegisterBranchA("HitRStrip","LKHit",100);
+    fHitArrayRChain = fRun -> RegisterBranchA("HitRChain","LKHit",100);
+    fHitArrayOthers = fRun -> RegisterBranchA("HitOthers","LKHit",100);
 
     fITypeLStrip = fDetector -> GetTypeNumber(TexAT2::eType::kLeftStrip);
     fITypeRStrip = fDetector -> GetTypeNumber(TexAT2::eType::kRightStrip);
@@ -30,7 +33,7 @@ bool TTPulseAnalysisTask::Init()
     fITypeLCenter = fDetector -> GetTypeNumber(TexAT2::eType::kLowCenter);
     fITypeHCenter = fDetector -> GetTypeNumber(TexAT2::eType::kHighCenter);
 
-    fRun -> GetInputTree() -> SetBranchAddress("EventHeader",&fEventHeader);
+    fEventHeaderHolder = fRun -> KeepBranchA("EventHeader");
 
     return true;
 }
@@ -44,13 +47,18 @@ void TTPulseAnalysisTask::Exec(Option_t *option)
     fHitArrayRChain -> Clear("C");
     fHitArrayOthers -> Clear("C");
 
-    fCountHitCenter = 0;
-    fCountHitLStrip = 0;
-    fCountHitLChain = 0;
-    fCountHitRStrip = 0;
-    fCountHitRChain = 0;
+    auto eventHeader = (TTEventHeader*) fEventHeaderHolder -> At(0);
+    if (eventHeader->IsGoodEvent()==false)
+        return;
 
     int countHits = 0;
+    int countHitCenter = 0;
+    int countHitLStrip = 0;
+    int countHitLChain = 0;
+    int countHitRStrip = 0;
+    int countHitRChain = 0;
+    int countHitOthers = 0;
+
     double buffer[350];
 
     double xPos;
@@ -107,15 +115,15 @@ void TTPulseAnalysisTask::Exec(Option_t *option)
             auto amplitude = ana -> GetAmplitude(iHit);
             auto chi2NDF   = ana -> GetChi2NDF(iHit);
             auto ndf       = ana -> GetNDF(iHit);
-
             LKHit* hit = nullptr;
-                 if (chDetType==fITypeLCenter) hit = (LKHit*) fHitArrayCenter -> ConstructedAt(fCountHitCenter++);
-            else if (chDetType==fITypeHCenter) hit = (LKHit*) fHitArrayCenter -> ConstructedAt(fCountHitCenter++);
-            else if (chDetType==fITypeLStrip ) hit = (LKHit*) fHitArrayLStrip -> ConstructedAt(fCountHitLStrip++);
-            else if (chDetType==fITypeLChain ) hit = (LKHit*) fHitArrayLChain -> ConstructedAt(fCountHitLChain++);
-            else if (chDetType==fITypeRStrip ) hit = (LKHit*) fHitArrayRStrip -> ConstructedAt(fCountHitRStrip++);
-            else if (chDetType==fITypeRChain ) hit = (LKHit*) fHitArrayRChain -> ConstructedAt(fCountHitRChain++);
-            else                               hit = (LKHit*) fHitArrayOthers -> ConstructedAt(fCountHitOthers++);
+                 if (chDetType==fITypeLCenter) hit = (LKHit*) fHitArrayCenter -> ConstructedAt(countHitCenter++);
+            else if (chDetType==fITypeHCenter) hit = (LKHit*) fHitArrayCenter -> ConstructedAt(countHitCenter++);
+            else if (chDetType==fITypeLStrip ) hit = (LKHit*) fHitArrayLStrip -> ConstructedAt(countHitLStrip++);
+            else if (chDetType==fITypeLChain ) hit = (LKHit*) fHitArrayLChain -> ConstructedAt(countHitLChain++);
+            else if (chDetType==fITypeRStrip ) hit = (LKHit*) fHitArrayRStrip -> ConstructedAt(countHitRStrip++);
+            else if (chDetType==fITypeRChain ) hit = (LKHit*) fHitArrayRChain -> ConstructedAt(countHitRChain++);
+            else                               hit = (LKHit*) fHitArrayOthers -> ConstructedAt(countHitOthers++);
+
             hit -> SetHitID(countHits);
             hit -> SetPosition(xPos,tb,zPos);
             hit -> SetPositionError(xErr,1,zErr);

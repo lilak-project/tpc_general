@@ -33,15 +33,16 @@ class TTPulseAnalysisTask : public LKTask
         bool EndOfRun();
 
     private:
-        TClonesArray *fChannelArray = nullptr;
-        TClonesArray *fHitArrayCenter = nullptr;
-        TClonesArray *fHitArrayLStrip = nullptr;
-        TClonesArray *fHitArrayLChain = nullptr;
-        TClonesArray *fHitArrayRStrip = nullptr;
-        TClonesArray *fHitArrayRChain = nullptr;
-        TClonesArray *fHitArrayOthers = nullptr;
+        TClonesArray* fEventHeaderHolder = nullptr;
 
-        TTEventHeader* fEventHeader = nullptr;
+        TClonesArray* fChannelArray = nullptr;
+
+        TClonesArray* fHitArrayCenter = nullptr;
+        TClonesArray* fHitArrayLStrip = nullptr;
+        TClonesArray* fHitArrayLChain = nullptr;
+        TClonesArray* fHitArrayRStrip = nullptr;
+        TClonesArray* fHitArrayRChain = nullptr;
+        TClonesArray* fHitArrayOthers = nullptr;
 
         TexAT2 *fDetector;
 
@@ -51,13 +52,6 @@ class TTPulseAnalysisTask : public LKTask
         int fITypeRChain;
         int fITypeLCenter;
         int fITypeHCenter;
-
-        int fCountHitCenter = 0;
-        int fCountHitLStrip = 0;
-        int fCountHitLChain = 0;
-        int fCountHitRStrip = 0;
-        int fCountHitRChain = 0;
-        int fCountHitOthers = 0;
 
     ClassDef(TTPulseAnalysisTask,1);
 };
