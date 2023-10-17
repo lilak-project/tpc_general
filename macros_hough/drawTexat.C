@@ -73,12 +73,12 @@ void drawTexat()
     fHitArray[2][1] = fRun -> GetBranchA("HitRChain");
     fTree = fRun -> GetInputTree();
 
-    //fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-120,120);
-    //fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,0,330);
-    //fBnnZ = new ejungwoo::Binning("zaxis","Z (beam axis)", "Hit.fZ", 141,150,500);
-    fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-150,150);
-    fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,-100,500);
-    fBnnZ = new ejungwoo::Binning("zaxis","Z (beam axis)", "Hit.fZ", 141,0,600);
+    fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-120,120);
+    fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,0,330);
+    fBnnZ = new ejungwoo::Binning("zaxis","Z (beam axis)", "Hit.fZ", 141,150,500);
+    //fBnnX = new ejungwoo::Binning("xaxis","X", "Hit.fX", 143,-150,150);
+    //fBnnY = new ejungwoo::Binning("yaxis","Y (time-axis) (350-tb)", "350-Hit.fY", 110,-100,500);
+    //fBnnZ = new ejungwoo::Binning("zaxis","Z (beam axis)", "Hit.fZ", 141,0,600);
     fBnnXZ = new ejungwoo::Binning(fBnnX,fBnnZ); fBnnXZ -> SetNameMainTitle("top","Top-view");
     fBnnZY = new ejungwoo::Binning(fBnnZ,fBnnY); fBnnZY -> SetNameMainTitle("side","Side-view");
     fBnnXY = new ejungwoo::Binning(fBnnX,fBnnY); fBnnXY -> SetNameMainTitle("front","Front(upstream)-view");
@@ -228,12 +228,14 @@ void DrawEvent(int entry)
             auto graph = tk[iCLR][iSCA] -> GetDataGraphImageSapce();
             graph -> SetMarkerStyle(20);
             if (iSCA==kStrip) graph -> SetMarkerColor(kBlack);
+            if (iSCA==kStrip) graph -> SetMarkerStyle(20);
             if (iSCA==kChain) graph -> SetMarkerColor(kBlue);
+            if (iSCA==kChain) graph -> SetMarkerStyle(25);
             if (iSCA==kStripAndChain) graph -> SetMarkerColor(kViolet);
             if (iCLR==kMMCenter && iSCA==kStrip) graph -> SetMarkerColor(kRed);
             if (iCLR==kMMCenter && iSCA==kChain) graph -> SetMarkerColor(kGreen+1);
             graph -> SetLineColor(kGray);
-            graph -> SetMarkerSize(0.8);
+            graph -> SetMarkerSize(1.2);
             graph -> Draw("same pz");
 
         }
@@ -287,6 +289,9 @@ void DrawEvent(int entry)
     fCvsAll -> cd(2) -> Clear();
     fCvsAll -> cd(3) -> Clear();
     fCvsAll -> cd(4) -> Clear();
+
+    fCvsAll -> SetName(Form("cvs_texat_e%d_image",eventNumber));
+    fCvsParam -> SetName(Form("cvs_texat_e%d_param",eventNumber));
 
     TransformAndFit(kTopView,   kMMCenter, fTrackerXZ, fCvsAll->cd(3));
     TransformAndFit(kTopView,   kMMLeft,   fTrackerXZ, fCvsAll->cd(3));
@@ -362,4 +367,7 @@ void DrawEvent(int entry)
         graphFitR -> SetLineColor(kViolet);
         graphFitR -> Draw("same p0 line");
     }
+
+    ejungwoo::Save(fCvsAll);
+    ejungwoo::Save(fCvsParam);
 }

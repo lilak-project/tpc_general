@@ -49,6 +49,7 @@ class LKParamPointRT : public TObject
         double GetCenterR() const;
         double GetCenterT() const;
         void IsInside(double r, double t);
+        LKGeoLine GetGeoLineInImageSpace(int iParamCorner, double x1, double x2, double y1, double y2);
         TGraph* GetLineInImageSpace(int iParamCorner, double x1, double x2, double y1, double y2);
         TGraph* GetRadialLineInImageSpace(int iParamCorner, double angleSize);
         TGraph* GetRibbonInImageSpace(double x1, double x2, double y1, double y2);

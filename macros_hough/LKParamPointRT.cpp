@@ -73,6 +73,13 @@ void LKParamPointRT::IsInside(double r, double t)
     return true;
 }
 
+LKGeoLine LKParamPointRT::GetGeoLineInImageSpace(int iParamCorner, double x1, double x2, double y1, double y2)
+{
+    GetImagePoints(iParamCorner,x1,x2,y1,y2);
+    LKGeoLine line(x1,y1,0,x2,y2,0);
+    return line;
+}
+
 TGraph* LKParamPointRT::GetLineInImageSpace(int iParamCorner, double x1, double x2, double y1, double y2)
 {
     // TODO
@@ -117,16 +124,16 @@ TGraph* LKParamPointRT::GetRadialLineInImageSpace(int iParamCorner, double angle
     graph -> SetPoint(3,point2.X(),point2.Y());
     graph -> SetPoint(4,point3.X(),point3.Y());
 
-    if (iParamCorner>=90000) ;
-    else {
-        if (iParamCorner<5) {
-            if (iParamCorner>=1) graph -> SetPoint(5,extra1.X(),extra1.Y());
-            if (iParamCorner>=2) graph -> SetPoint(6,extra2.X(),extra2.Y());
-            if (iParamCorner>=2) graph -> SetPoint(7,extra3.X(),extra3.Y());
-            if (iParamCorner>=3) graph -> SetPoint(8,extra4.X(),extra4.Y());
-            if (iParamCorner>=4) graph -> SetPoint(9,extra5.X(),extra5.Y());
-        }
-    }
+    //if (iParamCorner>=90000) ;
+    //else {
+    //    if (iParamCorner<5) {
+    //        if (iParamCorner>=1) graph -> SetPoint(5,extra1.X(),extra1.Y());
+    //        if (iParamCorner>=2) graph -> SetPoint(6,extra2.X(),extra2.Y());
+    //        if (iParamCorner>=2) graph -> SetPoint(7,extra3.X(),extra3.Y());
+    //        if (iParamCorner>=3) graph -> SetPoint(8,extra4.X(),extra4.Y());
+    //        if (iParamCorner>=4) graph -> SetPoint(9,extra5.X(),extra5.Y());
+    //    }
+    //}
     return graph;
 }
 

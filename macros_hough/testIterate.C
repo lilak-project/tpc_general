@@ -40,6 +40,12 @@ void testIterate()
     tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
     tk1 -> SetCorrelateBoxRibbon();
 
+    auto tk2 = new LKHTLineTracker();
+    tk2 -> SetTransformCenter(xt, yt);
+    tk2 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
+    tk2 -> SetParamSpaceBins(50,80);
+    tk2 -> SetCorrelateBoxRibbon();
+
     auto func = new TF1("track",Form("[0]*(x-%f)+[1]+%f",(x1+x2)/2.,(y1+y2)/2.),x1,x2);
     for (auto iTrack=0; iTrack<numTracks; ++iTrack) {
         auto phi = gRandom->Uniform(0,TMath::Pi());
@@ -65,6 +71,7 @@ void testIterate()
                 auto xCenter = hist->GetXaxis()->GetBinCenter(binx);
                 auto yCenter = hist->GetYaxis()->GetBinCenter(biny);
                 tk1 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
+                tk2 -> AddImagePoint(xCenter,.5*dx, yCenter,.5*dy, content);
             }
         }
     }
@@ -143,41 +150,40 @@ void testIterate()
         }
     };
 
-    auto cvs = ejungwoo::Canvas("cvs",80,90,3,2);
-
-    int iCvs = 0;
+    auto cvs = ejungwoo::Canvas("cvs_method1",80,90,3,2);
     for (auto i : {0,1,2})
     {
         tk1 -> Transform();
 
-        iCvs++;
-
         auto paramPointAtMax = tk1 -> FindNextMaximumParamPoint();
         auto graphHoughAtMax = paramPointAtMax -> GetRangeGraphInParamSpace(1);
         auto graphImageAtMax = paramPointAtMax -> GetBandInImageSpace(x1,x2,y1,y2);
-        graphImageAtMax -> SetFillColor(kRed);
-        graphImageAtMax -> SetLineColor(kRed);
-        graphImageAtMax -> SetLineStyle(1);
-        //graphImageAtMax -> SetFillStyle(3354);
-        graphImageAtMax -> SetFillStyle(3395);
 
-        cvs -> cd(iCvs);
-        auto histParam = tk1 -> GetHistParamSpace(Form("paramSpace%d",iCvs));
+        cvs -> cd(i+1);
+        auto histParam = tk1 -> GetHistParamSpace(Form("paramSpace%d",i+1));
         histParam -> Draw("colz");
 
         auto paramPointRange = tk1 -> ReinitializeFromLastParamPoint();
         auto graphHoughReinit = paramPointRange -> GetRangeGraphInParamSpace(1);
         auto graphImageReinit = paramPointRange -> GetBandInImageSpace(x1,x2,y1,y2);
-        graphImageReinit -> SetFillColor(kYellow);
-        graphImageReinit -> SetFillStyle(3345);
 
-        cvs -> cd(iCvs);
+        graphImageAtMax -> SetFillColor(kCyan+1);
+        //graphImageAtMax -> SetFillColor(9);
+        //graphImageAtMax -> SetLineColor(kRed);
+        graphImageAtMax -> SetLineStyle(1);
+        //graphImageAtMax -> SetFillStyle(3354);
+        //graphImageAtMax -> SetFillStyle(3395);
+        graphImageAtMax -> SetFillStyle(3002);
+        graphImageReinit -> SetFillColor(kGray);
+        graphImageReinit -> SetFillStyle(3245);
+
+        cvs -> cd(i+1);
         graphHoughAtMax -> Draw("samel");
         graphHoughReinit -> Draw("samel");
 
-        cvs -> cd(iCvs+3);
-        auto histImage = new TH2D(Form("frame%d",iCvs), "", nx, x1, x2, ny, y1, y2);
-        histImage -> SetTitle(Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);#theta (degrees);Radius", tk1->GetCorrelatorName().Data(), nx, ny, xt, yt));
+        cvs -> cd(i+1+3);
+        auto histImage = new TH2D(Form("frame%d",i+1), "", nx, x1, x2, ny, y1, y2);
+        histImage -> SetTitle(Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);x;y", tk1->GetCorrelatorName().Data(), nx, ny, xt, yt));
         auto marker = new TMarker(xt,yt,20);
         marker -> SetMarkerSize(1);
         marker -> SetMarkerColor(kBlack);
@@ -196,6 +202,63 @@ void testIterate()
         if (tk1 -> IsCorrelateBoxLine()) graph -> Draw("samepz");
         if (tk1 -> IsCorrelateBoxRibbon()) graph -> Draw("samepz");
         if (tk1 -> IsCorrelateBoxBand()) graph -> Draw("samepz");
+    }
+
+    auto cvs2 = ejungwoo::Canvas("cvs_method2",80,70,2,1);
+    {
+        tk2 -> Transform();
+
+        auto paramPointAtMax = tk2 -> FindNextMaximumParamPoint();
+        auto graphHoughAtMax = paramPointAtMax -> GetRangeGraphInParamSpace(1);
+        auto graphImageAtMax = paramPointAtMax -> GetBandInImageSpace(x1,x2,y1,y2);
+
+        cvs2 -> cd(1);
+        auto histParam = tk2 -> GetHistParamSpace(Form("paramSpace%d",1));
+        histParam -> Draw("colz");
+
+        auto paramPointRange = tk2 -> ReinitializeFromLastParamPoint();
+        auto graphHoughReinit = paramPointRange -> GetRangeGraphInParamSpace(1);
+        auto graphImageReinit = paramPointRange -> GetBandInImageSpace(x1,x2,y1,y2);
+
+        graphImageAtMax -> SetFillColor(kCyan+1);
+        //graphImageAtMax -> SetFillColor(9);
+        //graphImageAtMax -> SetLineColor(kRed);
+        graphImageAtMax -> SetLineStyle(1);
+        //graphImageAtMax -> SetFillStyle(3354);
+        //graphImageAtMax -> SetFillStyle(3395);
+        graphImageAtMax -> SetFillStyle(3002);
+        graphImageReinit -> SetFillColor(kGray);
+        graphImageReinit -> SetFillStyle(3245);
+
+        cvs2 -> cd(1);
+        graphHoughAtMax -> Draw("samel");
+        graphHoughReinit -> Draw("samel");
+
+        cvs2 -> cd(2);
+        auto histImage = new TH2D(Form("frame%d",1), "", nx, x1, x2, ny, y1, y2);
+        histImage -> SetTitle(Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);x;y", tk2->GetCorrelatorName().Data(), nx, ny, xt, yt));
+        auto marker = new TMarker(xt,yt,20);
+        marker -> SetMarkerSize(1);
+        marker -> SetMarkerColor(kBlack);
+        marker -> Draw("same");
+        marker = new TMarker(xt,yt,24);
+        marker -> SetMarkerSize(2);
+        marker -> SetMarkerColor(kBlack);
+        marker -> Draw("same");
+        histImage -> Draw("colz");
+        graphImageAtMax -> Draw("samelf");
+        graphImageReinit -> Draw("samelf");
+        auto graph = tk2 -> GetDataGraphImageSapce();
+        graph -> SetMarkerStyle(20);
+        graph -> SetMarkerSize(0.3);
+        if (tk2 -> IsCorrelatePointBand()) graph -> Draw("samepx");
+        if (tk2 -> IsCorrelateBoxLine()) graph -> Draw("samepz");
+        if (tk2 -> IsCorrelateBoxRibbon()) graph -> Draw("samepz");
+        if (tk2 -> IsCorrelateBoxBand()) graph -> Draw("samepz");
+
+        auto track = tk2 -> FitTrackWithParamPoint(paramPointAtMax);
+        auto graphTrack = track -> TrajectoryOnPlane(LKVector3::kX,LKVector3::kY);
+        graphTrack -> Draw("samel");
     }
 
     e_save_all();

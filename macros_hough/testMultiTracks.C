@@ -27,8 +27,10 @@ void testMultiTracks()
     double wMin = 100;
     double wMax = 1000;
     double yErrMax = 1*dy;
-    double xt = (x1+x2)/2;
-    double yt = y2;
+    //double xt = (x1+x2)/2;
+    //double yt = y2;
+    double xt = 0;
+    double yt = 150;
     int numRandom = numBinsT;
 
     auto hist = new TH2D("hist",Form("%d",seed),nx,x1,x2,ny,y1,y2);
@@ -38,7 +40,7 @@ void testMultiTracks()
     tk1 -> SetTransformCenter(xt, yt);
     tk1 -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
     tk1 -> SetParamSpaceBins(numBinsR, numBinsT);
-    tk1 -> SetCorrelateBoxRBand();
+    tk1 -> SetCorrelateBoxBand();
 
     auto func = new TF1("track",Form("[0]*(x-%f)+[1]+%f",(x1+x2)/2.,(y1+y2)/2.),x1,x2);
     for (auto iTrack=0; iTrack<numTracks; ++iTrack) {
@@ -73,12 +75,12 @@ void testMultiTracks()
         }
     }
 
-    auto cvs = ejungwoo::Canvas("cvs",80,90,4,2);
+    auto cvs = ejungwoo::Canvas("cvs_multitrack",50,90,2,2);
 
     int iCvs = 0;
     for (auto iTrack=0; iTrack<numTracks; ++iTrack)
     {
-        auto numIteration = 2;
+        auto numIteration = 1;
         for (auto iTransform=0; iTransform<numIteration; ++iTransform)
         {
             tk1 -> Transform();
@@ -88,11 +90,9 @@ void testMultiTracks()
             auto paramPointAtMax = tk1 -> FindNextMaximumParamPoint();
             auto graphHoughAtMax = paramPointAtMax -> GetRangeGraphInParamSpace(1);
             auto graphImageAtMax = paramPointAtMax -> GetBandInImageSpace(x1,x2,y1,y2);
-            graphImageAtMax -> SetFillColor(kRed);
-            graphImageAtMax -> SetLineColor(kRed);
+            graphImageAtMax -> SetFillColor(kCyan+1);
             graphImageAtMax -> SetLineStyle(1);
-            //graphImageAtMax -> SetFillStyle(3354);
-            graphImageAtMax -> SetFillStyle(3395);
+            graphImageAtMax -> SetFillStyle(3002);
 
             cvs -> cd(2*iCvs-1);
             auto histParam = tk1 -> GetHistParamSpace(Form("paramSpace%d",iCvs));
@@ -104,8 +104,8 @@ void testMultiTracks()
                 auto paramPointRange = tk1 -> ReinitializeFromLastParamPoint();
                 graphHoughReinit = paramPointRange -> GetRangeGraphInParamSpace(1);
                 graphImageReinit = paramPointRange -> GetBandInImageSpace(x1,x2,y1,y2);
-                graphImageReinit -> SetFillColor(kYellow);
-                graphImageReinit -> SetFillStyle(3345);
+                graphImageReinit -> SetFillColor(kGray);
+                graphImageReinit -> SetFillStyle(3245);
             }
 
             graphHoughAtMax -> Draw("samel");
@@ -113,7 +113,7 @@ void testMultiTracks()
 
             cvs -> cd(2*iCvs);
             auto histImage = new TH2D(Form("frame%d",iCvs), "", nx, x1, x2, ny, y1, y2);
-            histImage -> SetTitle(Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);#theta (degrees);Radius", tk1->GetCorrelatorName().Data(), nx, ny, xt, yt));
+            histImage -> SetTitle(Form("%s (%dx%d), TC (x,y) = (%.2f, %.2f);x;y", tk1->GetCorrelatorName().Data(), nx, ny, xt, yt));
             histImage -> Draw("colz");
             {
                 auto marker = new TMarker(xt,yt,20);
@@ -129,12 +129,11 @@ void testMultiTracks()
             if (graphImageReinit!=nullptr) graphImageReinit -> Draw("samelf");
 
             auto graphImageData = tk1 -> GetDataGraphImageSapce();
-            graphImageData -> SetMarkerStyle(20);
+            //graphImageData -> SetMarkerStyle(20);
             if (tk1 -> IsCorrelatePointBand()) graphImageData -> Draw("samepx");
             if (tk1 -> IsCorrelateBoxLine()) graphImageData -> Draw("samepz");
             if (tk1 -> IsCorrelateBoxRibbon()) graphImageData -> Draw("samepz");
             if (tk1 -> IsCorrelateBoxBand()) graphImageData -> Draw("samepz");
-            if (tk1 -> IsCorrelateDistance()) graphImageData -> Draw("samepx");
 
             if (iTransform==numIteration-1) {
                 auto track = tk1 -> FitTrackWithParamPoint(paramPointAtMax);
