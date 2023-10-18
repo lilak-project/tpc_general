@@ -56,6 +56,8 @@
 class TTMicromegasCenterChain : public LKPadPlane
 {
     public:
+        static TTMicromegasCenterChain* GetMMCC();
+
         TTMicromegasCenterChain();
         virtual ~TTMicromegasCenterChain() { ; }
 
@@ -67,14 +69,16 @@ class TTMicromegasCenterChain : public LKPadPlane
         Int_t FindChannelID(Double_t x, Double_t y);
         Int_t FindChannelID(Int_t section, Int_t row, Int_t layer);
 
-        //TCanvas* GetCanvas(Option_t *option="");
+        TCanvas* GetCanvas(Option_t *option="");
         TH2* GetHist(Option_t *option="");
 
-        //bool SetDataFromBranch();
+        bool SetDataFromBranch();
         void DrawFrame(Option_t *option="");
-        //void Draw(Option_t *option="");
+        void Draw(Option_t *option="");
 
-        //void MouseClickEvent(int iPlane);
+        void FillChannelBuffer(Int_t bin=-1);
+
+        static void MouseClickEvent()
         //void ClickedAtPosition(Double_t x, Double_t y);
 
     private:
@@ -84,6 +88,16 @@ class TTMicromegasCenterChain : public LKPadPlane
         Double_t fXMax = -DBL_MAX;
         Double_t fZMin = DBL_MAX;
         Double_t fZMax = -DBL_MAX;
+
+        TClonesArray* fChannelArray = nullptr;
+        TClonesArray* fHitCenterArray = nullptr;
+        TClonesArray* fHitLChainArray = nullptr;
+        TClonesArray* fHitRChainArray = nullptr;
+
+        std::map<std::vector<Int_t>, Int_t> fMapBinToCAAC;
+        std::map<std::vector<Int_t>, Int_t> fMapCAACToBin;
+
+        static TTMicromegasCenterChain* fInstance;
 
     ClassDef(TTMicromegasCenterChain,1);
 };

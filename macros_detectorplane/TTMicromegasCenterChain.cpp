@@ -2,8 +2,12 @@
 
 ClassImp(TTMicromegasCenterChain);
 
+TTMicromegasCenterChain* TTMicromegasCenterChain::fInstance = nullptr;
+TTMicromegasCenterChain* TTMicromegasCenterChain::GetMMCC() { return fInstance; }
+
 TTMicromegasCenterChain::TTMicromegasCenterChain()
 {
+    fInstance = this;
     fName = "TTMicromegasCenterChain";
     if (fChannelArray==nullptr)
         fChannelArray = new TObjArray();
@@ -37,8 +41,13 @@ bool TTMicromegasCenterChain::Init()
         if (fZMax < z1) fXMin < z1;
         if (fZMin > z2) fXMin < z2;
         if (fZMax < z2) fXMin < z2;
-        fHistPlane -> AddBin(x1,z1,x2,z2);
+        auto bin = fHistPlane -> AddBin(x1,z1,x2,z2);
+        int caac = cobo*10000 + asad*1000 + aget*100 + chan;
+        fMapBinToCAAC.insert(std::pair<std::vector<Int_t>, Int_t>(bin,caac));
+        fMapCAACToBin.insert(std::pair<std::vector<Int_t>, Int_t>(caac,bin));
     }
+
+    SetDataFromBranch();
 
     return true;
 }
@@ -80,6 +89,7 @@ TCanvas* TTMicromegasCenterChain::GetCanvas(Option_t *option)
         auto pad1 = new TPad("pad1","",0,230./700,1,1);
         pad1 -> SetMargin(0.12,0.15,0.1,0.1);
         pad1 -> SetNumber(1);
+        pad1 -> AddExec("ex", "TTMicromegasCenterChain::MouseClickEvent()");
         pad1 -> Draw();
         auto pad2 = new TPad("pad2","",0,0,1,230./700);
         pad2 -> SetMargin(0.12,0.1,0.20,0.12);
@@ -97,10 +107,16 @@ TH2* TTMicromegasCenterChain::GetHist(Option_t *option)
 
 bool TTMicromegasCenterChain::SetDataFromBranch()
 {
-    auto hitCenterArray = fRun -> GetBranchA("HitCenter");
-    auto hitLChainArray = fRun -> GetBranchA("HitLChain");
-    auto hitRChainArray = fRun -> GetBranchA("HitRChain");
-    for (auto hitArray : {hitCenterArray,hitLChainArray,hitRChainArray})
+    fChannelArray = fRun -> GetBranchA("RawData");
+    fHitCenterArray = fRun -> GetBranchA("HitCenter");
+    fHitLChainArray = fRun -> GetBranchA("HitLChain");
+    fHitRChainArray = fRun -> GetBranchA("HitRChain");
+    return false;
+}
+
+void TTMicromegasCenterChain::FillDataToHist()
+{
+    for (auto hitArray : {fHitCenterArray,fHitLChainArray,fHitRChainArray})
     {
         auto numHits = hitArray -> GetEntries();
         for (auto iHit=0; iHit<numHits; ++iHit)
@@ -110,50 +126,118 @@ bool TTMicromegasCenterChain::SetDataFromBranch()
             fHistPlane -> Fill(position.X(), position.Z());
         }
     }
-    return false;
+
+    FillChannelBuffer();
 }
 
-/*
-void TTMicromegasCenterChain::FillDataToHist()
+void TTMicromegasCenterChain::FillChannelBuffer(Int_t bin)
 {
-    // example hist
-    // if (fHist==nullptr)
-    //     fHist = new TH2D("TTMicromegasCenterChain",TTMicromegasCenterChain,10,0,10);
-    // return fHist;
-    return (TH2D *) nullptr;
+    if (fChannelArray==nullptr)
+        return;
+
+    if (bin<0) {
+        LKHit *hit = nullptr;
+        for (auto hitArray : {fHitCenterArray,fHitLChainArray,fHitRChainArray}) {
+            auto numHits = hitArray -> GetEntries();
+            for (auto iHit=0; iHit<numHits; ++iHit)
+                hit = (LKHit *) hitArray -> At(iHit);
+        }
+        if (hit==nullptr)
+            return;
+        auto caac = hit -> GetChannel();
+        bin = fMapCAACToBin[caac];
+    }
+
+    //fHistArray
+
+    MMChannel* channel = nullptr;
+    auto caac = fMapBinToCAAC[bin];
+    auto numChannels = fChannelArray -> GetEntries();
+    for (auto iChannel=0; iChannel<numChannels; ++iChannel)
+    {
+        auto channel0 = (MMChannel* ) fChannelArray -> At(iChannel);
+        if (caac==channel0->GetCAAC()) {
+            channel = channel0;
+            break;
+        }
+    }
+    if (channel==nullptr)
+        return;
+
+    auto buffer = channel -> GetWavformY();
+    fHistChannel -> Reset();
+    for (auto tb=0; tb<360; ++tb)
+        fHistChannel -> SetBinContent(tb+1,buffer[tb]);
+    fCanvas -> cd(2);
+    fHistChannel -> Draw();
+    auto texat = (TexAT2*) fDetector;
+    for (auto hitArray : {fHitCenterArray,fHitLChainArray,fHitRChainArray}) {
+        auto numHits = hitArray -> GetEntries();
+        for (auto iHit=0; iHit<numHits; ++iHit) {
+            hit = (LKHit *) hitArray -> At(iHit);
+            if (caac==hit -> GetChannelID()) {
+                auto caac0 = caac;
+                auto cobo = int(caac0/10000); caac0 - cobo*10000;
+                auto asad = int(caac0/1000); caac0 - asad*1000;
+                auto aget = int(caac0/100); caac0 - aget*100;
+                auto chan = caac0;
+                auto electronicsID = texat -> GetElectronicsID(cobo,asad,aget,chan);
+                auto pulse = texat -> GetChannelAnalyzer(electronicsID) -> GetPulse();
+                pulse -> GetPulseGraph(hit->GetTb(), hit -> GetCharge());
+                pulse -> Draw("samel");
+            }
+        }
+    }
+
+    //fHistChannel -> Fill();
+    fCanvas -> Modified();
+    fCanvas -> Update();
 }
-*/
 
 void TTMicromegasCenterChain::DrawFrame(Option_t *option)
 {
     ;
 }
 
-/*
 void TTMicromegasCenterChain::Draw(Option_t *option)
 {
-    SetDataFromBranch();
+    //SetDataFromBranch();
     FillDataToHist();
-    auto hist = GetHist();
-    if (hist==nullptr)
-        return;
-    if (fPar->CheckPar(fName+"/histZMin")) hist -> SetMinimum(fPar->GetParDouble(fName+"/histZMin"));
-    else hist -> SetMinimum(0.01);
-    if (fPar->CheckPar(fName+"/histZMax")) hist -> SetMaximum(fPar->GetParDouble(fName+"/histZMin"));
-    auto cvs = GetCanvas();
-    cvs -> Clear();
-    cvs -> cd();
-    hist -> Reset();
-    hist -> DrawClone("colz");
-    hist -> Reset();
-    hist -> Draw("same");
-    DrawFrame();
-}
-*/
 
-/*
-void TTMicromegasCenterChain::MouseClickEvent(int iPlane)
-{
-    ;
+    auto cvs = GetCanvas();
+
+    cvs -> cd(1);
+    fHistPlane -> Draw("colz")
+    DrawFrame();
+
+    cvs -> cd(2);
+    fHistChannel -> Draw()
 }
-*/
+
+void TTMicromegasCenterChain::MouseClickEvent()
+{
+    TObject* select = ((TCanvas*)gPad) -> GetClickSelected();
+    if (select == nullptr)
+        return;
+
+    bool isNotH2 = !(select -> InheritsFrom(TH2::Class()));
+    bool isNotGraph = !(select -> InheritsFrom(TGraph::Class()));
+    if (isNotH2 && isNotGraph)
+        return;
+
+    TH2D* hist = (TH2D*) select;
+
+    Int_t xEvent = gPad -> GetEventX();
+    Int_t yEvent = gPad -> GetEventY();
+
+    Float_t xAbs = gPad -> AbsPixeltoX(xEvent);
+    Float_t yAbs = gPad -> AbsPixeltoY(yEvent);
+    Double_t xOnClick = gPad -> PadtoX(xAbs);
+    Double_t yOnClick = gPad -> PadtoY(yAbs);
+
+    Int_t bin = hist -> FindBin(xOnClick, yOnClick);
+    gPad -> SetUniqueID(bin);
+    gPad -> GetCanvas() -> SetClickSelected(NULL);
+
+    TTMicromegasCenterChain::GetMMCC() -> FillChannelBuffer(bin);
+}
