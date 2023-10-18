@@ -34,8 +34,7 @@ void drawTT()
     ofstream file3("hist_channels_RightChain.txt");
     ofstream file4("hist_channels_LowCenter.txt");
     ofstream file5("hist_channels_HighCenter.txt");
-    int cobo=0, asad, aget, chan, dumi;
-    while (fileCAAC >> asad >> aget >> chan >> dumi >> dumi)
+    int cobo=0, asad, aget, chan, dumi; while (fileCAAC >> asad >> aget >> chan >> dumi >> dumi)
     {
         auto detType = fDetector -> GetType(cobo,asad,aget,chan);
         auto dchan = chan;
@@ -48,7 +47,8 @@ void drawTT()
             else if(chan<64) dchan = chan +4;
         }
 
-        CAACtoRealDim(cobo,asad,aget,dchan, xPos,yPos,zPos,xErr,yErr,zErr);
+        //CAACtoRealDim(cobo,asad,aget,dchan, xPos,yPos,zPos,xErr,yErr,zErr);
+        fDetector -> CAACToGlobalPosition(cobo,asad,aget,dchan, xPos,yPos,zPos,xErr,yErr,zErr);
 
         double x0 = xPos;
         double x1 = xPos - xErr;
@@ -110,7 +110,8 @@ void drawTT()
 
     fCanvas -> cd(1);
     fHistXZ[0] -> SetTitle("eType == Strip and Center");
-    fHistXZ[0] -> Draw("same colz");
+    //fHistXZ[0] -> Draw("same colz");
+    fHistXZ[0] -> Draw("same");
     //fHistXZ[1] -> Draw("same col");
     //fHistXZ[4] -> Draw("same col");
     //fHistXZ[5] -> Draw("same col");
