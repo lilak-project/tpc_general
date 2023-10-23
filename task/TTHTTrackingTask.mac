@@ -12,3 +12,5 @@ TTHTTrackingTask/nbinsXYPlane  # nbinsXYPlane
 TTHTTrackingTask/nHitsTrackCutXZPlane  # nHitsTrackCutXZPlane
 TTHTTrackingTask/nHitsTrackCutZYPlane  # nHitsTrackCutZYPlane
 TTHTTrackingTask/nHitsTrackCutXYPlane  # nHitsTrackCutXYPlane
+TTHTTrackingTask/nr 80
+TTHTTrackingTask/nt 100

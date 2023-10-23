@@ -3,12 +3,12 @@
 
 #include "TClonesArray.h"
 #include "TObject.h"
+#include "TGraph.h"
+
 //#include "LKContainer.h"
 #include "LKLogger.h"
 #include "LKGeoLine.h"
-
-#include "LKImagePoint.cpp"
-//#include "LKImagePoint.h"
+#include "LKImagePoint.h"
 
 /**
  * ### Indexing iParamCorner
@@ -48,7 +48,7 @@ class LKParamPointRT : public TObject
 
         double GetCenterR() const;
         double GetCenterT() const;
-        void IsInside(double r, double t);
+        bool IsInside(double r, double t);
         LKGeoLine GetGeoLineInImageSpace(int iParamCorner, double x1, double x2, double y1, double y2);
         TGraph* GetLineInImageSpace(int iParamCorner, double x1, double x2, double y1, double y2);
         TGraph* GetRadialLineInImageSpace(int iParamCorner, double angleSize);

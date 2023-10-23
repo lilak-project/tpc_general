@@ -5,11 +5,12 @@
 #include "LKLogger.h"
 #include "LKGeoLine.h"
 #include "TGraphErrors.h"
+#include "TPad.h"
 
 #include "LKImagePoint.h"
 #include "LKParamPointRT.h"
-#include "LKImagePoint.cpp"
-#include "LKParamPointRT.cpp"
+#include "LKLinearTrack.h"
+#include "LKODRFitter.h"
 
 class LKHTWeightingFunction
 {

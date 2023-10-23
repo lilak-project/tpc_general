@@ -82,6 +82,7 @@ void TTPulseAnalysisTask::Exec(Option_t *option)
         auto electronicsID = fDetector -> GetElectronicsID(cobo, asad, aget, chan);
         auto x = fDetector -> Getmmpx(asad, aget, dchan);
         auto z = fDetector -> Getmmpy(asad, aget, dchan);
+        auto caac = cobo*10000 + asad*1000 + aget*100 + chan;
 
         if (cobo!=0)
             continue;
@@ -125,6 +126,7 @@ void TTPulseAnalysisTask::Exec(Option_t *option)
             else                               hit = (LKHit*) fHitArrayOthers -> ConstructedAt(countHitOthers++);
 
             hit -> SetHitID(countHits);
+            hit -> SetChannelID(caac);
             hit -> SetPosition(xPos,tb,zPos);
             hit -> SetPositionError(xErr,1,zErr);
             hit -> SetCharge(amplitude);

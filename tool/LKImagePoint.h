@@ -2,6 +2,9 @@
 #define LKIMAGEPOINT_HH
 
 #include "TClonesArray.h"
+#include "TVector3.h"
+#include "TMath.h"
+
 //#include "LKContainer.h"
 #include "TObject.h"
 #include "LKLogger.h"

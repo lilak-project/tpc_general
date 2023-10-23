@@ -1,5 +1,4 @@
 #include "ejungwooA.h"
-#include "LKHTLineTracker.cpp"
 
 //int fDrawEntry = 113;
 //int fDrawEntry = 219;

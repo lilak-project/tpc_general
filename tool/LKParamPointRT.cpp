@@ -1,7 +1,6 @@
-#ifndef LKHOUGHPOINTRT_HPP
-#define LKHOUGHPOINTRT_HPP
-
 #include "LKParamPointRT.h"
+#include <vector>
+using namespace std;
 
 ClassImp(LKParamPointRT);
 
@@ -67,7 +66,7 @@ TVector3 LKParamPointRT::GetCorner(int iParamCorner) const
     return TVector3(-999,-999,-999);
 }
 
-void LKParamPointRT::IsInside(double r, double t)
+bool LKParamPointRT::IsInside(double r, double t)
 {
     // TODO
     return true;
@@ -522,5 +521,3 @@ double LKParamPointRT::DistanceToImagePoint(int iParamCorner, LKImagePoint* imag
     auto distance = DistanceToPoint(iParamCorner, imagePoint->GetCenter());
     return distance;
 }
-
-#endif

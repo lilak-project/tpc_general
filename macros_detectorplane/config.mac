@@ -24,6 +24,8 @@ CalibrationParameter/fFSiJ_CalPar  {common_data_path}/txtfiles/fSiJ_calpar_after
 CalibrationParameter/fFCsI_CalPar  {common_data_path}/txtfiles/fCsI_calpar_after.txt
 CalibrationParameter/fX6J_CalPar   {common_data_path}/txtfiles/X6J_calpar.txt
 CalibrationParameter/fX6O_CalPar   {common_data_path}/txtfiles/X6O_calpar.txt
+TTMicromegas/map_position_center_chain {common_data_path}/txtfiles/position_channels_center_and_chain.txt
+TTMicromegas/map_position_center_strip {common_data_path}/txtfiles/position_channels_center_and_strip.txt
 
 #################################################################################################
 TexAT2/pulseFile/MMCenterSideA0    {common_data_path}/pulse/pulseReference_MMCenterSideA0.root

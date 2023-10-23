@@ -1,6 +1,3 @@
-#ifndef LKIMAGEPOINT_CPP
-#define LKIMAGEPOINT_CPP
-
 #include "LKImagePoint.h"
 
 ClassImp(LKImagePoint);
@@ -92,5 +89,3 @@ double LKImagePoint::EvalR(int i, double theta, double xt, double yt)
     //double radius = x*TMath::Cos(TMath::DegToRad()*theta) + y*TMath::Sin(TMath::DegToRad()*theta);
     return radius;
 }
-
-#endif
