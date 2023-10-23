@@ -53,13 +53,13 @@
  *
  */
 
-class TTMicromegasCenterChain : public LKPadPlane
+class TTMicromegas : public LKPadPlane
 {
     public:
-        static TTMicromegasCenterChain* GetMMCC();
+        static TTMicromegas* GetMMCC();
 
-        TTMicromegasCenterChain();
-        virtual ~TTMicromegasCenterChain() { ; }
+        TTMicromegas();
+        virtual ~TTMicromegas() { ; }
 
         bool Init();
         void Clear(Option_t *option="");
@@ -76,30 +76,52 @@ class TTMicromegasCenterChain : public LKPadPlane
         void DrawFrame(Option_t *option="");
         void Draw(Option_t *option="");
 
-        void FillChannelBuffer(Int_t bin=-1);
+        void SelectAndDrawChannel(bool isChain=0, Int_t bin=-1);
+        void SelectAndDrawChannelChain(Int_t bin=-1) { SelectAndDrawChannel(true,bin); }
+        void SelectAndDrawChannelStrip(Int_t bin=-1) { SelectAndDrawChannel(false,bin); }
+        void FillDataToHist();
 
-        static void MouseClickEvent()
+        static void MouseClickEventChain();
+        static void MouseClickEventStrip();
         //void ClickedAtPosition(Double_t x, Double_t y);
 
     private:
-        TH1D* fHistChannel = nullptr
-        TH2Poly* fHistPlane = nullptr;
+        TH2Poly* fHistPlaneChain = nullptr;
+        TH2Poly* fHistPlaneStrip = nullptr;
+        TH1D*    fHistChannelChain = nullptr;
+        TH1D*    fHistChannelStrip = nullptr;
         double_t fXMin = DBL_MAX;
         Double_t fXMax = -DBL_MAX;
         Double_t fZMin = DBL_MAX;
         Double_t fZMax = -DBL_MAX;
 
-        TClonesArray* fChannelArray = nullptr;
+        TGraph *fGraphChannelBoundaryChain = nullptr;
+        TGraph *fGraphChannelBoundaryStrip = nullptr;
+
+        TClonesArray* fBufferArray = nullptr;
         TClonesArray* fHitCenterArray = nullptr;
         TClonesArray* fHitLChainArray = nullptr;
         TClonesArray* fHitRChainArray = nullptr;
+        TClonesArray* fHitLStripArray = nullptr;
+        TClonesArray* fHitRStripArray = nullptr;
 
-        std::map<std::vector<Int_t>, Int_t> fMapBinToCAAC;
-        std::map<std::vector<Int_t>, Int_t> fMapCAACToBin;
+        std::map<int, int> fMapBinToCAACChain;
+        std::map<int, int> fMapCAACToBinChain;
+        std::map<int, double> fMapBinToX1Chain;
+        std::map<int, double> fMapBinToX2Chain;
+        std::map<int, double> fMapBinToZ1Chain;
+        std::map<int, double> fMapBinToZ2Chain;
 
-        static TTMicromegasCenterChain* fInstance;
+        std::map<int, int> fMapBinToCAACStrip;
+        std::map<int, int> fMapCAACToBinStrip;
+        std::map<int, double> fMapBinToX1Strip;
+        std::map<int, double> fMapBinToX2Strip;
+        std::map<int, double> fMapBinToZ1Strip;
+        std::map<int, double> fMapBinToZ2Strip;
 
-    ClassDef(TTMicromegasCenterChain,1);
+        static TTMicromegas* fInstance;
+
+    ClassDef(TTMicromegas,1);
 };
 
 #endif
