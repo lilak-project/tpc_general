@@ -16,12 +16,14 @@ using namespace std;
 #include "TGraph.h"
 #include "TGraphErrors.h"
 #include "TParameter.h"
+#include "TH1D.h"
 
 #include "LKLogger.h"
 #include "LKPulse.h"
 #include "LKPulseFitParameter.h"
 
-#define NUMBER_OF_PEDESTAL_TEST_REGIONS 6
+//#define NUMBER_OF_PEDESTAL_TEST_REGIONS 6
+#define NUMBER_OF_PEDESTAL_TEST_REGIONS 7
 #define NUMBER_OF_PEDESTAL_TEST_REGIONS_M1 NUMBER_OF_PEDESTAL_TEST_REGIONS-1
 
 class LKTbIterationParameters
@@ -151,6 +153,7 @@ class LKChannelAnalyzer : public TObject
         bool Init();
         void Clear(Option_t *option="");
         void Print(Option_t *option="") const;
+        void Draw(Option_t *option="");
 
         /// Set pulse function and related parameter from pulse data file created from LKPulseAnalyzer
         void SetPulse(const char* fileName);
@@ -164,6 +167,7 @@ class LKChannelAnalyzer : public TObject
         double GetChi2NDF(int i) const    { return fFitParameterArray[i].fChi2NDF; }
         double GetNDF(int i) const        { return fFitParameterArray[i].fNDF; }
 
+        void Analyze(int* data);
         void Analyze(double* data);
         //LKChannelHit GetHit(int i) { return fChannelHitArray[i]; }
 
@@ -232,6 +236,7 @@ class LKChannelAnalyzer : public TObject
     private:
 
         LKPulse*     fPulse = nullptr; ///< Pulse pointer
+        double       fBufferOrigin[512]; ///< Copied buffer from data
         double       fBuffer[512]; ///< Copied buffer from data
         int          fNumHits = 0; ///< Number of hits found after Analyze()
         vector<LKPulseFitParameter> fFitParameterArray; ///< Vector holding fit TB
@@ -286,6 +291,8 @@ class LKChannelAnalyzer : public TObject
         TGraph* dGraph_it_slopeInv = nullptr;
         TGraph* dGraph_tb_slopeInv = nullptr;
 #endif
+
+        TH1D* fHistBuffer = nullptr;
 
     ClassDef(LKChannelAnalyzer,1);
 };

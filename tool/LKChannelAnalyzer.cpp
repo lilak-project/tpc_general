@@ -1,4 +1,5 @@
 #include "LKChannelAnalyzer.h"
+#include "TLine.h"
 
 ClassImp(LKChannelAnalyzer);
 
@@ -84,6 +85,41 @@ void LKChannelAnalyzer::Print(Option_t *option) const
         }
 }
 
+void LKChannelAnalyzer::Draw(Option_t *option)
+{
+    if (fHistBuffer==nullptr)
+        fHistBuffer = new TH1D("hist_chana_buffer",";tb",fTbMax,0,fTbMax);
+
+    for (auto tb=0; tb<fTbMax; ++tb)
+        fHistBuffer -> SetBinContent(tb+1,fBufferOrigin[tb]);
+
+    fHistBuffer -> Draw();
+    for (auto iHit=0; iHit<fNumHits; ++iHit) {
+        auto tbHit = GetTbHit(iHit);
+        auto amplitude = GetAmplitude(iHit);
+        auto graph = fPulse -> GetPulseGraph(tbHit,amplitude,fPedestal);
+        graph -> Draw("samelx");
+    }
+
+    int numTbPart = fTbMax/NUMBER_OF_PEDESTAL_TEST_REGIONS;
+    auto ymax = fHistBuffer -> GetMaximum();
+    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
+        auto x = numTbPart*iPart;
+        auto line = new TLine(x,0,x,ymax);
+        line -> SetLineColor(kBlue);
+        line -> SetLineStyle(2);
+        line -> Draw("samel");
+    }
+}
+
+void LKChannelAnalyzer::Analyze(int* data)
+{
+    double buffer[512];
+    for (auto tb=0; tb<512; ++tb)
+        buffer[tb] = (double)data[tb];
+    Analyze(buffer);
+}
+
 void LKChannelAnalyzer::Analyze(double* data)
 {
     Clear();
@@ -91,6 +127,7 @@ void LKChannelAnalyzer::Analyze(double* data)
     //fTbHitArray.clear();
     //fAmplitudeArray.clear();
 
+    memcpy(&fBufferOrigin, data, sizeof(double)*fTbMax);
     FindAndSubtractPedestal(data);
     memcpy(&fBuffer, data, sizeof(double)*fTbMax);
 
@@ -150,49 +187,80 @@ double LKChannelAnalyzer::FindAndSubtractPedestal(double *buffer)
     int numTbPart = fTbMax/NUMBER_OF_PEDESTAL_TEST_REGIONS;
     int numTbPartLast = fTbMax - numTbPart*(NUMBER_OF_PEDESTAL_TEST_REGIONS_M1);
     double pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS] = {0.};
+    double stddevPart[NUMBER_OF_PEDESTAL_TEST_REGIONS] = {0.};
 
     int tbGlobal = 0;
     for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS_M1; ++iPart) {
         for (int iTb=0; iTb<numTbPart; iTb++) {
             pedestalPart[iPart] += buffer[tbGlobal];
+            stddevPart[iPart] += buffer[tbGlobal]*buffer[tbGlobal];
             tbGlobal++;
         }
         pedestalPart[iPart] = pedestalPart[iPart] / numTbPart;
+        stddevPart[iPart] = stddevPart[iPart] / numTbPart;
+        stddevPart[iPart] = sqrt(stddevPart[iPart] - pedestalPart[iPart]*pedestalPart[iPart]);
     }
     for (int iTb=0; iTb<numTbPartLast; iTb++) {
         pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] = pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] + buffer[tbGlobal];
         tbGlobal++;
     }
     pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] = pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] / numTbPartLast;
+#ifdef DEBUG_CHANA_FINDPED
+    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart)
+        lk_debug << iPart << " " << pedestalPart[iPart] << " " << stddevPart[iPart] << " " << stddevPart[iPart]/pedestalPart[iPart] << endl;
+#endif
+
+    int countBelowCut = 0;
+    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
+        if (stddevPart[iPart]/pedestalPart[iPart]<0.1)
+            countBelowCut++;
+    }
 
     double pedestalDiffMin = DBL_MAX;
     double pedestalMeanRef = 0;
     int idx1 = 0;
     int idx2 = 0;
-    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
-        for (auto jPart=0; jPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++jPart) {
-            if (iPart>=jPart) continue;
-            double diff = abs(pedestalPart[iPart] - pedestalPart[jPart]);
-            if (diff<pedestalDiffMin) {
-                pedestalDiffMin = diff;
-                pedestalMeanRef = 0.5 * (pedestalPart[iPart] + pedestalPart[jPart]);
-                idx1 = iPart;
-                idx2 = jPart;
+    if (countBelowCut>=2) {
+        for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
+            if (stddevPart[iPart]/pedestalPart[iPart]>=0.1) continue;
+            for (auto jPart=0; jPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++jPart) {
+                if (iPart>=jPart) continue;
+                if (stddevPart[jPart]/pedestalPart[jPart]>=0.1) continue;
+                double diff = abs(pedestalPart[iPart] - pedestalPart[jPart]);
+                if (diff<pedestalDiffMin) {
+                    pedestalDiffMin = diff;
+                    pedestalMeanRef = 0.5 * (pedestalPart[iPart] + pedestalPart[jPart]);
+                    idx1 = iPart;
+                    idx2 = jPart;
+                }
+            }
+        }
+    }
+    else {
+        for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
+            for (auto jPart=0; jPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++jPart) {
+                if (iPart>=jPart) continue;
+                double diff = abs(pedestalPart[iPart] - pedestalPart[jPart]);
+                if (diff<pedestalDiffMin) {
+                    pedestalDiffMin = diff;
+                    pedestalMeanRef = 0.5 * (pedestalPart[iPart] + pedestalPart[jPart]);
+                    idx1 = iPart;
+                    idx2 = jPart;
+                }
             }
         }
     }
 
-    double pedestalErrorRef  = 0.1 * pedestalMeanRef;
-    double pedestalErrorRefPart = 0.2 * pedestalMeanRef;
+    //double pedestalErrorRef  = 0.1 * pedestalMeanRef;
+    //double pedestalErrorRefPart = 0.2 * pedestalMeanRef;
+    double pedestalErrorRefPart = 0.1 * pedestalMeanRef;
     pedestalErrorRefPart = sqrt(pedestalErrorRefPart*pedestalErrorRefPart + pedestalDiffMin*pedestalDiffMin);
 
 #ifdef DEBUG_CHANA_FINDPED
     lk_debug << "diff min : " << pedestalDiffMin << endl;
     lk_debug << "ref-diff : " << pedestalMeanRef << endl;
-    lk_debug << "ref-error: " << pedestalErrorRef << endl;
+    //lk_debug << "ref-error: " << pedestalErrorRef << endl;
     lk_debug << "ref-error-part: " << pedestalErrorRefPart << endl;
-    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart)
-        lk_debug << iPart << " " << pedestalPart[iPart] << endl;
 #endif
 
     double pedestalFinal = 0;
