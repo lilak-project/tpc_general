@@ -11,29 +11,6 @@ bool TTHTTrackingTask::Init()
 {
     lk_info << "Initializing TTHTTrackingTask" << std::endl;
 
-    if (fPar -> CheckPar("TTHTTrackingTask/HTMaxCutXZPlane"))      fHTMaxCutXZPlane      = fPar -> GetParDouble("TTHTTrackingTask/HTMaxCutXZPlane");
-    if (fPar -> CheckPar("TTHTTrackingTask/HTMaxCutZYPlane"))      fHTMaxCutZYPlane      = fPar -> GetParDouble("TTHTTrackingTask/HTMaxCutZYPlane");
-    if (fPar -> CheckPar("TTHTTrackingTask/HTMaxCutXYPlane"))      fHTMaxCutXYPlane      = fPar -> GetParDouble("TTHTTrackingTask/HTMaxCutXYPlane");
-    if (fPar -> CheckPar("TTHTTrackingTask/nHitsTrackCutXZPlane")) fNHitsTrackCutXZPlane = fPar -> GetParDouble("TTHTTrackingTask/nHitsTrackCutXZPlane");
-    if (fPar -> CheckPar("TTHTTrackingTask/nHitsTrackCutZYPlane")) fNHitsTrackCutZYPlane = fPar -> GetParDouble("TTHTTrackingTask/nHitsTrackCutZYPlane");
-    if (fPar -> CheckPar("TTHTTrackingTask/nHitsTrackCutXYPlane")) fNHitsTrackCutXYPlane = fPar -> GetParDouble("TTHTTrackingTask/nHitsTrackCutXYPlane");
-    if (fPar -> CheckPar("TTHTTrackingTask/nBinsRadius")) {
-        for (auto iCLR : {kMMCenter,kMMLeft,kMMRight}) {
-            fNR[iCLR] = fPar -> GetParDouble("TTHTTrackingTask/nBinsRadius",iCLR);
-            fNT[iCLR] = fPar -> GetParDouble("TTHTTrackingTask/nBinsTheta",iCLR);
-        }
-    }
-    if (fPar -> CheckPar("TTHTTrackingTask/transform_center_in_XY_plane")) {
-        for (auto iCLR : {kMMCenter,kMMLeft,kMMRight}) {
-            fTCXInXY[iCLR] = fPar -> GetParDouble("TTHTTrackingTask/transform_center_in_XY_plane",iCLR);
-            fTCYInXY[iCLR] = fPar -> GetParDouble("TTHTTrackingTask/transform_center_in_XY_plane",iCLR);
-            fTCXInZY[iCLR] = fPar -> GetParDouble("TTHTTrackingTask/transform_center_in_ZY_plane",iCLR);
-            fTCYInZY[iCLR] = fPar -> GetParDouble("TTHTTrackingTask/transform_center_in_ZY_plane",iCLR);
-            fTCXInXZ[iCLR] = fPar -> GetParDouble("TTHTTrackingTask/transform_center_in_XZ_plane",iCLR);
-            fTCYInXZ[iCLR] = fPar -> GetParDouble("TTHTTrackingTask/transform_center_in_XZ_plane",iCLR);
-        }
-    }
-
     fHitArray[kCenter] = nullptr;
     fHitArray[kLStrip] = nullptr;
     fHitArray[kLChain] = nullptr;
@@ -47,10 +24,9 @@ bool TTHTTrackingTask::Init()
     fHitArray[kRStrip] = fRun -> GetBranchA("HitRStrip");
     fHitArray[kRChain] = fRun -> GetBranchA("HitRChain");
     fHitArray[kOthers] = fRun -> GetBranchA("HitOthers");
-    fTrackArray = fRun -> GetBranchA("Track");
     fEventHeaderHolder = fRun -> KeepBranchA("EventHeader");
+    fTrackArray = fRun -> GetBranchA("Track");
 
-    /*
     auto SetTracker = [](LKHTLineTracker* tk, double tx, double ty, int nx, double x1, double x2, int ny, double y1, double y2, int nr, int nt) {
         tk -> SetTransformCenter(tx, ty);
         tk -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
@@ -59,129 +35,147 @@ bool TTHTTrackingTask::Init()
         tk -> SetWFConst();
     };
 
-    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight}) {
-        for (auto iSCA : {kStrip,kChain,kStripAndChain}) {
-            fTrackerXY[iCLR][iSCA] = new LKHTLineTracker(); SetTracker(fTrackerXY[iCLR][iSCA], fTCXInXY[iCLR], fTCYInXY[iCLR], fNX, fX1, fX2, fNY, fY1, fY2, fNR[iCLR], fNT[iCLR]);
-            fTrackerZY[iCLR][iSCA] = new LKHTLineTracker(); SetTracker(fTrackerZY[iCLR][iSCA], fTCXInZY[iCLR], fTCYInZY[iCLR], fNZ, fZ1, fZ2, fNY, fY1, fY2, fNR[iCLR], fNT[iCLR]);
-            fTrackerXZ[iCLR][iSCA] = new LKHTLineTracker(); SetTracker(fTrackerXZ[iCLR][iSCA], fTCXInXZ[iCLR], fTCYInXZ[iCLR], fNX, fX1, fX2, fNZ, fZ1, fZ2, fNR[iCLR], fNT[iCLR]);
-        }
-    }
-    */
+    fTracker[kViewXY][kLeft] = new LKHTLineTracker();  SetTracker(fTracker[kViewXY][kLeft],  fX1, fY1, fNX, fX1, fX2, fNY, fY1, fY2, fNR, fNT);
+    fTracker[kViewZY][kLeft] = new LKHTLineTracker();  SetTracker(fTracker[kViewZY][kLeft],  fZ1, fY1, fNZ, fZ1, fZ2, fNY, fY1, fY2, fNR, fNT);
+    fTracker[kViewXY][kRight] = new LKHTLineTracker(); SetTracker(fTracker[kViewXY][kRight], fX1, fY1, fNX, fX1, fX2, fNY, fY1, fY2, fNR, fNT);
+    fTracker[kViewZY][kRight] = new LKHTLineTracker(); SetTracker(fTracker[kViewZY][kRight], fZ1, fY1, fNZ, fZ1, fZ2, fNY, fY1, fY2, fNR, fNT);
+
+    fCrossHitCollection = new TObjArray();
+    fStripHitCollection = new TObjArray();
+    fChainHitCollection = new TObjArray();
 
     return true;
+}
+
+bool TTHTTrackingTask::TransformAndSelectHits(LKHTLineTracker* trackerXY, LKHTLineTracker* trackerZY)
+{
+    trackerXY -> Transform();
+    trackerZY -> Transform();
+    auto paramPointXY = trackerXY -> FindNextMaximumParamPoint();
+    auto paramPointZY = trackerZY -> FindNextMaximumParamPoint();
+    trackerXY -> SelectHits(paramPointXY);
+    trackerZY -> SelectHits(paramPointZY);
+    auto hitArrayXY = trackerXY -> GetSelectedHitArray();
+    auto hitArrayZY = trackerZY -> GetSelectedHitArray();
+    trackerXY -> ClearHits();
+    trackerZY -> ClearHits();
+    TIter nextXY(hitArrayXY);
+    TIter nextZY(hitArrayZY);
+    while ((auto hit1 = (LKHit*) nextXY())) {
+        while ((auto hit2 = (LKHit*) nextZY())) {
+            if (hit1==hit2) {
+                fCrossHitCollection -> Add(hit1);
+                trackerXY -> AddHit(hit,LKVector3::kX,LKVector3::kY);
+                trackerZY -> AddHit(hit,LKVector3::kZ,LKVector3::kY);
+            }
+        }
+    }
+
+    TIter nextStrip(fStripHitCollection); while ((auto hit = (LKHit*) nextStrip())) hit -> SetSortValue(-1);
+    TIter nextChain(fChainHitCollection); while ((auto hit = (LKHit*) nextChain())) hit -> SetSortValue(+1);
+    fTrackXY = trackerXY -> FitTrackWithParamPoint(paramPointXY);
+
+    TIter nextStrip(fStripHitCollection); while ((auto hit = (LKHit*) nextStrip())) hit -> SetSortValue(+1);
+    TIter nextChain(fChainHitCollection); while ((auto hit = (LKHit*) nextChain())) hit -> SetSortValue(-1);
+    fTrackZY = trackerZY -> FitTrackWithParamPoint(paramPointZY);
+}
+
+bool TTHTTrackingTask::MakeTrack(LKLinearTrack* trackXY, LKLinearTrack* trackZY, double x1, double x2)
+{
+    if (trackXY!=nullptr && trackZY!=nullptr)
+    {
+        auto point1 = trackXY -> GetPoint1();
+        auto point2 = trackZY -> GetPoint2();
+        point1.SetXYZ(point1.X(), point1.Y(), 0);
+        point2.SetXYZ(0, point2.Y(), point2.X());
+        auto directionXY = trackXY -> Direction();
+        auto directionZY = trackZY -> Direction();
+        TVector3 normal1(-directionXY.Y(), directionXY.X(), 0);
+        TVector3 normal2(0, directionZY.X(), -directionZY.Y());
+        LKGeoPlaneWithCenter plane1(point1, normal1);
+        LKGeoPlaneWithCenter plane2(point2, normal2);
+        LKGeoLine lineL = plane1.GetCrossSectionLine(plane2);
+        auto vertex1 = lineL.GetPointAtX(x1);
+        auto vertex2 = lineL.GetPointAtX(x2);
+        auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fNumTracks);
+        track -> SetTrack(vertex1, vertex2);
+        track -> SetTrackID(fNumTracks);
+        auto hitArray = trackXY -> GetHitArray();
+        TIter next(hitArray);
+        while ((auto hit = (LKHit*)next()))
+            track -> AddHit(hit);
+        ++fNumTracks;
+        return true;
+    }
+    return false;
 }
 
 void TTHTTrackingTask::Exec(Option_t *option)
 {
     fTrackArray -> Clear("C");
+    fNumTracks = 0;
 
     auto numHitsAll = 0;
-    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
-        for (auto iSCA : {kStrip,kChain})
-            numHitsAll += fHitArray[iCLR][iSCA] -> GetEntries();
+    for (auto iRegion : {kLStrip, kLChain, kRStrip, kRChain})
+        numHitsAll += fHitArray[iRegion] -> GetEntries();
 
+    // good event?  ------------------------------------------------------------------------
     auto eventHeader = (TTEventHeader*) fEventHeaderHolder -> At(0);
     auto goodEvent = eventHeader -> IsGoodEvent();
-    if (numHitsAll==0||goodEvent==false)
+    if (numHitsAll==0||goodEvent==false) {
+        eventHeader -> SetIsGoodEvent(false);
         return;
+    }
 
-    for (auto iView : {kFrontView,kSideView})
+    // clear ------------------------------------------------------------------------
+    for (auto iView : {kViewXY,kViewZY})
         for (auto iLeftRight : {kLeft,kRight})
             fTracker[iView][iLeftRight] -> Clear();
 
-    const int kLeft = 0;
-    const int kRight = 1;
-    int vLeftRight[] = {{kLStrip ,kLChain}, {kLStrip ,kLChain}};
-    for (auto iLeftRight : {kLeft,kRight})
+    // add transform and fit ------------------------------------------------------------------------
+    for (auto iLeftRight : {kLeft, kRight})
     {
-        for (auto iRegion : vLeftRight[iLeftRight])
-        {
-            auto numHits = fHitArray[iRegion] -> GetEntries();
-            for (auto iHit=0; iHit<numHits; ++iHit)
-            {
-                auto hit = (LKHit*) fHitArray[iRegion] -> At(iHit);
-                auto x = hit -> X();
-                auto y = 350 - (hit -> Y());
-                auto z = hit -> Z();
-                auto dx = hit->GetDX();
-                auto dy = hit->GetDY();
-                auto dz = hit->GetDZ();
-
-                fTracker[kFrontView][iLeftRight] -> AddHit(hit,LKVector3::kX,LKVector3::kY);
-                fTracker[kSideView][iLeftRight] -> AddHit(hit,LKVector3::kZ,LKVector3::kY);
-            }
+        double x1 = 0;
+        double x2 = fX1;
+        int iStrip = kLStrip;
+        int iChain = kLChain;
+        if (iLeftRight==kRight) {
+            x2 = fX2;
+            iStrip = kRStrip;
+            iChain = kRChain;
         }
-    }
-
-    fTracker[kFrontView][kMMLeft]  -> Transform();
-    fTracker[kSideView][kMMLeft]  -> Transform();
-    fTracker[kFrontView][kMMRight] -> Transform();
-    fTracker[kSideView][kMMRight] -> Transform();
-    //auto ppFL = fTrackerXY[kMMLeft][kStripAndChain]  -> FindNextMaximumParamPoint();
-    //auto ppSL = fTrackerZY[kMMLeft][kStripAndChain]  -> FindNextMaximumParamPoint();
-    //auto ppFR = fTrackerXY[kMMRight][kStripAndChain] -> FindNextMaximumParamPoint();
-    //auto ppSR = fTrackerZY[kMMRight][kStripAndChain] -> FindNextMaximumParamPoint();
-
-    /*
-    if (trackFL!=nullptr && trackSL!=nullptr)
-    {
-        auto point1 = trackFL -> GetPoint1();
-        auto point2 = trackSL -> GetPoint2();
-        point1.SetXYZ(point1.X(), point1.Y(), 0);
-        point2.SetXYZ(0, point2.Y(), point2.X());
-        auto directionF = trackFL -> Direction();
-        auto directionS = trackSL -> Direction();
-        TVector3 normal1(-directionF.Y(), directionF.X(), 0);
-        TVector3 normal2(0, directionS.X(), -directionS.Y());
-        LKGeoPlaneWithCenter plane1(point1, normal1);
-        LKGeoPlaneWithCenter plane2(point2, normal2);
-        LKGeoLine lineL = plane1.GetCrossSectionLine(plane2);
-        auto vertex1 = lineL.GetPointAtX(0);
-        auto vertex2 = lineL.GetPointAtX(fX1);
-        auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fTrackArray->GetEntries());
-        track -> SetTrack(vertex1, vertex2);
-        track -> SetTrackID(0);
-    }
-    if (trackFR!=nullptr && trackSR!=nullptr)
-    {
-        auto point1 = trackFR -> GetPoint1();
-        auto point2 = trackSR -> GetPoint2();
-        point1.SetXYZ(point1.X(), point1.Y(), 0);
-        point2.SetXYZ(0, point2.Y(), point2.X());
-        auto directionF = trackFR -> Direction();
-        auto directionS = trackSR -> Direction();
-        TVector3 normal1(-directionF.Y(), directionF.X(), 0);
-        TVector3 normal2(0, directionS.X(), -directionS.Y());
-        LKGeoPlaneWithCenter plane1(point1, normal1);
-        LKGeoPlaneWithCenter plane2(point2, normal2);
-        LKGeoLine lineR = plane1.GetCrossSectionLine(plane2);
-        auto vertex1 = lineR.GetPointAtX(0);
-        auto vertex2 = lineR.GetPointAtX(fX2);
-        auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fTrackArray->GetEntries());
-        track -> SetTrack(vertex1, vertex2);
-        track -> SetTrackID(1);
-    }
-
-    auto numTracks = fTrackArray -> GetEntries();
-    for (auto iTrack=0; iTrack<numTracks; ++iTrack)
-    {
-        auto track = (LKLinearTrack*) fTrackArray -> At(iTrack);
-
-        for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
+        if (fHitArray[iStrip] -> GetEntries() > fNumHitsCutForTransform && fHitArray[iChain] -> GetEntries() > fNumHitsCutForTransform)
         {
-            for (auto iSCA : {kStrip,kChain})
-            {
-                auto numHits = fHitArray[iCLR][iSCA] -> GetEntries();
-                for (auto iHit=0; iHit<numHits; ++iHit)
-                {
-                    auto hit = (LKHit*) fHitArray[iCLR][iSCA] -> At(iHit);
+            fStripHitCollection -> Clear();
+            fChainHitCollection -> Clear();
+            for (auto iRegion : {iStrip ,iChain}) {
+                auto numHits = fHitArray[iRegion] -> GetEntries();
+                for (auto iHit=0; iHit<numHits; ++iHit) {
+                    auto hit = (LKHit*) fHitArray[iRegion] -> At(iHit);
+                    ftracker[kviewxy][ileftright] -> AddHit(hit,LKVector3::kX,LKVector3::kY);
+                    fTracker[kViewZY][iLeftRight] -> AddHit(hit,LKVector3::kZ,LKVector3::kY);
+                    if (iRegion==iStrip) fStripHitCollection -> Add(hit);
+                    if (iRegion==iChain) fChainHitCollection -> Add(hit);
                 }
             }
+            TransformAndSelectHits(ftracker[kviewxy][ileftright], fTracker[kViewZY][iLeftRight]);
+            auto goodTrack = MakeTrack(fTrackXY,fTrackZY,x1,x2);
         }
     }
-    */
 
-    //lk_debug << "Found " << numTracks << " tracks" << endl;
+    // propagate track cand ------------------------------------------------------------------------
+    // if hit was used for fitting inside the tracker, track cand "0" would have been added.
+    for (auto iRegion : {kCenter, kLStrip, kLChain, kRStrip, kRChain}) {
+        auto numHits = fHitArray[iRegion] -> GetEntries();
+        for (auto iHit=0; iHit<numHits; ++iHit) {
+            auto hit = (LKHit*) fHitArray[iRegion] -> At(iHit);
+            auto numCands = hit -> GetNumTrackCands();
+            if (numCands>0)
+                hit -> SetTrackID
+        }
+    }
+
+    lk_debug << "Found " << fNumTracks << " tracks" << endl;
 }
 
 bool TTHTTrackingTask::EndOfRun()
