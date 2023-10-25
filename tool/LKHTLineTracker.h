@@ -205,6 +205,7 @@ class LKHTLineTracker : public TNamed
         void AddImagePoint(double x, double xError, double y, double yError, double weight);
         void AddImagePointBox(double x1, double y1, double x2, double y2, double weight);
         void SetImageData(double** imageData);
+        void SetWeightCutTrackFit(double value) { fWeightCutTrackFit = value; }
 
         void AddHit(LKHit* hit, LKVector3::Axis a1, LKVector3::Axis a2);
 
@@ -243,7 +244,7 @@ class LKHTLineTracker : public TNamed
         LKParamPointRT* FindNextMaximumParamPoint();
         //LKParamPointRT* FindNextMaximumParamPoint2();
 
-        void SelectPoints(LKParamPointRT* paramPoint, double weightCut=1);
+        void SelectPoints(LKParamPointRT* paramPoint, double weightCut=-1);
         LKLinearTrack* FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut=-1); /// Used hits(points) will be removed from the hit array
 
         void CleanLastParamPoint(double rWidth=-1, double tWidth=-1);
@@ -306,6 +307,7 @@ class LKHTLineTracker : public TNamed
         int          fCorrelateType = kCorrelateBoxBand;
 
         LKHTWeightingFunction* fWeightingFunction = nullptr;
+        double       fWeightCutTrackFit = 0.2;
 
         TGraphErrors* fGraphImageData = nullptr;
         TGraph* fGraphPathToMaxWeight = nullptr;

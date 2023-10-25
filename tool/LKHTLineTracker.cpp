@@ -563,6 +563,9 @@ void LKHTLineTracker::RetransformFromLastParamPoint()
 
 void LKHTLineTracker::SelectPoints(LKParamPointRT* paramPoint, double weightCut)
 {
+    if (weightCut==-1)
+        weightCut = fWeightCutTrackFit;
+
     bool tagHit = false;
     if (fNumHits==fNumImagePoints)
         tagHit = true;
@@ -577,14 +580,13 @@ void LKHTLineTracker::SelectPoints(LKParamPointRT* paramPoint, double weightCut)
             distance = paramPoint -> CorrelateBoxBand(imagePoint);
         if (distance<0)
             continue;
-        if (tagHit) {
-            auto hit = (LKHit*) fHitArray -> At(iImage);
-            if (hit -> GetSortValue()<0)
-                continue;
-        }
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
         if (weight > weightCut) {
             fSelectedImagePointIdxs.push_back(iImage);
+            if (tagHit) {
+                auto hit = (LKHit*) fHitArray -> At(iImage);
+                fSelectedHitArray -> Add(hit);
+            }
         }
     }
 
@@ -594,7 +596,7 @@ void LKHTLineTracker::SelectPoints(LKParamPointRT* paramPoint, double weightCut)
 LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut)
 {
     if (weightCut==-1)
-        weightCut = 0.2;
+        weightCut = fWeightCutTrackFit;
 
     auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fNumLinearTracks);
     ++fNumLinearTracks;

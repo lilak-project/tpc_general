@@ -43,8 +43,6 @@ class TTHTTrackingTask : public LKTask
         TClonesArray* fEventHeaderHolder = nullptr;
 
         TObjArray* fCrossHitCollection = nullptr;
-        TObjArray* fStripHitCollection = nullptr;
-        TObjArray* fChainHitCollection = nullptr;
 
         LKHTLineTracker* fTracker[2][2];
 

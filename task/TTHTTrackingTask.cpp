@@ -42,8 +42,6 @@ bool TTHTTrackingTask::Init()
     fTracker[kViewZY][kRight] = new LKHTLineTracker(); SetTracker(fTracker[kViewZY][kRight], fZ1, fY1, fNZ, fZ1, fZ2, fNY, fY1, fY2, fNR, fNT);
 
     fCrossHitCollection = new TObjArray();
-    fStripHitCollection = new TObjArray();
-    fChainHitCollection = new TObjArray();
 
     return true;
 }
@@ -61,20 +59,18 @@ bool TTHTTrackingTask::TransformAndSelectHits(LKHTLineTracker* trackerXY, LKHTLi
     TIter nextXY(hitArrayXY);
     TIter nextZY(hitArrayZY);
 
-    lk_debug << hitArrayXY->GetEntries() << "  " << hitArrayZY->GetEntries() << endl;
     LKHit *hit1, *hit2, *hit;
 
     auto numCrossHits = 0;
     while ((hit1 = (LKHit*) nextXY())) {
+        nextZY.Reset();
         while ((hit2 = (LKHit*) nextZY())) {
-            if (hit1==hit2) {
-                lk_debug << hit1 << " " << hit2 << endl;
+            if (hit1->GetHitID()==hit2->GetHitID()) {
                 fCrossHitCollection -> Add(hit1);
                 ++numCrossHits;
             }
         }
     }
-    lk_debug << numCrossHits << " <=? " << fNumHitsCutForTransform << endl;
     if (numCrossHits<=fNumHitsCutForTransform)
         return false;
 
@@ -82,21 +78,11 @@ bool TTHTTrackingTask::TransformAndSelectHits(LKHTLineTracker* trackerXY, LKHTLi
     trackerZY -> ClearPoints();
     TIter nextCross(fCrossHitCollection);
     while ((hit = (LKHit*) nextCross())) {
-        trackerXY -> AddHit(hit,LKVector3::kX,LKVector3::kY);
-        trackerZY -> AddHit(hit,LKVector3::kZ,LKVector3::kY);
+        if (hit->GetSortValue()>0) trackerXY -> AddHit(hit,LKVector3::kX,LKVector3::kY);
+        if (hit->GetSortValue()<0) trackerZY -> AddHit(hit,LKVector3::kZ,LKVector3::kY);
     }
-    lk_debug << endl;
 
-    TIter nextStrip(fStripHitCollection);
-    TIter nextChain(fChainHitCollection);
-    while ((hit = (LKHit*) nextStrip())) hit -> SetSortValue(-1);
-    while ((hit = (LKHit*) nextChain())) hit -> SetSortValue(+1);
     fTrackXY = trackerXY -> FitTrackWithParamPoint(paramPointXY);
-
-    nextStrip.Reset();
-    nextChain.Reset();
-    while ((hit = (LKHit*) nextStrip())) hit -> SetSortValue(+1);
-    while ((hit = (LKHit*) nextChain())) hit -> SetSortValue(-1);
     fTrackZY = trackerZY -> FitTrackWithParamPoint(paramPointZY);
 
     return true;
@@ -140,7 +126,6 @@ void TTHTTrackingTask::Exec(Option_t *option)
     for (auto iRegion : {kLStrip, kLChain, kRStrip, kRChain})
         numHitsAll += fHitArray[iRegion] -> GetEntries();
 
-    lk_debug << numHitsAll << endl;
     // good event?  ------------------------------------------------------------------------
     auto eventHeader = (TTEventHeader*) fEventHeaderHolder -> At(0);
     auto goodEvent = eventHeader -> IsGoodEvent();
@@ -167,29 +152,22 @@ void TTHTTrackingTask::Exec(Option_t *option)
             iStrip = kRStrip;
             iChain = kRChain;
         }
-        lk_debug << fHitArray[iStrip]->GetEntries() << " >? " << fNumHitsCutForTransform << endl;
-        lk_debug << fHitArray[iChain]->GetEntries() << " >? " << fNumHitsCutForTransform << endl;
         if (fHitArray[iStrip]->GetEntries()>fNumHitsCutForTransform && fHitArray[iChain]->GetEntries()>fNumHitsCutForTransform)
         {
-            fStripHitCollection -> Clear();
-            fChainHitCollection -> Clear();
             for (auto iRegion : {iStrip ,iChain}) {
                 auto numHits = fHitArray[iRegion] -> GetEntries();
                 for (auto iHit=0; iHit<numHits; ++iHit) {
                     auto hit = (LKHit*) fHitArray[iRegion] -> At(iHit);
                     fTracker[kViewXY][iLeftRight] -> AddHit(hit,LKVector3::kX,LKVector3::kY);
                     fTracker[kViewZY][iLeftRight] -> AddHit(hit,LKVector3::kZ,LKVector3::kY);
-                    if (iRegion==iStrip) fStripHitCollection -> Add(hit);
-                    if (iRegion==iChain) fChainHitCollection -> Add(hit);
+                    if (iRegion==iStrip) hit -> SetSortValue(-1);
+                    if (iRegion==iChain) hit -> SetSortValue(+1);
                 }
             }
             TransformAndSelectHits(fTracker[kViewXY][iLeftRight], fTracker[kViewZY][iLeftRight]);
-            lk_debug << fTrackXY << " " <<fTrackZY << endl;
             auto goodTrack = MakeTrack(fTrackXY,fTrackZY,x1,x2);
-            lk_debug << goodTrack << endl;
         }
     }
-    lk_debug << endl;
 
     lk_info << "Found " << fNumTracks << " tracks" << endl;
 }
