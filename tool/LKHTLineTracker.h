@@ -1,6 +1,9 @@
 #ifndef LKHOUGHTRANSFORMTRACKER_HH
 #define LKHOUGHTRANSFORMTRACKER_HH
 
+#include <vector>
+using namespace std;
+
 #include "TNamed.h"
 #include "LKLogger.h"
 #include "LKGeoLine.h"
@@ -190,6 +193,8 @@ class LKHTLineTracker : public TNamed
         int GetNumImagePoints() const  { return fNumImagePoints; }
         int GetNumParamPoints() const  { return fNumBinsParamSpace[0]*fNumBinsParamSpace[1]; }
         double GetMaxWeightingDistance(double distance) const { return fMaxWeightingDistance; }
+        double GetHitArray() { return fHitArray; }
+        double GetSelectedHitArray() { return fSelectedHitArray; }
 
         void SetTransformCenter(double x, double y) { fTransformCenter = TVector3(x,y,0); }
         void SetImageSpaceRange(int nx, double x1, double x2, int ny, double y1, double y2);
@@ -235,7 +240,10 @@ class LKHTLineTracker : public TNamed
         void Transform();
         LKParamPointRT* FindNextMaximumParamPoint();
         //LKParamPointRT* FindNextMaximumParamPoint2();
-        LKLinearTrack* FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut=-1);
+
+        void SelectPoints(LKParamPointRT* paramPoint, double weightCut=1);
+        LKLinearTrack* FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut=-1); /// Used hits(points) will be removed from the hit array
+
         void CleanLastParamPoint(double rWidth=-1, double tWidth=-1);
         LKParamPointRT* ReinitializeFromLastParamPoint();
         void RetransformFromLastParamPoint();
@@ -275,6 +283,9 @@ class LKHTLineTracker : public TNamed
         LKVector3::Axis fA1 = LKVector3::kX;
         LKVector3::Axis fA2 = LKVector3::kY;
 
+        TObjArray*      fSelectedHitArray = nullptr;
+        vector<int>     fSelectedImagePointIdxs;
+
         int             fNumImagePoints = 0;
         TClonesArray*   fImagePointArray = nullptr;
         LKImagePoint*   fImagePoint = nullptr;
@@ -302,47 +313,16 @@ class LKHTLineTracker : public TNamed
         TH2D *fHistImage = nullptr;
         TH2D *fHistParam = nullptr;
 
+        const int kNon = 0;
+        const int kAddPoints = 1;
+        const int kTransform = 2;
+        const int kSelectPoints = 3;
+        const int kFitTrack = 4;
+        const int kClear = 5;
+        const int kClearPoints = 6;
+        int fProcess = kNon;
+
     ClassDef(LKHTLineTracker,1);
 };
 
-class LKHTCorrelator
-{
-    public:
-        LKHTCorrelator() {}
-        ~LKHTCorrelator() {}
-        virtual bool Correlate(LKImagePoint* imagePoint, LKParamPointRT* paramPoint) = 0;
-};
-
-/*
-class CorrelateBoxBand
-{
-    public:
-        LKHTCorrelator() {}
-        ~LKHTCorrelator() {}
-        bool Correlate(LKImagePoint* imagePoint, LKParamPointRT* paramSpace, TVector3 transformCenter, int numBinsR, double r1, double r2)
-        {
-            double binSizeR = (r2-r1)/numBinsR;
-            int irMax = -INT_MAX;
-            int irMin = INT_MAX;
-            for (auto iImageCorner : {1,2,3,4})
-            {
-                auto radius = imagePoint -> EvalR(iImageCorner, paramSpace->GetT0(), transformCenter[0], transformCenter[1]);
-                int ir = floor( (radius-r1)/binSizeR);
-                if (irMax<ir) irMax = ir;
-                if (irMin>ir) irMin = ir;
-            }
-            if (irMax>=numBinsR) irMax = numBinsR - 1;
-            if (irMin<0) irMin = 0;
-            for (int ir=irMin; ir<=irMax; ++ir) {
-                auto paramPoint = GetParamPoint(ir,it);
-                auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
-                if (weight>0) {
-                    fIdxSelectedR = ir;
-                    fIdxSelectedT = it;
-                    fParamData[ir][it] = fParamData[ir][it] + weight;
-                }
-            }
-        }
-};
-*/
 #endif

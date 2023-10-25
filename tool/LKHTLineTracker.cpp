@@ -8,6 +8,7 @@ LKHTLineTracker::LKHTLineTracker()
     fImagePoint = new LKImagePoint();
     fParamPoint = new LKParamPointRT();
     fHitArray = new TObjArray();
+    fSelectedHitArray = new TObjArray();
     fImagePointArray = new TClonesArray("LKImagePoint",100);
     fTrackArray = new TClonesArray("LKLinearTrack",20);
     Clear();
@@ -66,6 +67,16 @@ void LKHTLineTracker::Clear(Option_t *option)
             for(int j = 0; j < fNumBinsParamSpace[1]; ++j)
                 fParamData[i][j] = 0;
     }
+    fProcess = kClear;
+}
+
+void LKHTLineTracker::ClearPoints()
+{
+    fNumHits = 0;
+    fHitArray -> Clear();
+    fNumImagePoints = 0;
+    fImagePointArray -> Clear("C");
+    fProcess = kClearPoints;
 }
 
 void LKHTLineTracker::Print(Option_t *option) const
@@ -218,6 +229,7 @@ void LKHTLineTracker::AddImagePoint(double x, double xError, double y, double yE
     auto imagePoint = (LKImagePoint*) fImagePointArray -> ConstructedAt(fNumImagePoints);
     imagePoint -> SetPoint(x1,y1,x2,y2,weight);
     ++fNumImagePoints;
+    fProcess = kAddPoints;
 }
 
 void LKHTLineTracker::AddImagePointBox(double x1, double y1, double x2, double y2, double weight)
@@ -225,6 +237,7 @@ void LKHTLineTracker::AddImagePointBox(double x1, double y1, double x2, double y
     auto imagePoint = (LKImagePoint*) fImagePointArray -> ConstructedAt(fNumImagePoints);
     imagePoint -> SetPoint(x1,y1,x2,y2,weight);
     ++fNumImagePoints;
+    fProcess = kAddPoints;
 }
 
 LKImagePoint* LKHTLineTracker::GetImagePoint(int i)
@@ -375,6 +388,7 @@ void LKHTLineTracker::Transform()
         } // image
 
     }
+    fProcess = kTransform;
 }
 
 //#define DEBUG_SAME_MAX
@@ -547,25 +561,17 @@ void LKHTLineTracker::RetransformFromLastParamPoint()
     Transform();
 }
 
-LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut)
+void LKHTLineTracker::SelectPoints(LKParamPointRT* paramPoint, double weightCut)
 {
-    if (weightCut==-1) {
-        weightCut = 0.2;
-    }
-    auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fNumLinearTracks);
-    ++fNumLinearTracks;
-
     bool tagHit = false;
     if (fNumHits==fNumImagePoints)
         tagHit = true;
 
-    fLineFitter -> Reset();
-
-    vector<int> vImagePointIdxs;
+    fSelectedHitArray -> Clear();
+    fSelectedImagePointIdxs.clear();
     for (int iImage=0; iImage<fNumImagePoints; ++iImage)
     {
         auto imagePoint = GetImagePoint(iImage);
-
         double distance = 0;
         if (fCorrelateType==kCorrelateBoxBand)
             distance = paramPoint -> CorrelateBoxBand(imagePoint);
@@ -578,17 +584,43 @@ LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoin
         }
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
         if (weight > weightCut) {
-            vImagePointIdxs.push_back(iImage);
-            fLineFitter -> PreAddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
+            fSelectedImagePointIdxs.push_back(iImage);
         }
     }
-    for (int iImage : vImagePointIdxs)
-    {
-        //auto imagePoint = PopImagePoint(iImage);
+
+    fProcess = kSelectPoints;
+}
+
+LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut)
+{
+    if (weightCut==-1)
+        weightCut = 0.2;
+
+    auto track = (LKLinearTrack*) fTrackArray -> ConstructedAt(fNumLinearTracks);
+    ++fNumLinearTracks;
+
+    bool tagHit = false;
+    if (fNumHits==fNumImagePoints)
+        tagHit = true;
+
+    if (fProcess!=kSelectPoints)
+        SelectPoints(paramPoint, weightCut);
+
+    fProcess = kFitTrack;
+
+    fLineFitter -> Reset();
+
+    for (int iImage : fSelectedImagePointIdxs) {
+        auto imagePoint = GetImagePoint(iImage);
+        auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
+        fLineFitter -> PreAddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
+    }
+    for (int iImage : fSelectedImagePointIdxs) {
         auto imagePoint = GetImagePoint(iImage);
         auto weight = fWeightingFunction -> EvalFromPoints(imagePoint,paramPoint);
         fLineFitter -> AddPoint(imagePoint->fX0,imagePoint->fY0,0,imagePoint->fWeight);
     }
+
     if (fLineFitter->GetNumPoints()<fCutNumTrackHits) {
         lk_debug << "return because " << fLineFitter->GetNumPoints() << " < " << fCutNumTrackHits << endl;
         return track;
@@ -600,11 +632,11 @@ LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoin
         return track;
     }
 
-    for (int iImage : vImagePointIdxs) {
+    for (int iImage : fSelectedImagePointIdxs) {
         PopImagePoint(iImage);
         if (tagHit) {
             auto hit = (LKHit*) fHitArray -> At(iImage);
-            hit -> AddTrackCand(0);
+            track -> AddHit(hit);
             fHitArray -> Remove(hit);
         }
     }
@@ -614,7 +646,6 @@ LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoin
     auto dy = fRangeImageSpace[1][0] - fRangeImageSpace[1][1];
     auto size = sqrt(dx*dx + dy*dy)/2;
     auto direction = fLineFitter->GetDirection();
-
     track -> SetLine(centroid - size*direction, centroid + size*direction);
     track -> SetRMS(fLineFitter->GetRMSLine());
 
