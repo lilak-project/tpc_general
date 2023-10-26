@@ -116,6 +116,7 @@ void TTPulseAnalysisTask::Exec(Option_t *option)
             auto amplitude = ana -> GetAmplitude(iHit);
             auto chi2NDF   = ana -> GetChi2NDF(iHit);
             auto ndf       = ana -> GetNDF(iHit);
+            auto pedestal  = ana -> GetPedestal();
             LKHit* hit = nullptr;
                  if (chDetType==fITypeLCenter) hit = (LKHit*) fHitArrayCenter -> ConstructedAt(countHitCenter++);
             else if (chDetType==fITypeHCenter) hit = (LKHit*) fHitArrayCenter -> ConstructedAt(countHitCenter++);
@@ -130,6 +131,7 @@ void TTPulseAnalysisTask::Exec(Option_t *option)
             hit -> SetPosition(xPos,tb,zPos);
             hit -> SetPositionError(xErr,1,zErr);
             hit -> SetCharge(amplitude);
+            hit -> SetPedestal(pedestal);
             hit -> SetAlpha(alpha);
 
             countHits++;
