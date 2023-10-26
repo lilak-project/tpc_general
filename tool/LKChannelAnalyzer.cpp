@@ -39,6 +39,7 @@ void LKChannelAnalyzer::SetPulse(const char* fileName)
 
 void LKChannelAnalyzer::Clear(Option_t *option)
 {
+    fPedestal = 0;
     fDynamicRange = fDynamicRangeOriginal;
     fNumHits = 0;
     //fTbHitArray.clear();
@@ -238,6 +239,8 @@ double LKChannelAnalyzer::FindAndSubtractPedestal(double *buffer)
         buffer[iTb] = buffer[iTb] - pedestalFinal;
 
     fDynamicRange = fDynamicRange - pedestalFinal;
+
+    fPedestal = pedestalFinal;
 
     return pedestalFinal;
 }

@@ -167,6 +167,16 @@ class LKChannelAnalyzer : public TObject
         void Analyze(double* data);
         //LKChannelHit GetHit(int i) { return fChannelHitArray[i]; }
 
+        /**
+         * Find pedestal and subract it from the buffer.
+         * Pedestal is estimated through following process
+         * 1. Divide tb-region by NUMBER_OF_PEDESTAL_TEST_REGIONS(6)
+         * 2. Calculate average-charge for each region.
+         * 3. Find two regions which has least value of average-charge difference.
+         * 4. Make charge-average-cut which is ~20% of charge-average of selected two regions.
+         * 5. For all regions, select which has average-charge that come in the average-charge-cut.
+         * 6. Pedestal is average-charge of select regions.
+         */
         double FindAndSubtractPedestal(double *buffer);
         /**
          * Find first peak from adc time-bucket starting from input tbCurrent
@@ -198,6 +208,7 @@ class LKChannelAnalyzer : public TObject
         int GetThreshold() const  { return fThreshold; }
         int GetThresholdOneTbStep() const  { return fThresholdOneStep; }
         int GetNumTbAcendingCut() const  { return fNumTbAcendingCut; }
+        int GetPedestal() const  { return fPedestal; }
         int GetDynamicRange() const  { return fDynamicRange; }
         int GetNDF() const  { return fNDFFit; }
         int GetIterMax() const  { return fIterMax; }
@@ -226,6 +237,8 @@ class LKChannelAnalyzer : public TObject
         vector<LKPulseFitParameter> fFitParameterArray; ///< Vector holding fit TB
         //vector<double> fTbHitArray; ///< Vector holding fit TB
         //vector<double> fAmplitudeArray; ///< Vector holding fit amplitude
+
+        double       fPedestal = 0; ///< pedestal level of current channel
 
         // tb
         int          fTbMax = 350; ///< Maximum TB in buffer. Must be set with SetTbMax()

@@ -75,7 +75,7 @@ double LKPulse::Eval  (double tb, double tb0, double amplitude) { return (amplit
 double LKPulse::Error (double tb, double tb0, double amplitude) { return (amplitude * fGraphError  -> Eval(tb-tb0)); }
 double LKPulse::Error0(double tb, double tb0, double amplitude) { return (amplitude * fGraphError0 -> Eval(tb-tb0)); }
 
-TGraphErrors *LKPulse::GetPulseGraph(double tb0, double amplitude)
+TGraphErrors *LKPulse::GetPulseGraph(double tb0, double amplitude, double pedestal)
 {
     auto graphNew = new TGraphErrors();
     for (auto iPoint=0; iPoint<fNumPoints; ++iPoint)
@@ -83,7 +83,7 @@ TGraphErrors *LKPulse::GetPulseGraph(double tb0, double amplitude)
         auto xValue = fGraphPulse -> GetPointX(iPoint);
         auto yValue = fGraphPulse -> GetPointY(iPoint);
         auto yError = fGraphPulse -> GetErrorY(iPoint);
-        graphNew -> SetPoint(iPoint,xValue+tb0,yValue*amplitude);
+        graphNew -> SetPoint(iPoint,xValue+tb0,yValue*amplitude+pedestal);
         graphNew -> SetPointError(iPoint,0,yError*amplitude);
     }
     graphNew -> SetLineColor(kRed);

@@ -29,7 +29,7 @@ class LKPulse : public TObject
         double Error(double tb, double tb0=0, double amplitude=1);
         double Error0(double tb, double tb0=0, double amplitude=1);
 
-        TGraphErrors *GetPulseGraph(double tb0, double amplitude);
+        TGraphErrors *GetPulseGraph(double tb0, double amplitude, double pedestal=0);
 
         int GetNDF() const { return fNumPoints; }
         int GetNumAnalyzedChannels() const  { return fNumAnalyzedChannels; }
