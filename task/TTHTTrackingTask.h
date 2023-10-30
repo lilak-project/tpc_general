@@ -62,6 +62,12 @@ class TTHTTrackingTask : public LKTask
         LKHTLineTracker*     fTrackerZY[3][3];
         LKHTLineTracker*     fTrackerXY[3][3];
 
+        LKImagePoint* fImagePointXY = nullptr;
+        LKImagePoint* fImagePointZY = nullptr;
+
+        //LKHitArray* fHitArrayLeft = nullptr;
+        //LKHitArray* fHitArrayRight = nullptr;
+
         const int    kStripAndChain = 2;
         const int    kStrip = 0;
         const int    kChain = 1;
