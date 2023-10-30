@@ -1,0 +1,97 @@
+#ifndef TTHTTRACKINGTASK_HH
+#define TTHTTRACKINGTASK_HH
+
+#include "TClonesArray.h"
+#include "LKLogger.h"
+#include "LKParameterContainer.h"
+#include "LKRun.h"
+#include "LKTask.h"
+#include "LKHit.h"
+#include "LKLinearTrack.h"
+#include "LKHTLineTracker.h"
+#include "TTEventHeader.h"
+#include "LKODRFitter.h"
+//#include "EventHeader"
+
+/*
+ * Remove this comment block after reading it through
+ * or use print_example_comments=False option to omit printing
+ *
+ * # Example LILAK task class
+ *
+ * - Write Init() method.
+ * - Write Exec() or/and EndOfRun() method.
+ */
+
+class TTHTTrackingTask : public LKTask
+{
+    public:
+        TTHTTrackingTask();
+        virtual ~TTHTTrackingTask() { ; }
+
+        bool Init();
+        void Exec(Option_t *option="");
+        bool EndOfRun();
+
+        auto FitFromCollection();
+
+    private:
+        TClonesArray *fHitArrayForFit[2];
+        TClonesArray *fHitArray[2][2];
+        TClonesArray *fTrackArray = nullptr;
+        TClonesArray* fEventHeaderHolder = nullptr;
+
+        LKLinearTrack* fTrackFront;
+        LKLinearTrack* fTrackSide;
+        int fNumTracks = 0;
+
+        int    fNX = 143;
+        double fX1 = -120;
+        double fX2 = 120;
+        int    fNY = 110;
+        double fY1 = 0;
+        double fY2 = 330;
+        int    fNZ = 141;
+        double fZ1 = 150;
+        double fZ2 = 500;
+        int    fNR[3] = {80, 80, 80};
+        int    fNT[3] = {100,100,100};
+
+        double fTCXInXY[3] = {fX1,fX1,fX1};
+        double fTCYInXY[3] = {fY1,fY1,fY1};
+        double fTCXInZY[3] = {fZ1,fZ1,fZ1};
+        double fTCYInZY[3] = {fY1,fY1,fY1};
+        double fTCXInXZ[3] = {fX1,fX1,fX1};
+        double fTCYInXZ[3] = {fZ1,fZ1,fZ1};
+
+        LKHTLineTracker*     fTrackerXZ[2][3];
+        LKHTLineTracker*     fTrackerZY[2][3];
+        LKHTLineTracker*     fTrackerXY[2][3];
+
+        LKImagePoint* fImagePoint = nullptr;
+
+        const int    kStripAndChain = 2;
+        const int    kStrip = 0;
+        const int    kChain = 1;
+
+        const int    kMMLeft = 0;
+        const int    kMMRight = 1;
+        //const int    kMMCenter = 2;
+
+        const int    kFrontView = 0;
+        const int    kSideView = 1;
+        const int    kTopView = 2;
+
+        double       fHTMaxCutXZPlane = 5;
+        double       fHTMaxCutZYPlane = 5;
+        double       fHTMaxCutXYPlane = 5;
+        double       fNHitsTrackCutXZPlane = 3;
+        double       fNHitsTrackCutZYPlane = 3;
+        double       fNHitsTrackCutXYPlane = 3;
+
+        LKODRFitter* fLineFitter = nullptr;
+
+    ClassDef(TTHTTrackingTask,1);
+};
+
+#endif
