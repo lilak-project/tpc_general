@@ -35,7 +35,8 @@ class TTHTTrackingTask : public LKTask
         auto TransformAndFit(int iView, int iCLR, LKHTLineTracker* tk[3][3]);
 
     private:
-        TClonesArray *fHitArray[3][2];
+        //TClonesArray *fHitArray[3][2];
+        TClonesArray *fHitArray[6];
         TClonesArray *fTrackArray = nullptr;
         TClonesArray* fEventHeaderHolder = nullptr;
 
@@ -58,15 +59,23 @@ class TTHTTrackingTask : public LKTask
         double fTCXInXZ[3] = {fX1,fX1,fX1};
         double fTCYInXZ[3] = {fZ1,fZ1,fZ1};
 
-        LKHTLineTracker*     fTrackerXZ[3][3];
-        LKHTLineTracker*     fTrackerZY[3][3];
-        LKHTLineTracker*     fTrackerXY[3][3];
+        LKHTLineTracker*     fTracker[2][2];
+        //LKHTLineTracker*     fTrackerXZ[3][3];
+        //LKHTLineTracker*     fTrackerZY[3][3];
+        //LKHTLineTracker*     fTrackerXY[3][3];
 
         LKImagePoint* fImagePointXY = nullptr;
         LKImagePoint* fImagePointZY = nullptr;
 
         //LKHitArray* fHitArrayLeft = nullptr;
         //LKHitArray* fHitArrayRight = nullptr;
+
+        const int    kCenter = 0;
+        const int    kLStrip = 1;
+        const int    kLChain = 2;
+        const int    kRStrip = 3;
+        const int    kRChain = 4;
+        const int    kOthers = 5;
 
         const int    kStripAndChain = 2;
         const int    kStrip = 0;

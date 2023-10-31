@@ -11,6 +11,8 @@
 #include "LKParamPointRT.h"
 #include "LKLinearTrack.h"
 #include "LKODRFitter.h"
+#include "LKHit.h"
+#include "LKVector3.h"
 
 class LKHTWeightingFunction
 {
@@ -185,7 +187,6 @@ class LKHTLineTracker : public TNamed
         double GetRangeImageSpace(int ixy, int i) const  { return fRangeImageSpace[ixy][i]; }
         double GetRangeParamSpace(int ixy, int i) const  { return fRangeParamSpace[ixy][i]; }
         double** GetParamData() const  { return fParamData; }
-        double** GetImageData() const  { return fImageData; }
         int GetNumImagePoints() const  { return fNumImagePoints; }
         int GetNumParamPoints() const  { return fNumBinsParamSpace[0]*fNumBinsParamSpace[1]; }
         double GetMaxWeightingDistance(double distance) const { return fMaxWeightingDistance; }
@@ -197,6 +198,8 @@ class LKHTLineTracker : public TNamed
         void AddImagePoint(double x, double xError, double y, double yError, double weight);
         void AddImagePointBox(double x1, double y1, double x2, double y2, double weight);
         void SetImageData(double** imageData);
+
+        void AddHit(LKHit* hit, LKVector3::Axis a1, LKVector3::Axis a2);
 
         TString GetCorrelatorName() {
             TString correlatorName;
@@ -263,12 +266,15 @@ class LKHTLineTracker : public TNamed
         double       fRangeParamSpace[2][2] = {{0}};
         double       fRangeParamSpaceInit[2][2] = {{0}};
         double**     fParamData;
-        double**     fImageData;
         int          fIdxSelectedR = -1;
         int          fIdxSelectedT = -1;
         double       fMaxWeightingDistance = 0;
 
-        bool            fUsingImagePointArray = true;
+        int             fNumHits = 0;
+        TObjArray*      fHitArray = nullptr;
+        LKVector3::Axis fA1 = LKVector3::kX;
+        LKVector3::Axis fA2 = LKVector3::kY;
+
         int             fNumImagePoints = 0;
         TClonesArray*   fImagePointArray = nullptr;
         LKImagePoint*   fImagePoint = nullptr;

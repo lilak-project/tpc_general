@@ -34,21 +34,23 @@ bool TTHTTrackingTask::Init()
         }
     }
 
-    fHitArray[0][0] = nullptr;
-    fHitArray[0][1] = nullptr;
-    fHitArray[1][0] = nullptr;
-    fHitArray[1][1] = nullptr;
-    fHitArray[2][0] = nullptr;
-    fHitArray[2][1] = nullptr;
-    fHitArray[0][0] = fRun -> GetBranchA("HitCenter");
-    fHitArray[0][1] = fRun -> GetBranchA("HitOthers");
-    fHitArray[1][0] = fRun -> GetBranchA("HitLStrip");
-    fHitArray[1][1] = fRun -> GetBranchA("HitLChain");
-    fHitArray[2][0] = fRun -> GetBranchA("HitRStrip");
-    fHitArray[2][1] = fRun -> GetBranchA("HitRChain");
+    fHitArray[kCenter] = nullptr;
+    fHitArray[kLStrip] = nullptr;
+    fHitArray[kLChain] = nullptr;
+    fHitArray[kRStrip] = nullptr;
+    fHitArray[kRChain] = nullptr;
+    fHitArray[kOthers] = nullptr;
+
+    fHitArray[kCenter] = fRun -> GetBranchA("HitCenter");
+    fHitArray[kLStrip] = fRun -> GetBranchA("HitLStrip");
+    fHitArray[kLChain] = fRun -> GetBranchA("HitLChain");
+    fHitArray[kRStrip] = fRun -> GetBranchA("HitRStrip");
+    fHitArray[kRChain] = fRun -> GetBranchA("HitRChain");
+    fHitArray[kOthers] = fRun -> GetBranchA("HitOthers");
     fTrackArray = fRun -> GetBranchA("Track");
     fEventHeaderHolder = fRun -> KeepBranchA("EventHeader");
 
+    /*
     auto SetTracker = [](LKHTLineTracker* tk, double tx, double ty, int nx, double x1, double x2, int ny, double y1, double y2, int nr, int nt) {
         tk -> SetTransformCenter(tx, ty);
         tk -> SetImageSpaceRange(nx, x1, x2, ny, y1, y2);
@@ -64,29 +66,9 @@ bool TTHTTrackingTask::Init()
             fTrackerXZ[iCLR][iSCA] = new LKHTLineTracker(); SetTracker(fTrackerXZ[iCLR][iSCA], fTCXInXZ[iCLR], fTCYInXZ[iCLR], fNX, fX1, fX2, fNZ, fZ1, fZ2, fNR[iCLR], fNT[iCLR]);
         }
     }
+    */
 
     return true;
-}
-
-auto TTHTTrackingTask::TransformAndFit(int iView, int iCLR, LKHTLineTracker* tk[3][3])
-{
-    int iSCA = ((iView==kFrontView)?kChain:kStrip);
-    auto tkAll = tk[iCLR][kStripAndChain];
-    auto tkFit = tk[iCLR][iSCA];
-
-    tkAll -> Transform();
-    auto paramPoint = tkAll -> FindNextMaximumParamPoint();
-
-    LKLinearTrack* track;
-
-         if (iView==kTopView   && paramPoint->GetWeight()<fNHitsTrackCutXZPlane) return track;
-    else if (iView==kSideView  && paramPoint->GetWeight()<fNHitsTrackCutZYPlane) return track;
-    else if (iView==kFrontView && paramPoint->GetWeight()<fNHitsTrackCutXYPlane) return track;
-
-    if (iCLR!=kMMCenter && iView!=kTopView)
-        track = tkFit -> FitTrackWithParamPoint(paramPoint);
-
-    return track;
 }
 
 void TTHTTrackingTask::Exec(Option_t *option)
@@ -103,23 +85,21 @@ void TTHTTrackingTask::Exec(Option_t *option)
     if (numHitsAll==0||goodEvent==false)
         return;
 
-    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight}) {
-        for (auto iSCA : {kStrip,kChain,kStripAndChain})
-        {
-            fTrackerXY[iCLR][iSCA] -> Clear();
-            fTrackerZY[iCLR][iSCA] -> Clear();
-            fTrackerXZ[iCLR][iSCA] -> Clear();
-        }
-    }
+    for (auto iView : {kFrontView,kSideView})
+        for (auto iLeftRight : {kLeft,kRight})
+            fTracker[iView][iLeftRight] -> Clear();
 
-    for (auto iCLR : {kMMCenter,kMMLeft,kMMRight}) {
-        //for (auto iSCA : {kStripAndChain,kStrip,kChain})
-        for (auto iSCA : {kStripAndChain})
+    const int kLeft = 0;
+    const int kRight = 1;
+    int vLeftRight[] = {{kLStrip ,kLChain}, {kLStrip ,kLChain}};
+    for (auto iLeftRight : {kLeft,kRight})
+    {
+        for (auto iRegion : vLeftRight[iLeftRight])
         {
-            auto numHits = fHitArray[iCLR][iSCA] -> GetEntries();
+            auto numHits = fHitArray[iRegion] -> GetEntries();
             for (auto iHit=0; iHit<numHits; ++iHit)
             {
-                auto hit = (LKHit*) fHitArray[iCLR][iSCA] -> At(iHit);
+                auto hit = (LKHit*) fHitArray[iRegion] -> At(iHit);
                 auto x = hit -> X();
                 auto y = 350 - (hit -> Y());
                 auto z = hit -> Z();
@@ -127,87 +107,22 @@ void TTHTTrackingTask::Exec(Option_t *option)
                 auto dy = hit->GetDY();
                 auto dz = hit->GetDZ();
 
-                fTrackerXY[iCLR][iSCA] -> AddImagePoint(x,dx,y,dy,1);
-                fTrackerZY[iCLR][iSCA] -> AddImagePoint(z,dz,y,dy,1);
-                //fTrackerXZ[iCLR][iSCA] -> AddImagePoint(x,dx,z,dz,1);
-                fTrackerXY[iCLR][kStripAndChain] -> AddImagePoint(x,dx,y,dy,1);
-                fTrackerZY[iCLR][kStripAndChain] -> AddImagePoint(z,dz,y,dy,1);
-                //fTrackerXZ[iCLR][kStripAndChain] -> AddImagePoint(x,dx,z,dz,1);
+                fTracker[kFrontView][iLeftRight] -> AddHit(hit,LKVector3::kX,LKVector3::kY);
+                fTracker[kSideView][iLeftRight] -> AddHit(hit,LKVector3::kZ,LKVector3::kY);
             }
         }
     }
 
-    fTrackerXY[kMMLeft][kStripAndChain]  -> Transform();
-    fTrackerZY[kMMLeft][kStripAndChain]  -> Transform();
-    fTrackerXY[kMMRight][kStripAndChain] -> Transform();
-    fTrackerZY[kMMRight][kStripAndChain] -> Transform();
-    auto ppFL = fTrackerXY[kMMLeft][kStripAndChain]  -> FindNextMaximumParamPoint();
-    auto ppSL = fTrackerZY[kMMLeft][kStripAndChain]  -> FindNextMaximumParamPoint();
-    auto ppFR = fTrackerXY[kMMRight][kStripAndChain] -> FindNextMaximumParamPoint();
-    auto ppSR = fTrackerZY[kMMRight][kStripAndChain] -> FindNextMaximumParamPoint();
+    fTracker[kFrontView][kMMLeft]  -> Transform();
+    fTracker[kSideView][kMMLeft]  -> Transform();
+    fTracker[kFrontView][kMMRight] -> Transform();
+    fTracker[kSideView][kMMRight] -> Transform();
+    //auto ppFL = fTrackerXY[kMMLeft][kStripAndChain]  -> FindNextMaximumParamPoint();
+    //auto ppSL = fTrackerZY[kMMLeft][kStripAndChain]  -> FindNextMaximumParamPoint();
+    //auto ppFR = fTrackerXY[kMMRight][kStripAndChain] -> FindNextMaximumParamPoint();
+    //auto ppSR = fTrackerZY[kMMRight][kStripAndChain] -> FindNextMaximumParamPoint();
 
     /*
-    fHitArrayXY -> Clear();
-    for (auto iSCA : {kStrip,kChain})
-    {
-        auto numHits = fHitArray[kMMLeft][iSCA] -> GetEntries();
-        for (auto iHit=0; iHit<numHits; ++iHit)
-        {
-            auto hit = (LKHit*) fHitArray[kMMLeft][iSCA] -> At(iHit);
-            auto x  = hit -> X();
-            auto y  = 350 - (hit -> Y());
-            auto z  = hit -> Z();
-            auto dx = hit -> GetDX();
-            auto dy = hit -> GetDY();
-            auto dz = hit -> GetDZ();
-            auto x1 = x - dx;
-            auto x2 = x + dx;
-            auto y1 = y - dy;
-            auto y2 = y + dy;
-            auto z1 = z - dz;
-            auto z2 = z + dz;
-            fImagePointXY -> SetPoint(x1,y1,x2,y2);
-            fImagePointZY -> SetPoint(z1,y1,z2,y2);
-            auto c1 = ppFL -> CorrelateBoxBand(fImagePointXY);
-            auto c2 = ppSL -> CorrelateBoxBand(fImagePointZY);
-            if (c1>0&&c2>0) {
-                fHitArrayXY -> AddHit(hit);
-                hit -> SetTrackID(0);
-            }
-        }
-    }
-    fHitArrayXY ->
-
-    fHitArrayRight -> Clear();
-    for (auto iSCA : {kStrip,kChain})
-    {
-        auto numHits = fHitArray[kMMRight][iSCA] -> GetEntries();
-        for (auto iHit=0; iHit<numHits; ++iHit)
-        {
-            auto hit = (LKHit*) fHitArray[kMMRight][iSCA] -> At(iHit);
-            auto x  = hit -> X();
-            auto y  = 350 - (hit -> Y());
-            auto z  = hit -> Z();
-            auto dx = hit -> GetDX();
-            auto dy = hit -> GetDY();
-            auto dz = hit -> GetDZ();
-            auto x1 = x - dx;
-            auto x2 = x + dx;
-            auto y1 = y - dy;
-            auto y2 = y + dy;
-            auto z1 = z - dz;
-            auto z2 = z + dz;
-            fImagePointXY -> SetPoint(x1,y1,x2,y2);
-            fImagePointZY -> SetPoint(z1,y1,z2,y2);
-            auto c1 = ppFL -> CorrelateBoxBand(fImagePointXY);
-            auto c2 = ppSL -> CorrelateBoxBand(fImagePointZY);
-            if (c1>0&&c2>0) {
-                fHitArrayRight -> AddHit(hit);
-                hit -> SetTrackID(1);
-            }
-        }
-    }
-
     if (trackFL!=nullptr && trackSL!=nullptr)
     {
         auto point1 = trackFL -> GetPoint1();
