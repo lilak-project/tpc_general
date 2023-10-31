@@ -184,6 +184,8 @@ class LKHTLineTracker : public TNamed
         void Print(Option_t *option="") const;
         void Reset();
 
+        void ClearPoints();
+
         TVector3 GetTransformCenter() const  { return fTransformCenter; }
         int GetNumBinsImageSpace(int ixy) const  { return fNumBinsImageSpace[ixy]; }
         int GetNumBinsParamSpace(int ixy) const  { return fNumBinsParamSpace[ixy]; }
@@ -193,8 +195,8 @@ class LKHTLineTracker : public TNamed
         int GetNumImagePoints() const  { return fNumImagePoints; }
         int GetNumParamPoints() const  { return fNumBinsParamSpace[0]*fNumBinsParamSpace[1]; }
         double GetMaxWeightingDistance(double distance) const { return fMaxWeightingDistance; }
-        double GetHitArray() { return fHitArray; }
-        double GetSelectedHitArray() { return fSelectedHitArray; }
+        TObjArray* GetHitArray() { return fHitArray; }
+        TObjArray* GetSelectedHitArray() { return fSelectedHitArray; }
 
         void SetTransformCenter(double x, double y) { fTransformCenter = TVector3(x,y,0); }
         void SetImageSpaceRange(int nx, double x1, double x2, int ny, double y1, double y2);

@@ -33,6 +33,8 @@ class TTHTTrackingTask : public LKTask
         void Exec(Option_t *option="");
         bool EndOfRun();
 
+
+        bool TransformAndSelectHits(LKHTLineTracker* trackerXY, LKHTLineTracker* trackerZY);
         bool MakeTrack(LKLinearTrack* trackXY, LKLinearTrack* trackZY, double x1, double x2);
 
     private:
@@ -73,7 +75,7 @@ class TTHTTrackingTask : public LKTask
 
         const int    kViewXY = 0;
         const int    kViewZY = 1;
-        const int    kViewXY = 2;
+        const int    kViewXZ = 2;
 
         const int    kStrip = 0;
         const int    kChain = 1;
