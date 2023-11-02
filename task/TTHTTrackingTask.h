@@ -33,7 +33,6 @@ class TTHTTrackingTask : public LKTask
         void Exec(Option_t *option="");
         bool EndOfRun();
 
-
         bool TransformAndSelectHits(LKHTLineTracker* trackerXY, LKHTLineTracker* trackerZY);
         bool MakeTrack(LKLinearTrack* trackXY, LKLinearTrack* trackZY, double x1, double x2);
 

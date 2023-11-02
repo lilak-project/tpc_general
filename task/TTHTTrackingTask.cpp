@@ -25,7 +25,8 @@ bool TTHTTrackingTask::Init()
     fHitArray[kRChain] = fRun -> GetBranchA("HitRChain");
     fHitArray[kOthers] = fRun -> GetBranchA("HitOthers");
     fEventHeaderHolder = fRun -> KeepBranchA("EventHeader");
-    fTrackArray = fRun -> GetBranchA("Track");
+
+    fTrackArray = fRun -> RegisterBranchA("Track","LKLinearTrack",100);
 
     auto SetTracker = [](LKHTLineTracker* tk, double tx, double ty, int nx, double x1, double x2, int ny, double y1, double y2, int nr, int nt) {
         tk -> SetTransformCenter(tx, ty);
@@ -57,27 +58,34 @@ bool TTHTTrackingTask::TransformAndSelectHits(LKHTLineTracker* trackerXY, LKHTLi
     trackerZY -> SelectPoints(paramPointZY);
     auto hitArrayXY = trackerXY -> GetSelectedHitArray();
     auto hitArrayZY = trackerZY -> GetSelectedHitArray();
-    trackerXY -> ClearPoints();
-    trackerZY -> ClearPoints();
     TIter nextXY(hitArrayXY);
     TIter nextZY(hitArrayZY);
 
+    lk_debug << hitArrayXY->GetEntries() << "  " << hitArrayZY->GetEntries() << endl;
+    LKHit *hit1, *hit2, *hit;
+
     auto numCrossHits = 0;
-    LKHit *hit1, *hit2;
     while ((hit1 = (LKHit*) nextXY())) {
         while ((hit2 = (LKHit*) nextZY())) {
             if (hit1==hit2) {
+                lk_debug << hit1 << " " << hit2 << endl;
                 fCrossHitCollection -> Add(hit1);
-                trackerXY -> AddHit(hit1,LKVector3::kX,LKVector3::kY);
-                trackerZY -> AddHit(hit1,LKVector3::kZ,LKVector3::kY);
                 ++numCrossHits;
             }
         }
     }
+    lk_debug << numCrossHits << " <=? " << fNumHitsCutForTransform << endl;
     if (numCrossHits<=fNumHitsCutForTransform)
         return false;
 
-    LKHit* hit;
+    trackerXY -> ClearPoints();
+    trackerZY -> ClearPoints();
+    TIter nextCross(fCrossHitCollection);
+    while ((hit = (LKHit*) nextCross())) {
+        trackerXY -> AddHit(hit,LKVector3::kX,LKVector3::kY);
+        trackerZY -> AddHit(hit,LKVector3::kZ,LKVector3::kY);
+    }
+    lk_debug << endl;
 
     TIter nextStrip(fStripHitCollection);
     TIter nextChain(fChainHitCollection);
@@ -132,11 +140,13 @@ void TTHTTrackingTask::Exec(Option_t *option)
     for (auto iRegion : {kLStrip, kLChain, kRStrip, kRChain})
         numHitsAll += fHitArray[iRegion] -> GetEntries();
 
+    lk_debug << numHitsAll << endl;
     // good event?  ------------------------------------------------------------------------
     auto eventHeader = (TTEventHeader*) fEventHeaderHolder -> At(0);
     auto goodEvent = eventHeader -> IsGoodEvent();
     if (numHitsAll==0||goodEvent==false) {
         eventHeader -> SetIsGoodEvent(false);
+        lk_info << "Bad event. Skip" << endl;
         return;
     }
 
@@ -157,6 +167,8 @@ void TTHTTrackingTask::Exec(Option_t *option)
             iStrip = kRStrip;
             iChain = kRChain;
         }
+        lk_debug << fHitArray[iStrip]->GetEntries() << " >? " << fNumHitsCutForTransform << endl;
+        lk_debug << fHitArray[iChain]->GetEntries() << " >? " << fNumHitsCutForTransform << endl;
         if (fHitArray[iStrip]->GetEntries()>fNumHitsCutForTransform && fHitArray[iChain]->GetEntries()>fNumHitsCutForTransform)
         {
             fStripHitCollection -> Clear();
@@ -172,23 +184,14 @@ void TTHTTrackingTask::Exec(Option_t *option)
                 }
             }
             TransformAndSelectHits(fTracker[kViewXY][iLeftRight], fTracker[kViewZY][iLeftRight]);
+            lk_debug << fTrackXY << " " <<fTrackZY << endl;
             auto goodTrack = MakeTrack(fTrackXY,fTrackZY,x1,x2);
+            lk_debug << goodTrack << endl;
         }
     }
+    lk_debug << endl;
 
-    // propagate track cand ------------------------------------------------------------------------
-    // if hit was used for fitting inside the tracker, track cand "0" would have been added.
-    //for (auto iRegion : {kCenter, kLStrip, kLChain, kRStrip, kRChain}) {
-    //    auto numHits = fHitArray[iRegion] -> GetEntries();
-    //    for (auto iHit=0; iHit<numHits; ++iHit) {
-    //        auto hit = (LKHit*) fHitArray[iRegion] -> At(iHit);
-    //        auto numCands = hit -> GetNumTrackCands();
-    //        if (numCands>0)
-    //            hit -> SetTrackID()...
-    //    }
-    //}
-
-    lk_debug << "Found " << fNumTracks << " tracks" << endl;
+    lk_info << "Found " << fNumTracks << " tracks" << endl;
 }
 
 bool TTHTTrackingTask::EndOfRun()
