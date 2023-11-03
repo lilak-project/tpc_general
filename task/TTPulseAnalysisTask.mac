@@ -1,4 +1,0 @@
-&TTPulseAnalysisTask/data/keep   TTEventHeader EventHeader
-&TTPulseAnalysisTask/data/input  MMChannel RawData
-&TTPulseAnalysisTask/data/output LKHit Hit
-Hit/persistency true
