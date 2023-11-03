@@ -32,6 +32,7 @@ void LKParamPointRT::Clear(Option_t *option)
 void LKParamPointRT::Print(Option_t *option) const
 {
     e_info << "R = " << fRadius0 << "(" << fRadius1 << ", " << fRadius2 << "), T = " << fTheta0 << "(" << fTheta1 << ", " << fTheta2 << "), " 
+        << "weight = " << fWeight << ", "
         << "equation: y = " <<  -TMath::Cos(TMath::DegToRad()*fTheta0) / TMath::Sin(TMath::DegToRad()*fTheta0)  << " * x + " << (fRadius0) /TMath::Sin(TMath::DegToRad()*fTheta0) << endl;;
 }
 

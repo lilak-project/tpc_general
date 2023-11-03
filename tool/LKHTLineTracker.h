@@ -209,13 +209,25 @@ class LKHTLineTracker : public TNamed
 
         void AddHit(LKHit* hit, LKVector3::Axis a1, LKVector3::Axis a2);
 
-        TString GetCorrelatorName() {
+        TString GetCorrelatorName() const {
             TString correlatorName;
-            if (fCorrelateType==kCorrelatePointBand) correlatorName = "Point-Band";
-            else if (fCorrelateType==kCorrelateBoxLine) correlatorName = "Box-Line";
+                 if (fCorrelateType==kCorrelatePointBand) correlatorName = "Point-Band";
+            else if (fCorrelateType==kCorrelateBoxLine  ) correlatorName = "Box-Line";
             else if (fCorrelateType==kCorrelateBoxRibbon) correlatorName = "Box-Ribbon";
-            else if (fCorrelateType==kCorrelateBoxBand) correlatorName = "Box-Band";
+            else if (fCorrelateType==kCorrelateBoxBand  ) correlatorName = "Box-Band";
             return correlatorName;
+        }
+
+        TString GetProcessName() const {
+            TString processName;
+                 if (fProcess==kNon         ) processName = "Non";
+            else if (fProcess==kAddPoints   ) processName = "AddPoints";
+            else if (fProcess==kTransform   ) processName = "Transform";
+            else if (fProcess==kSelectPoints) processName = "SelectPoints";
+            else if (fProcess==kFitTrack    ) processName = "FitTrack";
+            else if (fProcess==kClear       ) processName = "Clear";
+            else if (fProcess==kClearPoints ) processName = "ClearPoints";
+            return processName;
         }
 
         bool IsCorrelatePointBand()   { if (fCorrelateType==kCorrelatePointBand)   return true; return false; }

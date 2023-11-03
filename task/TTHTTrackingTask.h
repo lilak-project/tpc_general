@@ -36,6 +36,8 @@ class TTHTTrackingTask : public LKTask
         bool TransformAndSelectHits(LKHTLineTracker* trackerXY, LKHTLineTracker* trackerZY);
         bool MakeTrack(LKLinearTrack* trackXY, LKLinearTrack* trackZY, double x1, double x2);
 
+        LKHTLineTracker* GetTracker(int i, int j) { return fTracker[i][j]; }
+
     private:
         //TClonesArray *fHitArray[3][2];
         TClonesArray *fHitArray[6];

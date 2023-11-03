@@ -81,11 +81,21 @@ void LKHTLineTracker::ClearPoints()
 
 void LKHTLineTracker::Print(Option_t *option) const
 {
-    lk_info << "param1 = (" << fRangeImageSpace[0][0] << ", " << fRangeImageSpace[0][1] << ") / " << fNumBinsImageSpace[0] << endl;
-    lk_info << "param2 = (" << fRangeImageSpace[1][0] << ", " << fRangeImageSpace[1][1] << ") / " << fNumBinsImageSpace[1] << endl;
-    lk_info << "image1 = (" << fRangeParamSpace[0][0] << ", " << fRangeParamSpace[0][1] << ") / " << fNumBinsParamSpace[0] << endl;
-    lk_info << "image2 = (" << fRangeParamSpace[1][0] << ", " << fRangeParamSpace[1][1] << ") / " << fNumBinsParamSpace[1] << endl;
-    lk_info << "Number of image points = " << fNumImagePoints << endl;
+    lk_info << "CurrentProcess: " << GetProcessName() << endl;
+    lk_info << "Image space:" << endl;
+    lk_info << "- (x) = (" << fRangeImageSpace[0][0] << ", " << fRangeImageSpace[0][1] << ") / " << fNumBinsImageSpace[0] << endl;
+    lk_info << "- (y) = (" << fRangeImageSpace[1][0] << ", " << fRangeImageSpace[1][1] << ") / " << fNumBinsImageSpace[1] << endl;
+    lk_info << "- transform center = (" << fTransformCenter.X() << ", " << fTransformCenter.Y() << ")" << endl;
+    lk_info << "- number of image points = " << fNumImagePoints << endl;
+    lk_info << "Parameter space:" << endl;
+    lk_info << "- (theta) = (" << fRangeParamSpace[0][0] << ", " << fRangeParamSpace[0][1] << ") / " << fNumBinsParamSpace[0] << endl;
+    lk_info << "- (phi)   = (" << fRangeParamSpace[1][0] << ", " << fRangeParamSpace[1][1] << ") / " << fNumBinsParamSpace[1] << endl;
+    lk_info << "- correlator: " << GetCorrelatorName() << endl;
+    //if (fIdxSelectedR>=0&&fIdxSelectedT>=0) {
+        //lk_info << " - selected parameter point exist!:" << endl;
+        //auto paramPoint = GetParamPoint(fIdxSelectedR,fIdxSelectedT);
+        //paramPoint -> Print();
+    //}
 }
 
 void LKHTLineTracker::SetCorrelatePointBand()
@@ -624,13 +634,13 @@ LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoin
     }
 
     if (fLineFitter->GetNumPoints()<fCutNumTrackHits) {
-        lk_debug << "return because " << fLineFitter->GetNumPoints() << " < " << fCutNumTrackHits << endl;
+        //lk_debug << "return because " << fLineFitter->GetNumPoints() << " < " << fCutNumTrackHits << endl;
         return track;
     }
 
     bool fitted = fLineFitter -> FitLine();
     if (fitted==false) {
-        lk_debug << "return from fitter" << endl;
+        //lk_debug << "return from fitter" << endl;
         return track;
     }
 
