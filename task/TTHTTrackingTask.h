@@ -84,7 +84,14 @@ class TTHTTrackingTask : public LKTask
         const int    kRight = 1;
         //const int    kCenter = 2;
 
-        int         fNumHitsCutForTransform = 3;
+        int          fNumHitsCutForTransform = 3;
+
+        /* par-name: TTHTTrackingTask/use_transform_with_chain_strip_combination
+         * If fUseTransformCSCombination is true, both chain- and strip-hits will be used for filling parameter space
+         * while fitting will only be done using chain-hits(strip-hits) for XY-plane(ZY-plane).
+         * If fUseTransformCSCombination is false, both only chain-hits(strip-hits) will used for filling parameter space of XY-plane(ZY-plane).
+         */
+        bool         fUseTransformCSCombination = true;
 
     ClassDef(TTHTTrackingTask,1);
 };
