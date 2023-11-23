@@ -603,6 +603,19 @@ void LKHTLineTracker::SelectPoints(LKParamPointRT* paramPoint, double weightCut)
     fProcess = kSelectPoints;
 }
 
+void LKHTLineTracker::RemoveSelectedPoints()
+{
+    for (int iImage : fSelectedImagePointIdxs)
+        PopImagePoint(iImage);
+
+    if (fSelectedHitArray->GetEntriesFast()!=0) {
+        LKHit *hit;
+        TIter next(fSelectedHitArray);
+        while ((hit=(LKHit*)next()))
+            fHitArray -> Remove(hit);
+    }
+}
+
 LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut)
 {
     if (weightCut==-1)
@@ -644,14 +657,14 @@ LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoin
         return track;
     }
 
-    for (int iImage : fSelectedImagePointIdxs) {
-        PopImagePoint(iImage);
-        if (tagHit) {
-            auto hit = (LKHit*) fHitArray -> At(iImage);
+    if (fSelectedHitArray->GetEntriesFast()!=0) {
+        LKHit *hit;
+        TIter next(fSelectedHitArray);
+        while ((hit=(LKHit*)next()))
             track -> AddHit(hit);
-            fHitArray -> Remove(hit);
-        }
     }
+
+    RemoveSelectedPoints();
 
     auto centroid = fLineFitter -> GetCentroid();
     auto dx = fRangeImageSpace[0][0] - fRangeImageSpace[0][1];

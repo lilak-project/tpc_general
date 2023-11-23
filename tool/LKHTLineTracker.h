@@ -256,6 +256,7 @@ class LKHTLineTracker : public TNamed
         LKParamPointRT* FindNextMaximumParamPoint();
         //LKParamPointRT* FindNextMaximumParamPoint2();
 
+        void RemoveSelectedPoints();
         void SelectPoints(LKParamPointRT* paramPoint, double weightCut=-1);
         LKLinearTrack* FitTrackWithParamPoint(LKParamPointRT* paramPoint, double weightCut=-1); /// Used hits(points) will be removed from the hit array
 
