@@ -36,7 +36,8 @@ bool LKDriftElectronTask::Init()
         int numTimeBuckets = fPar -> GetParInt(tpcName+"/numTimeBuckets");
         double timeBucketTime = fPar -> GetParInt(tpcName+"/timeBucketTime");
 
-        fMCStepArray[iTPC] = (TClonesArray *) fRun -> GetBranch(Form("MCStep_%s",g4DetName.Data()));
+        //fMCStepArray[iTPC] = (TClonesArray *) fRun -> GetBranch(Form("MCStep_%s",g4DetName.Data()));
+        fMCStepArray[iTPC] = (TClonesArray *) fRun -> GetBranchA(Form("MCStep_%s",g4DetName.Data()));
         fPadPlane[iTPC] = (LKPadPlane*) fRun -> FindDetectorPlane(padPlaneName);
         fDriftElectronSim[iTPC] = new LKDriftElectronSim();
         auto sim = fDriftElectronSim[iTPC];
@@ -106,8 +107,10 @@ bool LKDriftElectronTask::Init()
             sim -> SetCARGainFunc(gainFunction);
         }
 
-        fPadArray[iTPC] = new TClonesArray("LKPad");
-        fRun -> RegisterBranch(outputBranchName, fPadArray[iTPC]);
+        //fPadArray[iTPC] = new TClonesArray("LKPad");
+        //fRun -> RegisterBranch(outputBranchName, fPadArray[iTPC]);
+        auto array = fRun -> RegisterBranchA(outputBranchName, "LKPad", 500);
+        fPadArray[iTPC] = array;
     }
 
     return true;
