@@ -664,7 +664,7 @@ LKLinearTrack* LKHTLineTracker::FitTrackWithParamPoint(LKParamPointRT* paramPoin
             track -> AddHit(hit);
     }
 
-    RemoveSelectedPoints();
+    //RemoveSelectedPoints();
 
     auto centroid = fLineFitter -> GetCentroid();
     auto dx = fRangeImageSpace[0][0] - fRangeImageSpace[0][1];
