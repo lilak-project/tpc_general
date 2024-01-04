@@ -18,7 +18,7 @@ bool LKDriftElectronTask::Init()
     {
         fMCStepArray[iTPC] = nullptr;
         fPadArray[iTPC] = nullptr;
-        fPadPlane[iTPC] = nullptr;
+        fDetectorPlane[iTPC] = nullptr;
         fDriftElectronSim[iTPC] = nullptr;
 
         TString tpcName = fPar -> GetParString("LKDriftElectronTask/tpcNames",iTPC);
@@ -38,7 +38,7 @@ bool LKDriftElectronTask::Init()
 
         //fMCStepArray[iTPC] = (TClonesArray *) fRun -> GetBranch(Form("MCStep_%s",g4DetName.Data()));
         fMCStepArray[iTPC] = (TClonesArray *) fRun -> GetBranchA(Form("MCStep_%s",g4DetName.Data()));
-        fPadPlane[iTPC] = (LKPadPlane*) fRun -> FindDetectorPlane(padPlaneName);
+        fDetectorPlane[iTPC] = fRun -> FindDetectorPlane(padPlaneName);
         fDriftElectronSim[iTPC] = new LKDriftElectronSim();
         auto sim = fDriftElectronSim[iTPC];
         sim -> SetDriftVelocity(driftVelocity);
@@ -122,7 +122,7 @@ void LKDriftElectronTask::Exec(Option_t *option)
     {
         auto mcArray = fMCStepArray[iTPC];
         auto padArray = fPadArray[iTPC];
-        auto padPlane = fPadPlane[iTPC];
+        auto padPlane = fDetectorPlane[iTPC];
         auto sim = fDriftElectronSim[iTPC];
 
         padArray -> Clear("C");
@@ -139,8 +139,11 @@ void LKDriftElectronTask::Exec(Option_t *option)
             Double_t edep = step -> GetEdep();
             TVector3 posMC(step -> GetX(), step -> GetY(), step -> GetZ());
 
-            auto xyl = padPlane -> DriftElectron(posMC);
-            auto xylDiff = sim -> CalculateGasDiffusion(xyl.Z());
+            TVector3 posFinal;
+            double driftLength;
+            padPlane -> DriftElectron(posMC, posFinal, driftLength);
+            TVector3 xyl(posFinal.X(),posFinal.Y(),driftLength);
+            auto xylDiff = sim -> CalculateGasDiffusion(driftLength);
             auto xylGas = xyl + xylDiff;
 
             sim -> SetNumElectrons(edep);

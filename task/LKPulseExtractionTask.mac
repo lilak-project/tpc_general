@@ -1,0 +1,10 @@
+LKPulseExtractionTask/
+    analysisName        lilak_pulse
+    threshold           500
+    tbRange             0 512
+    tbRangeCut          1 511
+    tbHeightCut         500 4000
+    tbWidthCut          20 40
+    fixPedestal         -10000
+    channelIsInverted   false
+    writeSummaryTree    true

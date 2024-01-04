@@ -7,7 +7,7 @@
 #include "LKRun.h"
 #include "LKTask.h"
 #include "LKDriftElectronSim.h"
-#include "LKPadPlane.h"
+#include "LKDetectorPlane.h"
 #include "TH1D.h"
 #include "TH2D.h"
 #include "TF1.h"
@@ -38,7 +38,7 @@ class LKDriftElectronTask : public LKTask
         int fNumTPCs;
         TClonesArray* fMCStepArray[4];
         TClonesArray* fPadArray[4];
-        LKPadPlane* fPadPlane[4];
+        LKDetectorPlane* fDetectorPlane[4];
         LKDriftElectronSim* fDriftElectronSim[4];
         
 

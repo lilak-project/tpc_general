@@ -11,27 +11,27 @@ bool LKPulseExtractionTask::Init()
 {
     fChannelArray = fRun -> GetBranchA("RawData");
 
-    if (fPar -> CheckPar("LKPulseExtraction/analysisName"))      fAnalysisName      = fPar -> GetParInt("LKPulseExtraction/analysisName");
-    if (fPar -> CheckPar("LKPulseExtraction/threshold"))         fThreshold         = fPar -> GetParInt("LKPulseExtraction/threshold");
-    if (fPar -> CheckPar("LKPulseExtraction/fixPedestal"))       fFixPedestal       = fPar -> GetParInt("LKPulseExtraction/fixPedestal");
-    if (fPar -> CheckPar("LKPulseExtraction/channelIsInverted")) fChannelIsInverted = fPar -> GetParBool("LKPulseExtraction/channelIsInverted");
-    if (fPar -> CheckPar("LKPulseExtraction/tbRange")) {
-        fTbRange1 = fPar -> GetParInt("LKPulseExtraction/tbRange",0);
-        fTbRange2 = fPar -> GetParInt("LKPulseExtraction/tbRange",1);
+    if (fPar -> CheckPar("LKPulseExtractionTask/analysisName"))      fAnalysisName      = fPar -> GetParString("LKPulseExtractionTask/analysisName");
+    if (fPar -> CheckPar("LKPulseExtractionTask/threshold"))         fThreshold         = fPar -> GetParInt("LKPulseExtractionTask/threshold");
+    if (fPar -> CheckPar("LKPulseExtractionTask/fixPedestal"))       fFixPedestal       = fPar -> GetParInt("LKPulseExtractionTask/fixPedestal");
+    if (fPar -> CheckPar("LKPulseExtractionTask/channelIsInverted")) fChannelIsInverted = fPar -> GetParBool("LKPulseExtractionTask/channelIsInverted");
+    if (fPar -> CheckPar("LKPulseExtractionTask/tbRange")) {
+        fTbRange1 = fPar -> GetParInt("LKPulseExtractionTask/tbRange",0);
+        fTbRange2 = fPar -> GetParInt("LKPulseExtractionTask/tbRange",1);
     }
-    if (fPar -> CheckPar("LKPulseExtraction/tbRangeCut")) {
-        fTbRangeCut1 = fPar -> GetParInt("LKPulseExtraction/tbRangeCut",0);
-        fTbRangeCut2 = fPar -> GetParInt("LKPulseExtraction/tbRangeCut",1);
+    if (fPar -> CheckPar("LKPulseExtractionTask/tbRangeCut")) {
+        fTbRangeCut1 = fPar -> GetParInt("LKPulseExtractionTask/tbRangeCut",0);
+        fTbRangeCut2 = fPar -> GetParInt("LKPulseExtractionTask/tbRangeCut",1);
     }
-    if (fPar -> CheckPar("LKPulseExtraction/tbHeightCut")) {
-        fPulseHeightCut1 = fPar -> GetParInt("LKPulseExtraction/tbHeightCut",0);
-        fPulseHeightCut2 = fPar -> GetParInt("LKPulseExtraction/tbHeightCut",1);
+    if (fPar -> CheckPar("LKPulseExtractionTask/tbHeightCut")) {
+        fPulseHeightCut1 = fPar -> GetParInt("LKPulseExtractionTask/tbHeightCut",0);
+        fPulseHeightCut2 = fPar -> GetParInt("LKPulseExtractionTask/tbHeightCut",1);
     }
-    if (fPar -> CheckPar("LKPulseExtraction/tbWidthCut")) {
-        fPulseWidthCut1 = fPar -> GetParInt("LKPulseExtraction/tbWidthCut",0);
-        fPulseWidthCut2 = fPar -> GetParInt("LKPulseExtraction/tbWidthCut",1);
+    if (fPar -> CheckPar("LKPulseExtractionTask/tbWidthCut")) {
+        fPulseWidthCut1 = fPar -> GetParInt("LKPulseExtractionTask/tbWidthCut",0);
+        fPulseWidthCut2 = fPar -> GetParInt("LKPulseExtractionTask/tbWidthCut",1);
     }
-    
+
     fPulseAnalyzer = new LKPulseAnalyzer(fAnalysisName,fRun->GetDataPath());
     fPulseAnalyzer -> SetThreshold(fThreshold);
     fPulseAnalyzer -> SetTbRange(fTbRange1,fTbRange2);
@@ -46,26 +46,35 @@ bool LKPulseExtractionTask::Init()
 
 void LKPulseExtractionTask::Exec(Option_t *option)
 {
+    auto eventID = fRun -> GetCurrentEventID();
+
     int numChannels = fChannelArray -> GetEntries();
     for (int iChannel=0; iChannel<numChannels; iChannel++)
     {
         auto channel = (GETChannel *) fChannelArray -> At(iChannel);
+        auto cobo = channel -> GetCobo();
+        auto asad = channel -> GetAsad();
+        auto aget = channel -> GetAget();
+        auto chan = channel -> GetChan();
         auto data = channel -> GetWaveformY();
-        fPulseAnalyzer -> AddChannel(data);
+
+        fPulseAnalyzer -> AddChannel(data, eventID, cobo, asad, aget, chan);
     }
 
-    lk_info << "Added " << numChannels << " channels, PA holding " << fPulseAnalyzer->GetNumGoodChannels() << endl;
-    
+    lk_info << "Channels: +" << numChannels << " >> " << fPulseAnalyzer->GetNumGoodChannels() << endl;
 }
 
 bool LKPulseExtractionTask::EndOfRun()
 {
     auto runHeader = fRun -> GetRunHeader();
 
-    auto file1 = fPulseAnalyzer -> WriteReferencePulse(20,40);
+    auto file1 = fPulseAnalyzer -> WriteReferencePulse(fPulseWidthCut1,fPulseWidthCut2);
     file1 -> cd();
     runHeader -> Write(runHeader->GetName(),TObject::kSingleKey);
 
+    bool writeSummaryTree = true;
+    if (fPar -> CheckPar("LKPulseExtractionTask/writeSummaryTree"))
+        writeSummaryTree = fPar -> GetParBool("LKPulseExtractionTask/writeSummaryTree");
     auto file2 = fPulseAnalyzer -> WriteTree();
     file2 -> cd();
     runHeader -> Write(runHeader->GetName(),TObject::kSingleKey);
