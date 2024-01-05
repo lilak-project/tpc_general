@@ -6,11 +6,11 @@
 #include "LKParameterContainer.h"
 #include "LKRun.h"
 #include "LKTask.h"
-#include "TTEventHeader.h"
+#include "LKEventHeader.h"
 #include "LAMPSTPC.h"
 //#include "LKHit.h"
 //#include "GETChannel.h"
-//#include "TTEventHeader.h"
+//#include "LKEventHeader.h"
 
 /*
  * Remove this comment block after reading it through

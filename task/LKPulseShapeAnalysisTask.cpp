@@ -1,5 +1,5 @@
 #include "LKPulseShapeAnalysisTask.h"
-#include "TTEventHeader.h"
+//#include "LKEventHeader.h"
 #include "GETChannel.h"
 #include "LKHit.h"
 
@@ -29,7 +29,7 @@ void LKPulseShapeAnalysisTask::Exec(Option_t *option)
 {
     fHitArrayCenter -> Clear("C");
 
-    //auto eventHeader = (TTEventHeader*) fEventHeaderHolder -> At(0);
+    //auto eventHeader = (LKEventHeader*) fEventHeaderHolder -> At(0);
     //if (eventHeader->IsGoodEvent()==false)
     //    return;
 
@@ -65,7 +65,7 @@ void LKPulseShapeAnalysisTask::Exec(Option_t *option)
         auto pad = fDetectorPlane -> GetPad(padID);
 
         auto numRecoHits = fChannelAnalyzer -> GetNumHits();
-        lk_debug << iChannel << " " << padID << " " << numRecoHits << endl;
+        //lk_debug << iChannel << " " << padID << " " << numRecoHits << endl;
         for (auto iHit=0; iHit<numRecoHits; ++iHit)
         {
             auto tb        = fChannelAnalyzer -> GetTbHit(iHit);

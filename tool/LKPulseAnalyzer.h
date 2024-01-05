@@ -317,6 +317,12 @@ class LKPulseAnalyzer : public TObject
         int          fPulseRefTbMin = 0;
         int          fPulseRefTbMax = 0;
 
+        // background
+        int          fCountGoodBackgrounds = 0;
+        int          fCountBGBin[512] = {0};
+        double       fBackground[512] = {0};
+
+
     public:
         // average draw
         TObjArray*   fHistArray = nullptr;

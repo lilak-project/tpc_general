@@ -62,6 +62,8 @@ void LKPulseAnalyzer::Clear(Option_t *option)
 {
     for (auto tb=0; tb<512; ++tb) fAverageData[tb] = 0;
     for (auto tb=0; tb<512; ++tb) fChannelData[tb] = 0;
+    for (auto tb=0; tb<512; ++tb) fCountBGBin[tb] = 0;
+    for (auto tb=0; tb<512; ++tb) fBackground[tb] = 0;
 
     if (fHistAverage!=nullptr)
         fHistAverage -> Reset("ICES");
@@ -166,13 +168,13 @@ void LKPulseAnalyzer::AddChannel(int *data, int channelID)
         auto tb3 = fTbAtMaxValue+40;
         auto tb4 = fTbRange2;
 
+        vector<int> tbBackground;
+        for (auto tb=tb1; tb<tb2; ++tb) tbBackground.push_back(tb);
+        for (auto tb=tb3; tb<tb4; ++tb) tbBackground.push_back(tb);
+
         fPedestal = 0.;
         int countPedestal = 0;
-        for (auto tb=tb1; tb<tb2; ++tb) {
-            fPedestal += fChannelData[tb];
-            countPedestal++;
-        }
-        for (auto tb=tb3; tb<tb4; ++tb) {
+        for (auto tb : tbBackground) {
             fPedestal += fChannelData[tb];
             countPedestal++;
         }
@@ -185,9 +187,11 @@ void LKPulseAnalyzer::AddChannel(int *data, int channelID)
 
         if (fFirstPulseTb>fPulseTbMin && fFirstPulseTb<fPulseTbMax)
         {
+            ////////// pulse data //////////////////////////////////////////
+
             if (fFixPedestal<-999)  {
-                for (auto tb=tb1; tb<tb2; ++tb) fHistPedestalResidual -> Fill(fChannelData[tb] - fPedestal);
-                for (auto tb=tb3; tb<tb4; ++tb) fHistPedestalResidual -> Fill(fChannelData[tb] - fPedestal);
+                for (auto tb : tbBackground)
+                    fHistPedestalResidual -> Fill(fChannelData[tb] - fPedestal);
             }
 
             fIsCollected = true;
@@ -217,6 +221,16 @@ void LKPulseAnalyzer::AddChannel(int *data, int channelID)
             fTbAtRefFloor2 = tbTrailing;
             fRefWidth = tbTrailing - tbLeading;
             fHistHeightWidth -> Fill(fMaxValue-fPedestal,fWidth,10);
+
+            ////////// background data /////////////////////////////////////
+
+            fCountGoodBackgrounds++;
+            for (auto tb : tbBackground) {
+                fCountBGBin[tb] += 1;
+                fBackground[tb] += (fChannelData[tb] - fPedestal);
+            }
+
+            ////////////////////////////////////////////////////////////////
         }
     }
 
@@ -728,12 +742,18 @@ TFile* LKPulseAnalyzer::WriteReferencePulse(int tbOffsetFromHead, int tbOffsetFr
     fGraphReferenceError -> Write("error");
     fGraphReferenceRawError -> Write("error0");
 
-    (new TParameter<int>   ("numAnaChannels",fCountGoodChannels)) -> Write();
-    (new TParameter<int>   ("threshold"     ,fThreshold        )) -> Write();
-    (new TParameter<int>   ("yMin"          ,fPulseHeightMin   )) -> Write();
-    (new TParameter<int>   ("yMax"          ,fPulseHeightMax   )) -> Write();
-    (new TParameter<int>   ("xMin"          ,fPulseTbMin       )) -> Write();
-    (new TParameter<int>   ("xMax"          ,fPulseTbMax       )) -> Write();
+    //MakeHistBackground();
+    //fGraphBackground -> Write("background");
+    //fGraphBackgroundError -> Write("background");
+
+    (new TParameter<bool>("inverted",fInvertChannel)) -> Write();
+
+    (new TParameter<int>("numAnaChannels",fCountGoodChannels)) -> Write();
+    (new TParameter<int>("threshold"     ,fThreshold        )) -> Write();
+    (new TParameter<int>("yMin"          ,fPulseHeightMin   )) -> Write();
+    (new TParameter<int>("yMax"          ,fPulseHeightMax   )) -> Write();
+    (new TParameter<int>("xMin"          ,fPulseTbMin       )) -> Write();
+    (new TParameter<int>("xMax"          ,fPulseTbMax       )) -> Write();
 
     (new TParameter<double>("FWHM"          ,fFWHM             )) -> Write();
     (new TParameter<double>("ratio"         ,fFloorRatio       )) -> Write();
