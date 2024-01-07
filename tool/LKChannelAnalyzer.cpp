@@ -9,6 +9,10 @@ LKChannelAnalyzer::LKChannelAnalyzer()
 
 bool LKChannelAnalyzer::Init()
 {
+    fNumPedestalSamples = floor(fTbMax/fNumTbSample);
+    fNumPedestalSamplesM1 = fNumPedestalSamples - 1;
+    fNumTbSampleLast = fNumTbSample + fTbMax - fNumPedestalSamples*fNumTbSample;
+
     return true;
 }
 
@@ -36,6 +40,8 @@ void LKChannelAnalyzer::SetPulse(const char* fileName)
     if (fTbStartCut<0)
         fTbStartCut = fTbMax - fNDFFit;
     fNumTbAcendingCut = int(fWidthLeading*2/3);
+
+    Init();
 }
 
 void LKChannelAnalyzer::Clear(Option_t *option)
@@ -46,36 +52,53 @@ void LKChannelAnalyzer::Clear(Option_t *option)
     //fTbHitArray.clear();
     //fAmplitudeArray.clear();
     fFitParameterArray.clear();
+
+#ifdef DEBUG_CHANA_FINDPEAK
+    lk_debug << "Creating multigraph for FindPeak" << endl;
+    if (dMGraphFP==nullptr) {
+        dMGraphFP = new TMultiGraph();
+        dGraphFPArray = new TClonesArray("TGraph",10);
+    }
+    auto listGraph = dMGraphFP -> GetListOfGraphs();
+    if (listGraph!=nullptr) {
+        TIter next(listGraph);
+        TGraph *graph;
+        while ((graph = (TGraph*) next()))
+            graph -> Set(0);
+        listGraph -> Clear();
+    }
+    fNumGraphFP = 0;
+#endif
 }
 
 void LKChannelAnalyzer::Print(Option_t *option) const
 {
     e_info << "== General" << endl;
-    e_info << "   fTbMax            =" << fTbMax               << endl;
-    e_info << "   fTbStart          =" << fTbStart             << endl;
-    e_info << "   fTbStartCut       =" << fTbStartCut          << endl;
-    e_info << "   fNumTbAcendingCut =" << fNumTbAcendingCut    << endl;
-    e_info << "   fDynamicRange     =" << fDynamicRange        << endl;
+    e_info << "   fTbMax             = " << fTbMax               << endl;
+    e_info << "   fTbStart           = " << fTbStart             << endl;
+    e_info << "   fTbStartCut        = " << fTbStartCut          << endl;
+    e_info << "   fNumTbAcendingCut  = " << fNumTbAcendingCut    << endl;
+    e_info << "   fDynamicRange      = " << fDynamicRange        << endl;
     e_info << "== Pulse information" << endl;
-    e_info << "   fFWHM             =" << fFWHM                << endl;
-    e_info << "   fFloorRatio       =" << fFloorRatio          << endl;
-    e_info << "   fWidth            =" << fWidth               << endl;
-    e_info << "   fWidthLeading     =" << fWidthLeading        << endl;
-    e_info << "   fWidthTrailing    =" << fWidthTrailing       << endl;
-    e_info << "   fPulseRefTbMin    =" << fPulseRefTbMin       << endl;
-    e_info << "   fPulseRefTbMax    =" << fPulseRefTbMax       << endl;
+    e_info << "   fFWHM              = " << fFWHM                << endl;
+    e_info << "   fFloorRatio        = " << fFloorRatio          << endl;
+    e_info << "   fWidth             = " << fWidth               << endl;
+    e_info << "   fWidthLeading      = " << fWidthLeading        << endl;
+    e_info << "   fWidthTrailing     = " << fWidthTrailing       << endl;
+    e_info << "   fPulseRefTbMin     = " << fPulseRefTbMin       << endl;
+    e_info << "   fPulseRefTbMax     = " << fPulseRefTbMax       << endl;
     e_info << "== Peak Finding" << endl;
-    e_info << "   fThreshold        =" << fThreshold           << endl;
-    e_info << "   fThresholdOneStep =" << fThresholdOneStep    << endl;
-    e_info << "   fTbStepIfFoundHit =" << fTbStepIfFoundHit    << endl;
-    e_info << "   fTbStepIfSaturated=" << fTbStepIfSaturated   << endl;
-    e_info << "   fTbSeparationWidth=" << fTbSeparationWidth   << endl;
+    e_info << "   fThreshold         = " << fThreshold           << endl;
+    e_info << "   fThresholdOneStep  = " << fThresholdOneStep    << endl;
+    e_info << "   fTbStepIfFoundHit  = " << fTbStepIfFoundHit    << endl;
+    e_info << "   fTbStepIfSaturated = " << fTbStepIfSaturated   << endl;
+    e_info << "   fTbSeparationWidth = " << fTbSeparationWidth   << endl;
     //e_info << "   fNumTbsCorrection =" << fNumTbsCorrection    << endl;
     e_info << "== Pulse Fitting" << endl;
-    e_info << "   fNDFFit           =" << fNDFFit              << endl;
-    e_info << "   fIterMax          =" << fIterMax             << endl;
-    e_info << "   fTbStepCut        =" << fTbStepCut           << endl;
-    e_info << "   fScaleTbStep      =" << fScaleTbStep         << endl;
+    e_info << "   fNDFFit            = " << fNDFFit              << endl;
+    e_info << "   fIterMax           = " << fIterMax             << endl;
+    e_info << "   fTbStepCut         = " << fTbStepCut           << endl;
+    e_info << "   fScaleTbStep       = " << fScaleTbStep         << endl;
     e_info << "== Number of found hits: " << fNumHits << endl;
     if (fNumHits>0)
         for (auto iHit=0; iHit<fNumHits; ++iHit) {
@@ -92,23 +115,39 @@ void LKChannelAnalyzer::Draw(Option_t *option)
 
     for (auto tb=0; tb<fTbMax; ++tb)
         fHistBuffer -> SetBinContent(tb+1,fBufferOrigin[tb]);
-
+    fHistBuffer -> SetStats(0);
     fHistBuffer -> Draw();
+
+    auto linePedestal = new TLine(0,fPedestal,fTbMax,fPedestal);
+    linePedestal -> SetLineColor(kYellow);
+    linePedestal -> SetLineWidth(4);
+    linePedestal -> Draw("samel");
+
+    for (auto iSample=0; iSample<fNumPedestalSamples; ++iSample) {
+        auto x1 = fNumTbSample*iSample;
+        auto x2 = fNumTbSample*(iSample+1);
+        auto y = fPedestalSample[iSample];
+        if (iSample==fNumPedestalSamplesM1)
+            x2 = x2 - fNumTbSample + fNumTbSampleLast;
+        auto line = new TLine(x1,y,x2,y);
+        line -> SetLineStyle(2);
+        line -> SetLineColor(kBlack);
+        if (fUsedSample[iSample])
+            line -> SetLineStyle(1);
+        line -> Draw("samel");
+    }
+
+    fHistBuffer -> Draw("same");
+
+#ifdef DEBUG_CHANA_FINDPEAK
+    dMGraphFP -> Draw();
+#endif
+
     for (auto iHit=0; iHit<fNumHits; ++iHit) {
         auto tbHit = GetTbHit(iHit);
         auto amplitude = GetAmplitude(iHit);
         auto graph = fPulse -> GetPulseGraph(tbHit,amplitude,fPedestal);
         graph -> Draw("samelx");
-    }
-
-    int numTbPart = fTbMax/NUMBER_OF_PEDESTAL_TEST_REGIONS;
-    auto ymax = fHistBuffer -> GetMaximum();
-    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
-        auto x = numTbPart*iPart;
-        auto line = new TLine(x,0,x,ymax);
-        line -> SetLineColor(kBlue);
-        line -> SetLineStyle(2);
-        line -> Draw("samel");
     }
 }
 
@@ -184,35 +223,36 @@ void LKChannelAnalyzer::Analyze(double* data)
 
 double LKChannelAnalyzer::FindAndSubtractPedestal(double *buffer)
 {
-    int numTbPart = fTbMax/NUMBER_OF_PEDESTAL_TEST_REGIONS;
-    int numTbPartLast = fTbMax - numTbPart*(NUMBER_OF_PEDESTAL_TEST_REGIONS_M1);
-    double pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS] = {0.};
-    double stddevPart[NUMBER_OF_PEDESTAL_TEST_REGIONS] = {0.};
+    for (auto i=0; i<fNumPedestalSamples; ++i) {
+        fUsedSample[i] = false;
+        fPedestalSample[i] = 0.;
+        fStddevSample[i] = 0.;
+    }
 
     int tbGlobal = 0;
-    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS_M1; ++iPart) {
-        for (int iTb=0; iTb<numTbPart; iTb++) {
-            pedestalPart[iPart] += buffer[tbGlobal];
-            stddevPart[iPart] += buffer[tbGlobal]*buffer[tbGlobal];
+    for (auto iSample=0; iSample<fNumPedestalSamplesM1; ++iSample) {
+        for (int iTb=0; iTb<fNumTbSample; iTb++) {
+            fPedestalSample[iSample] += buffer[tbGlobal];
+            fStddevSample[iSample] += buffer[tbGlobal]*buffer[tbGlobal];
             tbGlobal++;
         }
-        pedestalPart[iPart] = pedestalPart[iPart] / numTbPart;
-        stddevPart[iPart] = stddevPart[iPart] / numTbPart;
-        stddevPart[iPart] = sqrt(stddevPart[iPart] - pedestalPart[iPart]*pedestalPart[iPart]);
+        fPedestalSample[iSample] = fPedestalSample[iSample] / fNumTbSample;
+        fStddevSample[iSample] = fStddevSample[iSample] / fNumTbSample;
+        fStddevSample[iSample] = sqrt(fStddevSample[iSample] - fPedestalSample[iSample]*fPedestalSample[iSample]);
     }
-    for (int iTb=0; iTb<numTbPartLast; iTb++) {
-        pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] = pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] + buffer[tbGlobal];
+    for (int iTb=0; iTb<fNumTbSampleLast; iTb++) {
+        fPedestalSample[fNumPedestalSamplesM1] = fPedestalSample[fNumPedestalSamplesM1] + buffer[tbGlobal];
         tbGlobal++;
     }
-    pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] = pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1] / numTbPartLast;
+    fPedestalSample[fNumPedestalSamplesM1] = fPedestalSample[fNumPedestalSamplesM1] / fNumTbSampleLast;
 #ifdef DEBUG_CHANA_FINDPED
-    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart)
-        lk_debug << iPart << " " << pedestalPart[iPart] << " " << stddevPart[iPart] << " " << stddevPart[iPart]/pedestalPart[iPart] << endl;
+    for (auto iSample=0; iSample<fNumPedestalSamples; ++iSample)
+        lk_debug << iSample << " " << fPedestalSample[iSample] << " " << fStddevSample[iSample] << " " << fStddevSample[iSample]/fPedestalSample[iSample] << endl;
 #endif
 
     int countBelowCut = 0;
-    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
-        if (stddevPart[iPart]/pedestalPart[iPart]<0.1)
+    for (auto iSample=0; iSample<fNumPedestalSamples; ++iSample) {
+        if (fStddevSample[iSample]/fPedestalSample[iSample]<0.1)
             countBelowCut++;
     }
 
@@ -221,80 +261,84 @@ double LKChannelAnalyzer::FindAndSubtractPedestal(double *buffer)
     int idx1 = 0;
     int idx2 = 0;
     if (countBelowCut>=2) {
-        for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
-            if (stddevPart[iPart]/pedestalPart[iPart]>=0.1) continue;
-            for (auto jPart=0; jPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++jPart) {
-                if (iPart>=jPart) continue;
-                if (stddevPart[jPart]/pedestalPart[jPart]>=0.1) continue;
-                double diff = abs(pedestalPart[iPart] - pedestalPart[jPart]);
+        for (auto iSample=0; iSample<fNumPedestalSamples; ++iSample) {
+            if (fStddevSample[iSample]/fPedestalSample[iSample]>=0.1) continue;
+            for (auto jSample=0; jSample<fNumPedestalSamples; ++jSample) {
+                if (iSample>=jSample) continue;
+                if (fStddevSample[jSample]/fPedestalSample[jSample]>=0.1) continue;
+                double diff = abs(fPedestalSample[iSample] - fPedestalSample[jSample]);
                 if (diff<pedestalDiffMin) {
                     pedestalDiffMin = diff;
-                    pedestalMeanRef = 0.5 * (pedestalPart[iPart] + pedestalPart[jPart]);
-                    idx1 = iPart;
-                    idx2 = jPart;
+                    pedestalMeanRef = 0.5 * (fPedestalSample[iSample] + fPedestalSample[jSample]);
+                    idx1 = iSample;
+                    idx2 = jSample;
                 }
             }
         }
     }
     else {
-        for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++iPart) {
-            for (auto jPart=0; jPart<NUMBER_OF_PEDESTAL_TEST_REGIONS; ++jPart) {
-                if (iPart>=jPart) continue;
-                double diff = abs(pedestalPart[iPart] - pedestalPart[jPart]);
+        for (auto iSample=0; iSample<fNumPedestalSamples; ++iSample) {
+            for (auto jSample=0; jSample<fNumPedestalSamples; ++jSample) {
+                if (iSample>=jSample) continue;
+                double diff = abs(fPedestalSample[iSample] - fPedestalSample[jSample]);
                 if (diff<pedestalDiffMin) {
                     pedestalDiffMin = diff;
-                    pedestalMeanRef = 0.5 * (pedestalPart[iPart] + pedestalPart[jPart]);
-                    idx1 = iPart;
-                    idx2 = jPart;
+                    pedestalMeanRef = 0.5 * (fPedestalSample[iSample] + fPedestalSample[jSample]);
+                    idx1 = iSample;
+                    idx2 = jSample;
                 }
             }
         }
     }
 
     //double pedestalErrorRef  = 0.1 * pedestalMeanRef;
-    //double pedestalErrorRefPart = 0.2 * pedestalMeanRef;
-    double pedestalErrorRefPart = 0.1 * pedestalMeanRef;
-    pedestalErrorRefPart = sqrt(pedestalErrorRefPart*pedestalErrorRefPart + pedestalDiffMin*pedestalDiffMin);
+    //double pedestalErrorRefSample = 0.2 * pedestalMeanRef;
+    double pedestalErrorRefSample = 0.1 * pedestalMeanRef;
+    pedestalErrorRefSample = sqrt(pedestalErrorRefSample*pedestalErrorRefSample + pedestalDiffMin*pedestalDiffMin);
+    if (pedestalErrorRefSample>fPedestalErrorRefSampleCut)
+        pedestalErrorRefSample = fPedestalErrorRefSampleCut;
 
 #ifdef DEBUG_CHANA_FINDPED
     lk_debug << "diff min : " << pedestalDiffMin << endl;
     lk_debug << "ref-diff : " << pedestalMeanRef << endl;
     //lk_debug << "ref-error: " << pedestalErrorRef << endl;
-    lk_debug << "ref-error-part: " << pedestalErrorRefPart << endl;
+    lk_debug << "ref-error-part: " << pedestalErrorRefSample << endl;
 #endif
 
     double pedestalFinal = 0;
     int countNumPedestalTb = 0;
 
     tbGlobal = 0;
-    for (auto iPart=0; iPart<NUMBER_OF_PEDESTAL_TEST_REGIONS_M1; ++iPart)
+    for (auto iSample=0; iSample<fNumPedestalSamplesM1; ++iSample)
     {
-        double diffPart = abs(pedestalMeanRef - pedestalPart[iPart]);
-        if (diffPart<pedestalErrorRefPart)
+        double diffSample = abs(pedestalMeanRef - fPedestalSample[iSample]);
+        if (diffSample<pedestalErrorRefSample)
         {
-            countNumPedestalTb += numTbPart;
-            for (int iTb=0; iTb<numTbPart; iTb++)
+            fUsedSample[iSample] = true;
+            countNumPedestalTb += fNumTbSample;
+            for (int iTb=0; iTb<fNumTbSample; iTb++)
             {
                 pedestalFinal += buffer[tbGlobal];
                 tbGlobal++;
             }
 #ifdef DEBUG_CHANA_FINDPED
-            lk_debug << iPart << " diff=" << diffPart << " " << pedestalFinal/countNumPedestalTb << " " << countNumPedestalTb << endl;
+            lk_debug << iSample << " diff=" << diffSample << " " << pedestalFinal/countNumPedestalTb << " " << countNumPedestalTb << endl;
 #endif
         }
         else
-            tbGlobal += numTbPart;
+            tbGlobal += fNumTbSample;
     }
-    double diffPart = abs(pedestalMeanRef - pedestalPart[NUMBER_OF_PEDESTAL_TEST_REGIONS_M1]);
-    if (diffPart<pedestalErrorRefPart)
+    double diffSample = abs(pedestalMeanRef - fPedestalSample[fNumPedestalSamplesM1]);
+    if (diffSample<pedestalErrorRefSample)
     {
-        countNumPedestalTb += numTbPartLast;
-        for (int iTb=0; iTb<numTbPartLast; iTb++) {
+        fUsedSample[fNumPedestalSamplesM1] = true;
+        countNumPedestalTb += fNumTbSampleLast;
+        for (int iTb=0; iTb<fNumTbSampleLast; iTb++) {
             pedestalFinal += buffer[tbGlobal];
             tbGlobal++;
         }
 #ifdef DEBUG_CHANA_FINDPED
-        lk_debug << NUMBER_OF_PEDESTAL_TEST_REGIONS_M1 << " diff=" << diffPart << " " << pedestalFinal/countNumPedestalTb << " " << countNumPedestalTb << endl;
+        lk_debug << fNumPedestalSamplesM1 << " diff=" << diffSample << " " << pedestalFinal/countNumPedestalTb << " " << countNumPedestalTb << endl;
 #endif
     }
 
@@ -315,6 +359,12 @@ double LKChannelAnalyzer::FindAndSubtractPedestal(double *buffer)
 
 bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfPulse)
 {
+#ifdef DEBUG_CHANA_FINDPEAK
+    auto graphFP = (TGraph*) dGraphFPArray -> ConstructedAt(fNumGraphFP++);
+    graphFP -> SetLineColor(kCyan+2);
+    dMGraphFP -> Add(graphFP,"samel");
+#endif
+
     int countAscending = 0;
     //int countAscendingBelowThreshold = 0;
 
@@ -328,17 +378,26 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
         double value = buffer[tbPointer];
         double yDiff = value - valuePrev;
 #ifdef DEBUG_CHANA_FINDPEAK
-        lk_debug << "tbPointer=" << tbPointer << ", value=" << value  << endl;
+        lk_debug << "tbPtr=" << tbPointer << ", val=" << value << " " << ", dy=" << yDiff << ", 1-th=" << fThresholdOneStep << ", #A " << countAscending << endl;
 #endif
+        valuePrev = value;
 
         // If buffer difference of step is above threshold
         if (yDiff > fThresholdOneStep)
         {
-            if (value > fThreshold) countAscending++;
+#ifdef DEBUG_CHANA_FINDPEAK
+            //lk_debug << "value >? fThreshold : " << value << " >? " << fThreshold << endl;
+            graphFP -> SetPoint(graphFP->GetN(),tbPointer+0.5,yDiff+fPedestal);
+#endif
+            if (value > 0) countAscending++;
+            //if (value > fThreshold) countAscending++;
             //else countAscendingBelowThreshold++;
         }
         else 
         {
+#ifdef DEBUG_CHANA_FINDPEAK
+            graphFP -> SetPoint(graphFP->GetN(),tbPointer+0.5,fPedestal);
+#endif
             // If acended step is below 5, 
             // or negative pulse is bigger than the found pulse, continue
             //if (countAscending < fNumTbAcendingCut || ((countAscendingBelowThreshold >= countAscending) && (-buffer[tbPointer - 1 - countAscending - countAscendingBelowThreshold] > buffer[tbPointer - 1])))
@@ -368,13 +427,25 @@ bool LKChannelAnalyzer::FindPeak(double *buffer, int &tbPointer, int &tbStartOfP
                 tbStartOfPulse++;
 
 #ifdef DEBUG_CHANA_FINDPEAK
+            /*
             lk_debug << "found peak : " << tbStartOfPulse << " = " << tbPointer << " - " << countAscending << " + alpha" << endl;
+            auto graphFP1 = (TGraph*) dGraphFPArray -> ConstructedAt(fNumGraphFP++);
+            graphFP1 -> SetMarkerStyle(106);
+            graphFP1 -> SetMarkerSize(2);
+            graphFP1 -> SetPoint(0,tbPointer+0.5,buffer[tbPointer]);
+            graphFP1 -> SetMarkerColor(kCyan+2);
+            dMGraphFP -> Add(graphFP1,"samep");
+            auto graphFP2 = (TGraph*) dGraphFPArray -> ConstructedAt(fNumGraphFP++);
+            graphFP2 -> SetMarkerStyle(119);
+            graphFP2 -> SetMarkerSize(2);
+            graphFP2 -> SetPoint(0,tbStartOfPulse+0.5,buffer[tbStartOfPulse]);
+            graphFP2 -> SetMarkerColor(kCyan+2);
+            dMGraphFP -> Add(graphFP2,"samep");
+            */
 #endif
 
             return true;
         }
-
-        valuePrev = value;
     }
 
     return false;

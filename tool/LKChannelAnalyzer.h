@@ -17,14 +17,16 @@ using namespace std;
 #include "TGraphErrors.h"
 #include "TParameter.h"
 #include "TH1D.h"
+#include "TClonesArray.h"
+#include "TMultiGraph.h"
 
 #include "LKLogger.h"
 #include "LKPulse.h"
 #include "LKPulseFitParameter.h"
 
 //#define NUMBER_OF_PEDESTAL_TEST_REGIONS 6
-#define NUMBER_OF_PEDESTAL_TEST_REGIONS 7
-#define NUMBER_OF_PEDESTAL_TEST_REGIONS_M1 NUMBER_OF_PEDESTAL_TEST_REGIONS-1
+//#define NUMBER_OF_PEDESTAL_TEST_REGIONS 7
+//#define NUMBER_OF_PEDESTAL_TEST_REGIONS_M1 NUMBER_OF_PEDESTAL_TEST_REGIONS-1
 
 class LKTbIterationParameters
 {
@@ -243,10 +245,18 @@ class LKChannelAnalyzer : public TObject
         //vector<double> fTbHitArray; ///< Vector holding fit TB
         //vector<double> fAmplitudeArray; ///< Vector holding fit amplitude
 
+        int          fNumTbSample = 50; ///< Least number of time-bins in pedestal sample regions
+        int          fNumPedestalSamples = 0;
+        int          fNumPedestalSamplesM1 = 0;
+        int          fNumTbSampleLast = 0;
+        bool         fUsedSample[20];
+        double       fPedestalSample[20] = {0.};
+        double       fStddevSample[20] = {0.};
         double       fPedestal = 0; ///< pedestal level of current channel
+        double       fPedestalErrorRefSampleCut = 10;
 
         // tb
-        int          fTbMax = 350; ///< Maximum TB in buffer. Must be set with SetTbMax()
+        int          fTbMax = 512; ///< Maximum TB in buffer. Must be set with SetTbMax()
         int          fTbStart = 1; ///< Starting TB-position for analysis. Must be set with SetTbStart()
         int          fTbStartCut = -1; ///< Pulse TB-position cannot be larger than fTbStartCut. Automatically set from pulse: fTbStartCut = fTbMax - fNDFFit. Can be set with SetTbStartCut()
         int          fNumTbAcendingCut = 5; ///< Peak will be recognize if number-of-TBs-acending >= fNumTbAcendingCut. Automatically set from pulse: fNumTbAcendingCut = int(fWidthLeading*2/3).Can be set with SetNumTbAcendingCut()
@@ -279,6 +289,13 @@ class LKChannelAnalyzer : public TObject
         int          fNDFPulse;
 
         TString      fPulseFileName;
+
+#ifdef DEBUG_CHANA_FINDPEAK
+    public:
+        int fNumGraphFP = 0;
+        TMultiGraph* dMGraphFP = nullptr;
+        TClonesArray* dGraphFPArray = nullptr;
+#endif
 
 #ifdef DEBUG_CHANA_FITPULSE
     public:
