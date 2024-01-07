@@ -39,10 +39,12 @@ class LKPulseShapeAnalysisTask : public LKTask
         TClonesArray* fChannelArray = nullptr;
         TClonesArray* fHitArrayCenter = nullptr;
 
-        LKDetector* fDetector = nullptr;
         LKDetectorPlane* fDetectorPlane = nullptr;
-
         LKChannelAnalyzer* fChannelAnalyzer = nullptr;
+
+        double fBuffer[512];
+        TVector3 fPosReco;
+        double fDriftLength;
 
     ClassDef(LKPulseShapeAnalysisTask,1);
 };

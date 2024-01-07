@@ -14,12 +14,11 @@ bool LKPulseShapeAnalysisTask::Init()
 {
     lk_info << "Initializing LKPulseShapeAnalysisTask" << std::endl;
 
-    fDetector = fRun -> GetDetector();
     fDetectorPlane = fRun -> GetDetectorPlane();
-    fChannelAnalyzer = fDetector -> GetChannelAnalyzer();
+    fChannelAnalyzer = fDetectorPlane -> GetChannelAnalyzer();
 
     fChannelArray = fRun -> GetBranchA("RawData");
-    fHitArrayCenter = fRun -> RegisterBranchA("HitCenter","LKHit",100);
+    fHitArrayCenter = fRun -> RegisterBranchA("Hit","LKHit",100);
     fEventHeaderHolder = fRun -> KeepBranchA("EventHeader");
 
     return true;
@@ -35,15 +34,6 @@ void LKPulseShapeAnalysisTask::Exec(Option_t *option)
 
     int countHits = 0;
 
-    double buffer[512];
-
-    double xPos;
-    double yPos;
-    double zPos;
-    double xErr;
-    double yErr;
-    double zErr;
-
     int numChannel = fChannelArray -> GetEntriesFast();
     for (int iChannel = 0; iChannel < numChannel; ++iChannel)
     {
@@ -55,17 +45,20 @@ void LKPulseShapeAnalysisTask::Exec(Option_t *option)
         auto chan = channel -> GetChan();
         auto padID = channel -> GetChan2();
         auto data = channel -> GetWaveformY();
-        if (padID<0)
-            padID = fDetectorPlane -> FindPadID(cobo,asad,aget,chan);
+        //if (padID<0)
+        {
+            auto padID2 = fDetectorPlane -> FindPadID(cobo,aget,asad,chan);
+            //lk_debug << padID << " " << padID2 << endl;
+            padID = padID2;
+        }
 
         for (auto tb=0; tb<512; ++tb)
-            buffer[tb] = double(data[tb]);
-        fChannelAnalyzer -> Analyze(buffer);
+            fBuffer[tb] = double(data[tb]);
+        fChannelAnalyzer -> Analyze(fBuffer);
 
         auto pad = fDetectorPlane -> GetPad(padID);
 
         auto numRecoHits = fChannelAnalyzer -> GetNumHits();
-        //lk_debug << iChannel << " " << padID << " " << numRecoHits << endl;
         for (auto iHit=0; iHit<numRecoHits; ++iHit)
         {
             auto tb        = fChannelAnalyzer -> GetTbHit(iHit);
@@ -73,15 +66,18 @@ void LKPulseShapeAnalysisTask::Exec(Option_t *option)
             auto chi2NDF   = fChannelAnalyzer -> GetChi2NDF(iHit);
             auto ndf       = fChannelAnalyzer -> GetNDF(iHit);
             auto pedestal  = fChannelAnalyzer -> GetPedestal();
-            LKHit* hit = nullptr;
-            hit = (LKHit*) fHitArrayCenter -> ConstructedAt(countHits++);
 
+            fDetectorPlane -> DriftElectronBack(pad, tb, fPosReco, fDriftLength);
+            //lk_debug << fPosReco.X() << " " << fPosReco.Y() << " " << fPosReco.Z() << endl;
+
+            LKHit* hit = (LKHit*) fHitArrayCenter -> ConstructedAt(countHits);
             hit -> SetHitID(countHits);
-            hit -> SetChannelID(padID);
-            hit -> SetPosition(xPos,tb,zPos);
-            hit -> SetPositionError(xErr,1,zErr);
+            hit -> SetPadID(padID);
+            hit -> SetPosition(fPosReco);
+            hit -> SetPositionError(TVector3(0,0,0));
             hit -> SetCharge(amplitude);
             hit -> SetPedestal(pedestal);
+            hit -> SetTb(tb);
 
             countHits++;
         }
