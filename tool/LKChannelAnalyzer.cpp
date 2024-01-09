@@ -20,8 +20,11 @@ void LKChannelAnalyzer::SetPulse(const char* fileName)
 {
     fPulseFileName = fileName;
     fPulse = new LKPulse(fPulseFileName);
+    if (fDataIsInverted)
+        fPulse -> SetInverted();
 
     auto numPulsePoints = fPulse -> GetNDF();
+    fDataIsInverted = fPulse -> GetInverted();
     fFWHM           = fPulse -> GetFWHM();
     fFloorRatio     = fPulse -> GetFloorRatio();
     fWidth          = fPulse -> GetWidth();
@@ -73,12 +76,14 @@ void LKChannelAnalyzer::Clear(Option_t *option)
 
 void LKChannelAnalyzer::Print(Option_t *option) const
 {
+    e_info << "LKChannelAnalyzer" << endl;
     e_info << "== General" << endl;
     e_info << "   fTbMax             = " << fTbMax               << endl;
     e_info << "   fTbStart           = " << fTbStart             << endl;
     e_info << "   fTbStartCut        = " << fTbStartCut          << endl;
     e_info << "   fNumTbAcendingCut  = " << fNumTbAcendingCut    << endl;
     e_info << "   fDynamicRange      = " << fDynamicRange        << endl;
+    e_info << "   fDataIsInverted    = " << fDataIsInverted      << endl;
     e_info << "== Pulse information" << endl;
     e_info << "   fFWHM              = " << fFWHM                << endl;
     e_info << "   fFloorRatio        = " << fFloorRatio          << endl;
@@ -154,7 +159,7 @@ void LKChannelAnalyzer::Draw(Option_t *option)
 void LKChannelAnalyzer::Analyze(int* data)
 {
     double buffer[512];
-    for (auto tb=0; tb<512; ++tb)
+    for (auto tb=0; tb<fTbMax; ++tb)
         buffer[tb] = (double)data[tb];
     Analyze(buffer);
 }
@@ -165,6 +170,11 @@ void LKChannelAnalyzer::Analyze(double* data)
     //fNumHits = 0;
     //fTbHitArray.clear();
     //fAmplitudeArray.clear();
+
+    if (fDataIsInverted) {
+        for (auto tb=0; tb<fTbMax; ++tb)
+            data[tb] = fDynamicRangeOriginal - data[tb];
+    }
 
     memcpy(&fBufferOrigin, data, sizeof(double)*fTbMax);
     FindAndSubtractPedestal(data);

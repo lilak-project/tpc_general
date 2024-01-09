@@ -232,6 +232,7 @@ class LKChannelAnalyzer : public TObject
         void SetIterMax(int iterMax) { fIterMax = iterMax; }
         void SetScaleTbStep(double scaleTbStep) { fScaleTbStep = scaleTbStep; }
         void SetTbStepCut(double value) { fTbStepCut = value; }
+        void SetDataIsInverted(bool value=true) { fDataIsInverted = value; }
 
         double* GetBuffer() { return fBuffer; }
 
@@ -244,7 +245,9 @@ class LKChannelAnalyzer : public TObject
         vector<LKPulseFitParameter> fFitParameterArray; ///< Vector holding fit TB
         //vector<double> fTbHitArray; ///< Vector holding fit TB
         //vector<double> fAmplitudeArray; ///< Vector holding fit amplitude
+        bool         fDataIsInverted = false;
 
+        // pedestal
         int          fNumTbSample = 50; ///< Least number of time-bins in pedestal sample regions
         int          fNumPedestalSamples = 0;
         int          fNumPedestalSamplesM1 = 0;
@@ -263,7 +266,7 @@ class LKChannelAnalyzer : public TObject
 
         // y
         int          fDynamicRangeOriginal = 4096; ///< Dynamic range of buffer. Used for recognizing saturation. Must be set with SetDynamicRange()
-        int          fDynamicRange = 4096; ///< Dynamic range of buffer. Used for recognizing saturation. Must be set with SetDynamicRange()
+        int          fDynamicRange = 4096; ///< Dynamic range subtracted by pedestal of buffer.
         int          fThreshold = 50; ///< Threshold for recognizing pulse peak. Must be set with SetThreshold()
         int          fThresholdOneStep = 2; ///< Threshold for counting number-of-TBs-acending (y-current > y-previous). Must be set with SetThresholdOneStep()
 

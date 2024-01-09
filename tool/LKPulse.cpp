@@ -38,6 +38,15 @@ LKPulse::LKPulse(const char *fileName)
     fBackGroundError     = ((TParameter<double>*) file -> Get("backGroundError")) -> GetVal();
     fFluctuationLevel    = ((TParameter<double>*) file -> Get("fluctuationLevel")) -> GetVal();
 
+    auto parameterInverted = ((TParameter<bool>*) file -> Get("inverted"));
+    if (parameterInverted!=nullptr) {
+        auto inverted = ((TParameter<bool>*) file -> Get("inverted")) -> GetVal();
+        if (inverted)
+            fInversion = -1;
+        else
+            fInversion = 1;
+    }
+
     file -> Close();
 }
 
@@ -53,6 +62,7 @@ void LKPulse::Clear(Option_t *option)
 void LKPulse::Print(Option_t *option) const
 {
     e_info << "fNumAnalyzedChannels : " << fNumAnalyzedChannels << endl;
+    e_info << "fInversion           : " << fInversion           << endl;
     e_info << "fThreshold           : " << fThreshold           << endl;
     e_info << "fHeightMin           : " << fHeightMin           << endl;
     e_info << "fHeightMax           : " << fHeightMax           << endl;
@@ -67,13 +77,13 @@ void LKPulse::Print(Option_t *option) const
     e_info << "fBackGroundError     : " << fBackGroundError     << endl;
 }
 
-double LKPulse::EvalTb  (double tb, double tb0, double amplitude) { return (amplitude * fGraphPulse  -> Eval(tb-tb0+0.5)); }
-double LKPulse::ErrorTb (double tb, double tb0, double amplitude) { return (amplitude * fGraphError  -> Eval(tb-tb0+0.5)); }
-double LKPulse::Error0Tb(double tb, double tb0, double amplitude) { return (amplitude * fGraphError0 -> Eval(tb-tb0+0.5)); }
+double LKPulse::EvalTb  (double tb, double tb0, double amplitude) { return fInversion * (amplitude * fGraphPulse  -> Eval(tb-tb0+0.5)); }
+double LKPulse::ErrorTb (double tb, double tb0, double amplitude) { return              (amplitude * fGraphError  -> Eval(tb-tb0+0.5)); }
+double LKPulse::Error0Tb(double tb, double tb0, double amplitude) { return              (amplitude * fGraphError0 -> Eval(tb-tb0+0.5)); }
 
-double LKPulse::Eval  (double tb, double tb0, double amplitude) { return (amplitude * fGraphPulse  -> Eval(tb-tb0)); }
-double LKPulse::Error (double tb, double tb0, double amplitude) { return (amplitude * fGraphError  -> Eval(tb-tb0)); }
-double LKPulse::Error0(double tb, double tb0, double amplitude) { return (amplitude * fGraphError0 -> Eval(tb-tb0)); }
+double LKPulse::Eval  (double tb, double tb0, double amplitude) { return fInversion * (amplitude * fGraphPulse  -> Eval(tb-tb0)); }
+double LKPulse::Error (double tb, double tb0, double amplitude) { return              (amplitude * fGraphError  -> Eval(tb-tb0)); }
+double LKPulse::Error0(double tb, double tb0, double amplitude) { return              (amplitude * fGraphError0 -> Eval(tb-tb0)); }
 
 TGraphErrors *LKPulse::GetPulseGraph(double tb0, double amplitude, double pedestal)
 {
@@ -81,7 +91,7 @@ TGraphErrors *LKPulse::GetPulseGraph(double tb0, double amplitude, double pedest
     for (auto iPoint=0; iPoint<fNumPoints; ++iPoint)
     {
         auto xValue = fGraphPulse -> GetPointX(iPoint);
-        auto yValue = fGraphPulse -> GetPointY(iPoint);
+        auto yValue = fInversion * fGraphPulse -> GetPointY(iPoint);
         auto yError = fGraphPulse -> GetErrorY(iPoint);
         graphNew -> SetPoint(iPoint,xValue+tb0,yValue*amplitude+pedestal);
         graphNew -> SetPointError(iPoint,0,yError*amplitude);

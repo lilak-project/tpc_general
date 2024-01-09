@@ -38,6 +38,7 @@ class LKPulse : public TObject
         int GetHeightMax() const  { return fHeightMax; }
         int GetTbMin() const  { return fTbMin; }
         int GetTbMax() const  { return fTbMax; }
+        bool GetInverted() const  { return (fInversion==-1); }
         double GetFWHM() const  { return fFWHM; }
         double GetFloorRatio() const  { return fFloorRatio; }
         double GetWidth() const  { return fRefWidth; }
@@ -49,14 +50,16 @@ class LKPulse : public TObject
         double GetBackGroundError() const  { return fBackGroundError; }
         double GetFluctuationLevel() const  { return fFluctuationLevel; }
 
-    private:
+        void SetInverted() { fInversion = -1; }
 
+    private:
         int fNumPoints = 0;
         TGraphErrors* fGraphPulse = nullptr;
         TGraph*       fGraphError = nullptr;
         TGraph*       fGraphError0 = nullptr;
 
         int          fNumAnalyzedChannels;
+        int          fInversion = 1;
         int          fThreshold;
         int          fHeightMin;
         int          fHeightMax;
