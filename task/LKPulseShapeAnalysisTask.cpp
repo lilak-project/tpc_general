@@ -47,8 +47,7 @@ void LKPulseShapeAnalysisTask::Exec(Option_t *option)
         auto data = channel -> GetWaveformY();
         //if (padID<0)
         {
-            auto padID2 = fDetectorPlane -> FindPadID(cobo,aget,asad,chan);
-            //lk_debug << padID << " " << padID2 << endl;
+            auto padID2 = fDetectorPlane -> FindPadID(cobo,asad,aget,chan);
             padID = padID2;
         }
 
