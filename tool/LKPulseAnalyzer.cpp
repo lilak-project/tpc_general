@@ -17,7 +17,7 @@ LKPulseAnalyzer::LKPulseAnalyzer(const char* name, const char *path)
 
 bool LKPulseAnalyzer::Init()
 {
-    TString analyzerName = Form("%s/summary_%s.root",fPath.Data(),fName.Data());
+    TString analyzerName = Form("%s/pulseSummary_%s.root",fPath.Data(),fName.Data());
     analyzerName.ReplaceAll("//","/");
     fFile = new TFile(analyzerName,"recreate");
     fTree = new TTree("pulse","");

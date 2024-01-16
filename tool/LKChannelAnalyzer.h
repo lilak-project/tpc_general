@@ -157,6 +157,8 @@ class LKChannelAnalyzer : public TObject
         void Print(Option_t *option="") const;
         void Draw(Option_t *option="");
 
+        TGraph *GetPeakGraph(double tb0, double amplitude, double pedestal);
+
         /// Set pulse function and related parameter from pulse data file created from LKPulseAnalyzer
         void SetPulse(const char* fileName);
         LKPulse* GetPulse() const  { return fPulse; }
@@ -171,7 +173,8 @@ class LKChannelAnalyzer : public TObject
 
         void Analyze(int* data);
         void Analyze(double* data);
-        //LKChannelHit GetHit(int i) { return fChannelHitArray[i]; }
+        void AnalyzePulseFinding(double* data);
+        void AnalyzePeakFinding(double* data);
 
         /**
          * Find pedestal and subract it from the buffer.
@@ -237,14 +240,13 @@ class LKChannelAnalyzer : public TObject
         double* GetBuffer() { return fBuffer; }
 
     private:
+        bool         fPulseFitMode = false;
 
         LKPulse*     fPulse = nullptr; ///< Pulse pointer
         double       fBufferOrigin[512]; ///< Copied buffer from data
         double       fBuffer[512]; ///< Copied buffer from data
         int          fNumHits = 0; ///< Number of hits found after Analyze()
         vector<LKPulseFitParameter> fFitParameterArray; ///< Vector holding fit TB
-        //vector<double> fTbHitArray; ///< Vector holding fit TB
-        //vector<double> fAmplitudeArray; ///< Vector holding fit amplitude
         bool         fDataIsInverted = false;
 
         // pedestal

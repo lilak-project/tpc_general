@@ -5,19 +5,20 @@ ClassImp(LKChannelAnalyzer);
 
 LKChannelAnalyzer::LKChannelAnalyzer()
 {
+    fNumPedestalSamples = floor(fTbMax/fNumTbSample);
+    fNumPedestalSamplesM1 = fNumPedestalSamples - 1;
+    fNumTbSampleLast = fNumTbSample + fTbMax - fNumPedestalSamples*fNumTbSample;
 }
 
 bool LKChannelAnalyzer::Init()
 {
-    fNumPedestalSamples = floor(fTbMax/fNumTbSample);
-    fNumPedestalSamplesM1 = fNumPedestalSamples - 1;
-    fNumTbSampleLast = fNumTbSample + fTbMax - fNumPedestalSamples*fNumTbSample;
-
     return true;
 }
 
 void LKChannelAnalyzer::SetPulse(const char* fileName)
 {
+    fPulseFitMode = true;
+
     fPulseFileName = fileName;
     fPulse = new LKPulse(fPulseFileName);
     if (fDataIsInverted)
@@ -52,8 +53,6 @@ void LKChannelAnalyzer::Clear(Option_t *option)
     fPedestal = 0;
     fDynamicRange = fDynamicRangeOriginal;
     fNumHits = 0;
-    //fTbHitArray.clear();
-    //fAmplitudeArray.clear();
     fFitParameterArray.clear();
 
 #ifdef DEBUG_CHANA_FINDPEAK
@@ -76,34 +75,47 @@ void LKChannelAnalyzer::Clear(Option_t *option)
 
 void LKChannelAnalyzer::Print(Option_t *option) const
 {
-    e_info << "LKChannelAnalyzer" << endl;
-    e_info << "== General" << endl;
-    e_info << "   fTbMax             = " << fTbMax               << endl;
-    e_info << "   fTbStart           = " << fTbStart             << endl;
-    e_info << "   fTbStartCut        = " << fTbStartCut          << endl;
-    e_info << "   fNumTbAcendingCut  = " << fNumTbAcendingCut    << endl;
-    e_info << "   fDynamicRange      = " << fDynamicRange        << endl;
-    e_info << "   fDataIsInverted    = " << fDataIsInverted      << endl;
-    e_info << "== Pulse information" << endl;
-    e_info << "   fFWHM              = " << fFWHM                << endl;
-    e_info << "   fFloorRatio        = " << fFloorRatio          << endl;
-    e_info << "   fWidth             = " << fWidth               << endl;
-    e_info << "   fWidthLeading      = " << fWidthLeading        << endl;
-    e_info << "   fWidthTrailing     = " << fWidthTrailing       << endl;
-    e_info << "   fPulseRefTbMin     = " << fPulseRefTbMin       << endl;
-    e_info << "   fPulseRefTbMax     = " << fPulseRefTbMax       << endl;
-    e_info << "== Peak Finding" << endl;
-    e_info << "   fThreshold         = " << fThreshold           << endl;
-    e_info << "   fThresholdOneStep  = " << fThresholdOneStep    << endl;
-    e_info << "   fTbStepIfFoundHit  = " << fTbStepIfFoundHit    << endl;
-    e_info << "   fTbStepIfSaturated = " << fTbStepIfSaturated   << endl;
-    e_info << "   fTbSeparationWidth = " << fTbSeparationWidth   << endl;
-    //e_info << "   fNumTbsCorrection =" << fNumTbsCorrection    << endl;
-    e_info << "== Pulse Fitting" << endl;
-    e_info << "   fNDFFit            = " << fNDFFit              << endl;
-    e_info << "   fIterMax           = " << fIterMax             << endl;
-    e_info << "   fTbStepCut         = " << fTbStepCut           << endl;
-    e_info << "   fScaleTbStep       = " << fScaleTbStep         << endl;
+    if (fPulseFitMode) {
+        e_info << "LKChannelAnalyzer" << endl;
+        e_info << "== General" << endl;
+        e_info << "   fTbMax             = " << fTbMax               << endl;
+        e_info << "   fTbStart           = " << fTbStart             << endl;
+        e_info << "   fTbStartCut        = " << fTbStartCut          << endl;
+        e_info << "   fNumTbAcendingCut  = " << fNumTbAcendingCut    << endl;
+        e_info << "   fDynamicRange      = " << fDynamicRange        << endl;
+        e_info << "   fDataIsInverted    = " << fDataIsInverted      << endl;
+        e_info << "== Pulse information" << endl;
+        e_info << "   fFWHM              = " << fFWHM                << endl;
+        e_info << "   fFloorRatio        = " << fFloorRatio          << endl;
+        e_info << "   fWidth             = " << fWidth               << endl;
+        e_info << "   fWidthLeading      = " << fWidthLeading        << endl;
+        e_info << "   fWidthTrailing     = " << fWidthTrailing       << endl;
+        e_info << "   fPulseRefTbMin     = " << fPulseRefTbMin       << endl;
+        e_info << "   fPulseRefTbMax     = " << fPulseRefTbMax       << endl;
+        e_info << "== Peak Finding" << endl;
+        e_info << "   fThreshold         = " << fThreshold           << endl;
+        e_info << "   fThresholdOneStep  = " << fThresholdOneStep    << endl;
+        e_info << "   fTbStepIfFoundHit  = " << fTbStepIfFoundHit    << endl;
+        e_info << "   fTbStepIfSaturated = " << fTbStepIfSaturated   << endl;
+        e_info << "   fTbSeparationWidth = " << fTbSeparationWidth   << endl;
+        //e_info << "   fNumTbsCorrection =" << fNumTbsCorrection    << endl;
+        e_info << "== Pulse Fitting" << endl;
+        e_info << "   fNDFFit            = " << fNDFFit              << endl;
+        e_info << "   fIterMax           = " << fIterMax             << endl;
+        e_info << "   fTbStepCut         = " << fTbStepCut           << endl;
+        e_info << "   fScaleTbStep       = " << fScaleTbStep         << endl;
+    }
+    else {
+        e_info << "LKChannelAnalyzer at slope fitting mode (" << endl;
+        e_info << "== General" << endl;
+        e_info << "   fThreshold         = " << fThreshold           << endl;
+        e_info << "   fTbMax             = " << fTbMax               << endl;
+        e_info << "   fTbStart           = " << fTbStart             << endl;
+        e_info << "   fTbStartCut        = " << fTbStartCut          << endl;
+        e_info << "   fNumTbAcendingCut  = " << fNumTbAcendingCut    << endl;
+        e_info << "   fDynamicRange      = " << fDynamicRange        << endl;
+        e_info << "   fDataIsInverted    = " << fDataIsInverted      << endl;
+    }
     e_info << "== Number of found hits: " << fNumHits << endl;
     if (fNumHits>0)
         for (auto iHit=0; iHit<fNumHits; ++iHit) {
@@ -148,12 +160,34 @@ void LKChannelAnalyzer::Draw(Option_t *option)
     dMGraphFP -> Draw();
 #endif
 
-    for (auto iHit=0; iHit<fNumHits; ++iHit) {
-        auto tbHit = GetTbHit(iHit);
-        auto amplitude = GetAmplitude(iHit);
-        auto graph = fPulse -> GetPulseGraph(tbHit,amplitude,fPedestal);
-        graph -> Draw("samelx");
+    if (fPulseFitMode) {
+        for (auto iHit=0; iHit<fNumHits; ++iHit) {
+            auto tbHit = GetTbHit(iHit);
+            auto amplitude = GetAmplitude(iHit);
+            auto graph = fPulse -> GetPulseGraph(tbHit,amplitude,fPedestal);
+            graph -> Draw("samelx");
+        }
     }
+    else {
+        for (auto iHit=0; iHit<fNumHits; ++iHit) {
+            auto tbHit = GetTbHit(iHit);
+            auto amplitude = GetAmplitude(iHit);
+            auto graph = GetPeakGraph(tbHit,amplitude,fPedestal);
+            graph -> Draw("samelx");
+        }
+    }
+}
+
+TGraph *LKChannelAnalyzer::GetPeakGraph(double tb0, double amplitude, double pedestal)
+{
+    auto graphNew = new TGraphErrors();
+    graphNew -> SetPoint(0,tb0-5,pedestal);
+    graphNew -> SetPoint(1,tb0  ,pedestal);
+    graphNew -> SetPoint(2,tb0  ,amplitude);
+    graphNew -> SetPoint(3,tb0+5,amplitude);
+    graphNew -> SetLineColor(kRed);
+    graphNew -> SetMarkerColor(kRed);
+    return graphNew;
 }
 
 void LKChannelAnalyzer::Analyze(int* data)
@@ -167,9 +201,6 @@ void LKChannelAnalyzer::Analyze(int* data)
 void LKChannelAnalyzer::Analyze(double* data)
 {
     Clear();
-    //fNumHits = 0;
-    //fTbHitArray.clear();
-    //fAmplitudeArray.clear();
 
     if (fDataIsInverted) {
         for (auto tb=0; tb<fTbMax; ++tb)
@@ -180,6 +211,30 @@ void LKChannelAnalyzer::Analyze(double* data)
     FindAndSubtractPedestal(data);
     memcpy(&fBuffer, data, sizeof(double)*fTbMax);
 
+    if (fPulseFitMode)
+        AnalyzePulseFinding(data);
+    else
+        AnalyzePeakFinding(data);
+
+    fNumHits = fFitParameterArray.size();
+}
+
+void LKChannelAnalyzer::AnalyzePeakFinding(double* data)
+{
+    int tPeak = 0;
+    double yPeak = 0;
+    for (auto tb=0; tb<fTbMax; ++tb) {
+        if (yPeak<fBuffer[tb]) {
+            tPeak = tb;
+            yPeak = fBuffer[tb];
+        }
+    }
+    if (yPeak >= fThreshold)
+        fFitParameterArray.push_back(LKPulseFitParameter(tPeak,yPeak,1,1));
+}
+
+void LKChannelAnalyzer::AnalyzePulseFinding(double* data)
+{
     // Found peak information
     int tbPointer = fTbStart; // start of tb for analysis = 0
     int tbStartOfPulse;
@@ -211,8 +266,6 @@ void LKChannelAnalyzer::Analyze(double* data)
 
             if (TestPulse(fBuffer, tbHitPrev, amplitudePrev, tbHit, amplitude))
             {
-                //fTbHitArray.push_back(tbHit);
-                //fAmplitudeArray.push_back(amplitude);
                 fFitParameterArray.push_back(LKPulseFitParameter(tbHit,amplitude,chi2NDF,ndf));
 #ifdef DEBUG_CHANA_ANALYZE_NHIT
                 if (fFitParameterArray.size()>=DEBUG_CHANA_ANALYZE_NHIT)
@@ -226,9 +279,6 @@ void LKChannelAnalyzer::Analyze(double* data)
                     tbPointer = int(tbHit) + fTbStepIfFoundHit;
             }
         }
-
-    fNumHits = fFitParameterArray.size();
-    //fNumHits = fTbHitArray.size();
 }
 
 double LKChannelAnalyzer::FindAndSubtractPedestal(double *buffer)

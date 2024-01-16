@@ -45,11 +45,13 @@ void LKPulseShapeAnalysisTask::Exec(Option_t *option)
         auto chan = channel -> GetChan();
         auto padID = channel -> GetChan2();
         auto data = channel -> GetWaveformY();
-        //if (padID<0)
+        if (padID<0)
         {
             auto padID2 = fDetectorPlane -> FindPadID(cobo,asad,aget,chan);
             padID = padID2;
         }
+        if (padID<0)
+            continue;
 
         for (auto tb=0; tb<512; ++tb)
             fBuffer[tb] = double(data[tb]);
@@ -67,7 +69,6 @@ void LKPulseShapeAnalysisTask::Exec(Option_t *option)
             auto pedestal  = fChannelAnalyzer -> GetPedestal();
 
             fDetectorPlane -> DriftElectronBack(pad, tb, fPosReco, fDriftLength);
-            //lk_debug << fPosReco.X() << " " << fPosReco.Y() << " " << fPosReco.Z() << endl;
 
             LKHit* hit = (LKHit*) fHitArrayCenter -> ConstructedAt(countHits);
             hit -> SetHitID(countHits);
