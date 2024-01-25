@@ -7,7 +7,6 @@
 #include "LKRun.h"
 #include "LKTask.h"
 #include "LKEventHeader.h"
-#include "LAMPSTPC.h"
 //#include "LKHit.h"
 //#include "GETChannel.h"
 //#include "LKEventHeader.h"
