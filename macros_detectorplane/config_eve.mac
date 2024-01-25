@@ -1,0 +1,22 @@
+Track/lineColor kRed
+
+HitCenter/markerColor kGray+2
+HitLStrip/markerColor kBlue
+HitLChain/markerColor kMagenta
+HitRStrip/markerColor kBlue
+HitRChain/markerColor kMagenta
+HitOthers/markerColor kGreen
+HitCenter/markerSize 1
+HitLStrip/markerSize 1
+HitLChain/markerSize 1
+HitRStrip/markerSize 1
+HitRChain/markerSize 1
+HitOthers/markerSize 1
+HitCenter/lineColor {HitCenter/markerColor}
+HitLStrip/lineColor {HitLStrip/markerColor}
+HitLChain/lineColor {HitLChain/markerColor}
+HitRStrip/lineColor {HitRStrip/markerColor}
+HitRChain/lineColor {HitRChain/markerColor}
+HitOthers/lineColor {HitOthers/markerColor}
+
+#LKEveTask/selectHitParentIDs 1

@@ -68,11 +68,10 @@ TexAT2/analysis/X6Junction         {TexAT2/analysis/MMCenterSideA0}
 TexAT2/analysis/CsICT              {TexAT2/analysis/MMCenterSideA0}
 
 #################################################################################################
-//TTRootConversionTask/inputFileName  {raw_data_path}/run_0801.root
-TTRootConversionTask/inputFileName  ~/data/texat/run_0824.dat.19-03-23_23h42m36s.38.root
+TTRootConversionTask/inputFileName  {raw_data_path}/run_0801.root
 
 #################################################################################################
-*LKRun/RunName texat 824 all
+*LKRun/RunName texat 801 all
 *LKRun/DataPath {reco_data_path}
 
 #################################################################################################

@@ -29,8 +29,8 @@ void anaFitPulse(double scaleBeta = 0.7)
     fRun -> AddDetector(new TexAT2);
     fRun -> AddPar("config.mac");
 
-    //ifstream file_list_conv("/home/ejungwoo/data/texat/conv/list_conv");
-    ifstream file_list_conv("list_conv");
+    ifstream file_list_conv("/home/ejungwoo/data/texat/conv/list_conv");
+    //ifstream file_list_conv("list_conv");
     int countFiles = 0;
     TString fileName;
     while (file_list_conv>>fileName) {
@@ -189,6 +189,7 @@ void NextChannel(int pass)
     TString namePedestal = Form("hists_%s_%lld",fTypeNames[type],caac);
 
     fCvs -> cd();
+    fCvs -> SetName(nameCvs);
     auto hist = ejungwoo::MakeChannelHist(data2,350,nameHist);
     hist -> Draw();
 

@@ -5,8 +5,8 @@
 //int fDrawEntry = 535;
 //int fDrawEntry = 804;
 //int fDrawEntry = 1068;
-int fDrawEntry = 1074;
-//int fDrawEntry = 0;
+//int fDrawEntry = 1074;
+int fDrawEntry = 0;
 
 LKRun* fRun;
 TTree* fTree = nullptr;
@@ -116,7 +116,8 @@ void DrawEvent(int entry)
 {
     if (entry==-1) fDrawEntry = fDrawEntry + 1;
     else fDrawEntry = entry;
-    fRun -> GetEntry(fDrawEntry);
+    //fRun -> GetEntry(fDrawEntry);
+    fRun -> RunSelectedEvent("EventHeader[0].IsGoodEvent()");
 
     auto numHitsAll = 0;
     for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
@@ -128,7 +129,7 @@ void DrawEvent(int entry)
     if (numHitsAll==0||goodEvent==false) { DrawEvent(); return; }
 
     auto eventNumber = eventHeader -> GetEventNumber();
-    e_info << ">>>> " << fDrawEntry << " " << eventNumber << " " << numHitsAll << " " << goodEvent << endl;
+    e_info << "Event Info. >>>> " << fDrawEntry << " " << eventNumber << " " << numHitsAll << " " << goodEvent << endl;
 
     for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
     {
@@ -177,6 +178,7 @@ void DrawEvent(int entry)
     }
 
     for (auto iCLR : {kMMCenter,kMMLeft,kMMRight})
+    //for (auto iCLR : {kMMLeft})
     {
         for (auto iSCA : {kStrip,kChain})
         {
@@ -186,7 +188,8 @@ void DrawEvent(int entry)
                 auto hit = (LKHit*) fHitArray[iCLR][iSCA] -> At(iHit);
                 auto w = hit -> W();
                 auto x = hit -> X();
-                auto y = 350 - (hit -> Y());
+                //auto y = 350 - (hit -> Y());
+                auto y = hit -> Y();
                 auto z = hit -> Z();
                 auto dx = hit->GetDX();
                 auto dy = hit->GetDY();
@@ -236,7 +239,6 @@ void DrawEvent(int entry)
             graph -> SetLineColor(kGray);
             graph -> SetMarkerSize(1.2);
             graph -> Draw("same pz");
-
         }
 
         int iSCA = ((iView==kFrontView)?kChain:kStrip);
@@ -257,6 +259,10 @@ void DrawEvent(int entry)
             histParam -> SetTitle(Form("%s (%s) %s",mainTitle0, ((iCLR==kMMLeft)?"L":"R"), histParam->GetTitle()));
             auto paramPoint = tkTrf -> FindNextMaximumParamPoint();
             auto graphRange = paramPoint -> GetRangeGraphInParamSpace(1);
+
+            cout << endl;
+            tkTrf -> Print();
+            paramPoint -> Print();
 
             padParam -> cd();
             histParam -> Draw("colz");
@@ -292,11 +298,11 @@ void DrawEvent(int entry)
     fCvsAll -> SetName(Form("cvs_texat_e%d_image",eventNumber));
     fCvsParam -> SetName(Form("cvs_texat_e%d_param",eventNumber));
 
-    TransformAndFit(kTopView,   kMMCenter, fTrackerXZ, fCvsAll->cd(3));
-    TransformAndFit(kTopView,   kMMLeft,   fTrackerXZ, fCvsAll->cd(3));
-    TransformAndFit(kTopView,   kMMRight,  fTrackerXZ, fCvsAll->cd(3));
-    TransformAndFit(kFrontView, kMMCenter, fTrackerXY, fCvsAll->cd(1), fCvsParam->cd(3));
-    TransformAndFit(kSideView,  kMMCenter, fTrackerZY, fCvsAll->cd(2), fCvsParam->cd(6));
+    //TransformAndFit(kTopView,   kMMCenter, fTrackerXZ, fCvsAll->cd(3));
+    //TransformAndFit(kTopView,   kMMLeft,   fTrackerXZ, fCvsAll->cd(3));
+    //TransformAndFit(kTopView,   kMMRight,  fTrackerXZ, fCvsAll->cd(3));
+    //TransformAndFit(kFrontView, kMMCenter, fTrackerXY, fCvsAll->cd(1), fCvsParam->cd(3));
+    //TransformAndFit(kSideView,  kMMCenter, fTrackerZY, fCvsAll->cd(2), fCvsParam->cd(6));
 
     auto trackFL = TransformAndFit(kFrontView, kMMLeft,  fTrackerXY, fCvsAll->cd(1), fCvsParam->cd(1));
     auto trackSL = TransformAndFit(kSideView,  kMMLeft,  fTrackerZY, fCvsAll->cd(2), fCvsParam->cd(2));
@@ -367,6 +373,6 @@ void DrawEvent(int entry)
         graphFitR -> Draw("same p0 line");
     }
 
-    ejungwoo::Save(fCvsAll);
-    ejungwoo::Save(fCvsParam);
+    //ejungwoo::Save(fCvsAll);
+    //ejungwoo::Save(fCvsParam);
 }

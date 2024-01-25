@@ -6,10 +6,10 @@ void run_all()
 
     auto run = new LKRun();
     run -> SetNumPrintMessage(50);
-    run -> AddPar("config.mac");
+    //run -> AddParAfterFirst("config_eve.mac");
     run -> AddDetector(new TexAT2());
     run -> Add(new TTRootConversionTask());
-    //run -> Add(new TTEventNumberSelectionTask("list_eventNo_801.txt"));
+    run -> Add(new TTEventNumberSelectionTask("list_eventNo_801.txt"));
     run -> Add(new TTPulseAnalysisTask());
 
     run -> Init();

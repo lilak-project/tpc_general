@@ -1,11 +1,7 @@
 void next(int i=-2) { LKRun::GetRun() -> RunSelectedEvent("EventHeader[0].IsGoodEvent()"); }
-void write(int i=-2) {
-    auto det = LKRun::GetRun() -> GetDetector();
-    auto mm = (TTMicromegas*) det -> GetDetectorPlane();
-    mm -> WriteCurrentChannel();
-}
+void write() { TTMicromegas::GetPlane() -> WriteCurrentChannel(); }
 
-void drawDetectorPlane()
+void run_eve()
 {
     auto run = new LKRun();
     run -> AddInputFile("~/data/texat/reco/texat_0801.all.root");
